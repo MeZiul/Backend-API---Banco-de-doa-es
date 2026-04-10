@@ -20,7 +20,13 @@ class Interesse {
           ref: "Usuario",
           required: [true, "A referência ao dono do item é obrigatória."]
         },
-        mensagem: {
+        mensagem_interessado: {
+          type: String,
+          trim: true,
+          default: null
+        },
+
+        resposta_doador: {
           type: String,
           trim: true,
           default: null
@@ -51,7 +57,7 @@ class Interesse {
     );
 
     schema.plugin(mongoosePaginate);
-
+    
     schema.index(
       { item_id: 1, usuario_interessado_id: 1 },
       {
