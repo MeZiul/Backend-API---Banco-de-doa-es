@@ -3,78 +3,57 @@ import mongoosePaginate from "mongoose-paginate-v2";
 
 class Interesse {
   constructor() {
-    const INTERESSE_STATUS = [
-      "PENDENTE",
-      "ACEITO",
-      "RECUSADO",
-      "CANCELADO",
-      "EXPIRADO",
-    ];
-
     const schema = new mongoose.Schema(
       {
-        itemId: {
+        item_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Item",
-          required: [true, "O item do interesse é obrigatório."],
-          index: true,
+          required: [true, "A referência ao item de doação é obrigatória."]
         },
-        interessadoId: {
+        usuario_interessado_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Usuario",
-          required: [true, "O usuário interessado é obrigatório."],
-          index: true,
+          required: [true, "A referência ao usuário que manifestou interesse é obrigatória."]
         },
-        doadorId: {
+        usuario_doador_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Usuario",
-          required: [true, "O doador do item é obrigatório."],
-          index: true,
+          required: [true, "A referência ao dono do item é obrigatória."]
         },
         mensagem: {
           type: String,
           trim: true,
-          maxlength: [500, "A mensagem deve ter no máximo 500 caracteres."],
-          default: null,
+          default: null
         },
         status: {
           type: String,
-          enum: INTERESSE_STATUS,
-          default: "PENDENTE",
-          index: true,
+          enum: ["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"],
+          required: [true, "O status do interesse é obrigatório."],
+          default: "PENDENTE"
         },
-        respostaDoador: {
-          type: String,
-          trim: true,
-          maxlength: [500, "A resposta do doador deve ter no máximo 500 caracteres."],
-          default: null,
-        },
-        dataManifestacao: {
+        data_interesse: {
           type: Date,
-          default: Date.now,
-          required: true,
+          default: Date.now
         },
-        dataRespostaDoador: {
+        data_resposta: {
           type: Date,
-          default: null,
+          default: null
         },
-        dataCancelamento: {
+        data_cancelamento: {
           type: Date,
-          default: null,
-        },
-        dataExpiracao: {
-          type: Date,
-          default: null,
-        },
+          default: null
+        }
       },
       {
-        versionKey: false,
         timestamps: true,
+        versionKey: false,
       }
     );
 
+    schema.plugin(mongoosePaginate);
+
     schema.index(
-      { itemId: 1, interessadoId: 1 },
+      { item_id: 1, usuario_interessado_id: 1 },
       {
         unique: true,
         partialFilterExpression: {
@@ -83,16 +62,7 @@ class Interesse {
       }
     );
 
-    schema.path("mensagem").validate(function validateMensagem(value) {
-      return value === null || value === undefined || value.trim().length > 0;
-    }, "A mensagem não pode ser enviada vazia.");
-
-    schema.path("respostaDoador").validate(function validateResposta(value) {
-      return value === null || value === undefined || value.trim().length > 0;
-    }, "A resposta do doador não pode ser vazia.");
-
-    schema.plugin(mongoosePaginate);
-    this.model = mongoose.model("Interesse", schema);
+    this.model = mongoose.model("interesses", schema);
   }
 }
 
