@@ -1,86 +1,85 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 
-class Denuncia {
+class Administracao {
   constructor() {
+    const ADMINISTRACAO_ACOES = [
+      "BLOQUEIO_USUARIO",
+      "DESBLOQUEIO_USUARIO",
+      "INATIVACAO_USUARIO",
+      "CANCELAMENTO_ITEM",
+      "RESOLUCAO_DENUNCIA",
+    ];
+
+    const ADMINISTRACAO_ALVO_TIPOS = ["USUARIO", "ITEM", "DENUNCIA"];
+
     const schema = new mongoose.Schema(
       {
-        denunciante_id: {
+        administradorId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Usuario",
-          required: [true, "A referência ao usuário denunciante é obrigatória."]
+          required: [true, "O administrador responsável é obrigatório."],
+          index: true,
         },
-        tipo_alvo: {
+        tipoAcao: {
           type: String,
-          enum: ["ITEM", "USUARIO"],
-          required: [true, "O tipo de alvo é obrigatório."]
+          enum: ADMINISTRACAO_ACOES,
+          required: [true, "O tipo da ação administrativa é obrigatório."],
+          index: true,
         },
-        alvo_item_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Item",
-          required: [
-            function () {
-              return this.tipo_alvo === "ITEM";
-            },
-            "A referência ao item é obrigatória quando o alvo é um ITEM."
-          ]
-        },
-        alvo_usuario_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Usuario",
-          required: [
-            function () {
-              return this.tipo_alvo === "USUARIO";
-            },
-            "A referência ao usuário é obrigatória quando o alvo é um USUARIO."
-          ]
-        },
-        motivo: {
+        alvoTipo: {
           type: String,
-          enum: [
-            "CONTEUDO_INAPROPRIADO",
-            "ITEM_PROIBIDO",
-            "FRAUDE",
-            "ASSEDIO",
-            "SPAM",
-            "OUTRO"
+          enum: ADMINISTRACAO_ALVO_TIPOS,
+          required: [true, "O tipo do alvo é obrigatório."],
+          index: true,
+        },
+        alvoId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: [true, "O alvo da ação administrativa é obrigatório."],
+          refPath: "alvoModel",
+          index: true,
+        },
+        alvoModel: {
+          type: String,
+          required: true,
+          enum: ["Usuario", "Item", "Denuncia"],
+        },
+        justificativa: {
+          type: String,
+          trim: true,
+          required: [true, "A justificativa da ação administrativa é obrigatória."],
+          maxlength: [1000, "A justificativa deve ter no máximo 1000 caracteres."],
+        },
+        respostaAdministrativa: {
+          type: String,
+          trim: true,
+          maxlength: [
+            1000,
+            "A resposta administrativa deve ter no máximo 1000 caracteres.",
           ],
-          required: [true, "O motivo da denúncia é obrigatório."]
+          default: null,
         },
-        descricao: {
+        acaoTomada: {
           type: String,
           trim: true,
-          default: null
+          maxlength: [500, "A ação tomada deve ter no máximo 500 caracteres."],
+          default: null,
         },
-        status: {
-          type: String,
-          enum: ["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"],
-          required: [true, "O status da denúncia é obrigatório."],
-          default: "EM_ANALISE"
-        },
-        resposta_admin: {
+        resultado: {
           type: String,
           trim: true,
-          default: null
+          maxlength: [100, "O resultado deve ter no máximo 100 caracteres."],
+          default: null,
         },
-        admin_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Usuario",
-          default: null
-        },
-        acao_tomada: {
-          type: String,
-          trim: true,
-          default: null
-        },
-        data_denuncia: {
+        suspensaoAte: {
           type: Date,
-          default: Date.now
+          default: null,
         },
-        data_analise: {
+        dataAcao: {
           type: Date,
-          default: null
-        }
+          default: Date.now,
+          required: true,
+        },
       },
       {
         timestamps: true,
@@ -88,13 +87,41 @@ class Denuncia {
       }
     );
 
+    schema.pre("validate", function syncAlvoModel(next) {
+      if (this.alvoTipo === "USUARIO") {
+        this.alvoModel = "Usuario";
+      }
+
+      if (this.alvoTipo === "ITEM") {
+        this.alvoModel = "Item";
+      }
+
+      if (this.alvoTipo === "DENUNCIA") {
+        this.alvoModel = "Denuncia";
+      }
+
+      next();
+    });
+
+    schema.path("justificativa").validate(function validateJustificativa(value) {
+      return typeof value === "string" && value.trim().length > 0;
+    }, "A justificativa não pode ser vazia.");
+
+    schema.path("respostaAdministrativa").validate(function validateResposta(value) {
+      return value === null || value === undefined || value.trim().length > 0;
+    }, "A resposta administrativa não pode ser vazia.");
+
+    schema.path("acaoTomada").validate(function validateAcaoTomada(value) {
+      return value === null || value === undefined || value.trim().length > 0;
+    }, "A ação tomada não pode ser vazia.");
+
+    schema.index({ administradorId: 1, dataAcao: -1 });
+    schema.index({ alvoTipo: 1, alvoId: 1, dataAcao: -1 });
+    schema.index({ tipoAcao: 1, dataAcao: -1 });
+
     schema.plugin(mongoosePaginate);
-
-    schema.index({ status: 1, data_denuncia: -1 });
-    schema.index({ denunciante_id: 1 });
-
-    this.model = mongoose.model("denuncias", schema);
+    this.model = mongoose.model("Administracao", schema);
   }
 }
 
-export default new Denuncia().model;
+export default new Administracao().model;
