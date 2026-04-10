@@ -142,3 +142,13 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# folder for the example of constructing a API
+.aula-back-end-2026-1/
+/aula-back-end-2026-1/
+/aula-back-end-2026-1
+
+# Ignore IDEA
+
+/.idea
+.idea/
