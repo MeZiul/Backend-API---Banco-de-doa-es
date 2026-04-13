@@ -3,7 +3,7 @@ import mongoosePaginate from "mongoose-paginate-v2";
 
 class Usuario {
     constructor(){
-        const schema = new mongoose.schema(
+        const schema = new mongoose.Schema(
            { 
                 nome: { 
                     type: String,
@@ -39,7 +39,7 @@ class Usuario {
                     maxlength: 2
                 },
 
-                senhaHash: {
+                senha: {
                     type: String,
                     required: true,
                     select: false
@@ -65,21 +65,16 @@ class Usuario {
                     required: true
                 },
                 
-                data_cadastro:{type: Date, default: Date.now}, 
-                data_atualizacao:{type: Date, default: Date.now},
 
                 motivo_suspensao:{type: String, default: null},
                 suspensao_ate:{type: Date, default: null},
 
-                media_avaliacao:{type: Number, default: 0},
+                media_avaliacoes:{type: Number, default: 0},
+                total_avaliacoes:{type: Number, default: 0},
+                total_doacoes:{type: Number, default: 0},
 
-                token_redefinir:{type: String, select: false},
-                token_redefinir_expira:{type: Date, select: false},
-
-                tokenUpdateEmail:{type: String, select: false},
-                codigo_recupera_senha:{type: String, default: null},
-                exp_codigo_recupera_senha:{type: Date, default: null},
-
+                token_redefinicao:{type: String, select: false, default: null},
+                token_redefinir_expira:{type: Date, select: false, default: null},
 
         
             },
