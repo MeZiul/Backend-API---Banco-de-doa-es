@@ -32,7 +32,6 @@ class Avaliacao {
 
                 comentario: {
                     type: String,
-                    maxlength: 500,
                     trim: true
                 },
 
@@ -41,9 +40,15 @@ class Avaliacao {
                     enum:["DOADOR_PARA_INTERESSADO", "INTERESSADO_PARA_DOADOR"],
                     required: true
                 },
+
+                data_avaliacao: {
+                    type: Date,
+                    default: Date.now
+                },
+
             },
             {
-                timestamps: {createdAt: "data_avaliacao", updatedAt: "data_atualizacao"},
+               
                 versionKey: false
             }
             
