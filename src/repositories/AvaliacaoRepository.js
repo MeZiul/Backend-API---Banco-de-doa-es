@@ -1,6 +1,6 @@
-import Avaliacao from "../models/Avaliacao.js";
+import AvaliacaoModel from "../models/Avaliacao.js";
 import BaseRepository from "./base/BaseRepository.js";
-import AvaliacaoFilterBuilder from "../filters/AvaliacaoFilterBuilder.js";
+import AvaliacaoFilterBuilder from "./filters/AvaliacaoFilterBuilder.js";
 
 class AvaliacaoRepository extends BaseRepository {
     constructor() {

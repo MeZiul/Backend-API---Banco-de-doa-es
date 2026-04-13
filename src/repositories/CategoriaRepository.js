@@ -1,7 +1,6 @@
 import BaseRepository from "./base/BaseRepository.js";
-import CategoriaFilterBuilder from "../filters/CategoriaFilterBuilder.js";
+import CategoriaFilterBuilder from "./filters/CategoriaFilterBuilder.js";
 import CategoriaModel from "../models/Categoria.js";
-import e from "express";
 
 class CategoriaRepository extends BaseRepository {
     constructor() {

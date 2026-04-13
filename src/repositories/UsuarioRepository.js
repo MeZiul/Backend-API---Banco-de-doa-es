@@ -1,6 +1,6 @@
 import UsuarioModel  from "../models/Usuario.js";
 import BaseRepository from "./base/BaseRepository.js";
-import UsuarioFilterBuilder from "../filters/UsuarioFilterBuilder.js";
+import UsuarioFilterBuilder from "./filters/UsuarioFilterBuilder.js";
 
 class UsuarioRepository extends BaseRepository { 
     constructor(){
@@ -20,7 +20,7 @@ class UsuarioRepository extends BaseRepository {
     }
 
     buscarPorTokenRedefinir(token){
-        return this.model.findOne({token_redefinicao: token}).select("+token_redefinicao + token_redefinicao_expira");
+        return this.model.findOne({token_redefinicao: token}).select("+token_redefinicao +token_redefinicao_expira");
     }
 
 
@@ -56,4 +56,4 @@ class UsuarioRepository extends BaseRepository {
 
 }
 
-export default UsuarioRepository();
+export default UsuarioRepository;
