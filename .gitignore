@@ -163,7 +163,13 @@ vite.config.ts.timestamp-*
 /aula-back-end-2026-1/
 /aula-back-end-2026-1
 
-# Ignore IDEA
+# Ignore IDEA folder and files
 
 /.idea
 .idea/
+
+# Ignore opeaia codex .
+.codex
+
+# Ignore documents html api
+Especificacao_API_REST_DoaI.html
