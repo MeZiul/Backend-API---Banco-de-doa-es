@@ -7,6 +7,22 @@ class AvaliacaoRepository extends BaseRepository {
         super(AvaliacaoModel);
     }
 
+    buscarPorAvaliador(avaliador_id) {
+        return this.model.findOne({ avaliador_id });
+
+    }
+
+    buscarPorAvaliado(avaliado_id) {
+        return this.model.findOne({ avaliado_id });
+    }
+
+    buscarPorItem(item_id) {
+        return this.model.findOne({ item_id });
+    }
+    buscarPorTipo(tipo) {
+        return this.model.findOne({ tipo });
+    }
+    
     buscarPorAvaliadorItemTipo(avaliador_id, item_id, tipo) {
         return this.model.findOne({ avaliador_id, item_id, tipo });
     }
