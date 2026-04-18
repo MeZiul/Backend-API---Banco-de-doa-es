@@ -1,93 +1,293 @@
-# Backend API - Banco de doações
+# Backend API - Banco de Doações
 
+API backend do projeto DoaÍ, desenvolvida em Node.js, Express e MongoDB, com organização em camadas para controllers, services, repositories, models e middlewares.
 
+O repositório também mantém a documentação funcional da API em:
+- [Documentação_da_api_Banco_de_Doação.md](./Documentação_da_api_Banco_de_Doação.md)
+- [Especificacao_API_REST_DoaI.html](./Especificacao_API_REST_DoaI.html)
 
-## Getting started
+## Objetivo
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Centralizar as regras de negócio do sistema de doações, cobrindo autenticação, usuários, perfil, itens, interesses, avaliações, denúncias, administração e upload de imagens.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Stack
 
-## Add your files
+- Node.js
+- Express 5
+- MongoDB
+- Mongoose
+- JWT para autenticação
+- Bcrypt para hash de senha
+- Nodemailer para envio de e-mails
+- Swagger (`swagger-jsdoc` e `swagger-ui-express`) como dependência do projeto
+- Winston para logging
+- Zod para validação
 
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Estrutura do projeto
 
+```text
+.
+├── server.js
+├── src/
+│   ├── app.js
+│   ├── config/
+│   ├── containers/
+│   ├── controllers/
+│   ├── docs/
+│   ├── infra/
+│   ├── middlewares/
+│   ├── models/
+│   ├── repositories/
+│   │   ├── base/
+│   │   └── filters/
+│   ├── routes/
+│   ├── seeds/
+│   ├── services/
+│   ├── tests/
+│   └── utils/
+├── .env EXAMPLE
+├── Documentação_da_api_Banco_de_Doação.md
+└── Especificacao_API_REST_DoaI.html
 ```
-cd existing_repo
-git remote add origin https://gitlab.fslab.dev/f-brica-de-software-i-2026-1/banco-de-doa-es/backend-api-banco-de-doacoes.git
-git branch -M main
-git push -uf origin main
+
+## Arquitetura
+
+O projeto segue uma organização em camadas:
+
+- `routes`: define os endpoints HTTP e conecta controllers.
+- `controllers`: recebe `req` e `res`, delega para services e padroniza a resposta.
+- `services`: concentra regras de negócio.
+- `repositories`: encapsula acesso ao MongoDB via Mongoose.
+- `models`: define os schemas e models.
+- `middlewares`: autenticação, autorização, logging e tratamento transversal.
+- `utils` e `infra`: helpers, logger, serviços auxiliares e integrações.
+- `containers`: composição manual de dependências entre repository e service.
+
+## Estado atual do repositório
+
+Este ponto é importante para quem for clonar ou continuar o desenvolvimento:
+
+- A estrutura de domínio está em construção.
+- Parte da modelagem, repositories, filters e alguns controllers/services já existem.
+- Nem todas as rotas documentadas estão registradas em `src/routes/index.js`.
+- Hoje o registro de rotas ativo no código está reduzido e usa `exampleRoutes.js` como referência de estrutura.
+- Existem arquivos de service, docs e testes ainda vazios ou parciais.
+- O README documenta o objetivo e a arquitetura do projeto, não garante que 100% das rotas da documentação já estejam operacionais no runtime atual.
+
+## Pré-requisitos
+
+- Node.js 20+ recomendado
+- npm
+- MongoDB acessível por URI
+
+## Configuração de ambiente
+
+1. Crie o arquivo `.env` a partir de `.env EXAMPLE`.
+2. Ajuste as variáveis obrigatórias para o seu ambiente.
+
+Exemplo:
+
+```bash
+cp ".env EXAMPLE" .env
 ```
 
-## Integrate with your tools
+Variáveis mais importantes para subir a aplicação:
 
-* [Set up project integrations](https://gitlab.fslab.dev/f-brica-de-software-i-2026-1/banco-de-doa-es/backend-api-banco-de-doacoes/-/settings/integrations)
+- `APP_PORT`
+- `DB_URL`
+- `USE_IN_MEMORY_DB`
+- `NODE_ENV`
+- `JWT_SECRET_ACCESS_TOKEN`
+- `JWT_ACCESS_TOKEN_EXPIRATION`
+- `JWT_SECRET_REFRESH_TOKEN`
+- `JWT_REFRESH_TOKEN_EXPIRATION`
+- `JWT_SECRET_PASSWORD_RECOVERY`
+- `JWT_PASSWORD_RECOVERY_EXPIRATION`
+- `SALT_LENGTH`
+- `LOG_LEVEL`
+- `LOG_ENABLED`
+- `DEBUGLOG`
 
-## Collaborate with your team
+Variáveis adicionais já previstas no projeto:
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+- Firebase App Check
+- SMTP e envio de e-mail
+- chaves para serviço externo de mail
+- URLs base de frontend e backend
+- credenciais administrativas usadas em seed/configuração local
 
-## Test and Deploy
+## Instalação
 
-Use the built-in continuous integration in GitLab.
+```bash
+npm install
+```
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Execução
 
-***
+Ambiente de desenvolvimento:
 
-# Editing this README
+```bash
+npm run dev
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Execução normal:
 
-## Suggestions for a good README
+```bash
+npm start
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Scripts disponíveis em `package.json`:
 
-## Name
-Choose a self-explaining name for your project.
+- `npm run dev`: sobe com `nodemon`
+- `npm start`: sobe com `node server.js`
+- `npm test`: atualmente não possui suíte configurada; o script falha por padrão
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## Inicialização da aplicação
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+O fluxo atual de boot é:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+1. `server.js` carrega variáveis de ambiente e inicializa o `app`.
+2. `src/app.js` abre a conexão com o banco via `DbConnect.conectar()`.
+3. Middlewares globais são registrados.
+4. As rotas são montadas por `src/routes/index.js`.
+5. Há tratamento centralizado para `404` e para erros não tratados.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## Banco de dados
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+A conexão com MongoDB é feita em `src/config/DbConnect.js` com Mongoose.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Características atuais da conexão:
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+- suporte a `MongoMemoryServer` quando `USE_IN_MEMORY_DB=true`
+- `strictQuery` condicionado ao ambiente
+- `autoIndex` habilitado
+- logging de eventos de conexão
+- timeout configurado para seleção de servidor, socket e conexão
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Rotas e documentação
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+A especificação funcional completa da API está nos arquivos:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+- `Documentação_da_api_Banco_de_Doação.md`
+- `Especificacao_API_REST_DoaI.html`
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Domínios documentados:
 
-## License
-For open source projects, say how it is licensed.
+- usuários
+- autenticação
+- perfil
+- categorias
+- itens de doação
+- interesses
+- avaliações
+- denúncias
+- administração
+- upload de imagens
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Estado do código de rotas:
+
+- `src/routes/index.js` ainda não registra todos esses domínios
+- a rota de exemplo está ativa e serve como base estrutural
+- a integração completa entre documentação e runtime ainda depende da evolução das branches de implementação
+
+## Respostas e tratamento de erro
+
+O projeto usa um formato padronizado de resposta com `CommonResponse`, incluindo:
+
+- `message`
+- `data`
+- `errors`
+
+O middleware `errorHandler` centraliza o tratamento das exceções da aplicação.
+
+## Logging
+
+O projeto usa logger próprio com suporte a configuração por variáveis de ambiente.
+
+Parâmetros já previstos:
+
+- `LOG_LEVEL`
+- `LOG_MAX_SIZE_GB`
+- `LOG_ENABLED`
+- `DEBUGLOG`
+
+Quando `DEBUGLOG` está habilitado, o middleware de logging de rotas é registrado em `src/routes/index.js`.
+
+## Segurança
+
+Recursos já previstos no código e na configuração:
+
+- hash de senha com bcrypt
+- autenticação por JWT
+- App Check com Firebase
+- controle de sessão com refresh token
+- cabeçalho `X-Robots-Tag` para bloquear indexação
+- endpoint `/robots.txt` bloqueando rastreamento
+
+## Seeds, testes e documentação interna
+
+Estado atual dos diretórios auxiliares:
+
+- `src/seeds/seedDoai.js` existe, mas está vazio neste momento
+- `src/tests/test.js` existe, mas está vazio neste momento
+- `src/docs/index.js` existe, mas está vazio neste momento
+
+Isso significa que a base estrutural para seed, testes e documentação interna já foi criada, mas ainda exige implementação para uso efetivo.
+
+## Fluxo de desenvolvimento recomendado
+
+1. Criar ou ajustar o `.env`.
+2. Instalar dependências com `npm install`.
+3. Garantir acesso ao MongoDB configurado em `DB_URL`.
+4. Subir a API com `npm run dev`.
+5. Implementar o domínio por camada:
+   `model -> repository -> filter -> service -> controller -> route`
+6. Validar manualmente os endpoints conforme a documentação `.md` e `.html`.
+
+## Convenções adotadas no projeto
+
+- módulos ES (`"type": "module"`)
+- separação por responsabilidade em camadas
+- repositories com paginação via `mongoose-paginate-v2`
+- filters dedicados para composição de consultas
+- containers para composição explícita de dependências
+- documentação funcional separada da implementação
+
+## Limitações atuais
+
+- o `README` anterior era apenas o template padrão do GitLab; este arquivo substitui isso
+- o script de teste ainda não representa uma suíte automatizada real
+- nem todos os domínios documentados já estão expostos em rotas ativas
+- há arquivos parciais ou vazios em alguns módulos
+- o `.env EXAMPLE` contém valores de exemplo e deve ser revisado antes de qualquer uso real
+
+## Referência rápida
+
+Subir localmente:
+
+```bash
+npm install
+cp ".env EXAMPLE" .env
+npm run dev
+```
+
+Entrada principal:
+
+- [server.js](./server.js)
+
+Bootstrap da aplicação:
+
+- [src/app.js](./src/app.js)
+
+Registro de rotas:
+
+- [src/routes/index.js](./src/routes/index.js)
+
+Conexão com banco:
+
+- [src/config/DbConnect.js](./src/config/DbConnect.js)
+
+Documentação funcional:
+
+- [Documentação_da_api_Banco_de_Doação.md](./Documentação_da_api_Banco_de_Doação.md)
+- [Especificacao_API_REST_DoaI.html](./Especificacao_API_REST_DoaI.html)
