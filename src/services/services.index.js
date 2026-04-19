@@ -21,4 +21,3 @@ export { usuarioService } from './services.usuario.container.js';
 
 // ── Dashboard / BI ──────────────────────────────────────
 //export { dashboardService } from './services.dashboard.container.js';
-
