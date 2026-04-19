@@ -168,5 +168,19 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
-/.idea/
 
+# folder for the example of constructing a API
+.aula-back-end-2026-1/
+/aula-back-end-2026-1/
+/aula-back-end-2026-1
+
+# Ignore IDEA folder and files
+
+/.idea
+.idea/
+
+# Ignore opeaia codex .
+.codex
+
+# Ignore documents html api
+Especificacao_API_REST_DoaI.html

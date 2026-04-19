@@ -1,6 +1,6 @@
-import UsuarioModel  from "../models/Usuario";
-import BaseRepository from "./base/BaseRepository";
-import UsuarioFilterBuilder from "../filters/UsuarioFilterBuilder";
+import UsuarioModel  from "../models/Usuario.js";
+import BaseRepository from "./base/BaseRepository.js";
+import UsuarioFilterBuilder from "./filters/UsuarioFilterBuilder.js";
 
 class UsuarioRepository extends BaseRepository { 
     constructor(){
@@ -16,40 +16,19 @@ class UsuarioRepository extends BaseRepository {
     }
     
     buscarPorEmailComSenha(email){
-        return this.model.findOne({email}).select("+senhaHash");
+        return this.model.findOne({email}).select("+senha");
     }
 
     buscarPorTokenRedefinir(token){
-        return this.model.findOne({token_redefinir: token}).select("+token_redefinir");
+        return this.model.findOne({token_redefinicao: token}).select("+token_redefinicao +token_redefinicao_expira");
     }
 
-    buscarPorCodigoRecuperacao(codigo){
-        return this.model.findOne({codigo_recupera_senha: codigo});
-    }
 
-    amarzenarTokens(id, access, refresh) {
+    atualizarSenha(id, senha) {
         return this.atualizar(id, { 
-            accesstoken: access,
-            refreshtoken: refresh,
-            data_atualizacao: new Date()
-        });
-
-    }
-
-    removerTokens(id) {
-        return this.atualizar(id, { 
-            accesstoken: null,
-            refreshtoken: null,
-        });
-    }
-
-    atualizarSenha(id, senhaHash) {
-        return this.atualizar(id, { 
-            senhaHash,
-            token_redefinir: null,
-            token_redefinir_expira: null,
-            codigo_recupera_senha: null,
-            exp_codigo_recupera_senha: null,
+            senha,
+            token_redefinicao: null,
+            token_redefinicao_expira: null,
         
         });
     }
@@ -77,4 +56,4 @@ class UsuarioRepository extends BaseRepository {
 
 }
 
-export default UsuarioRepository();
+export default UsuarioRepository;
