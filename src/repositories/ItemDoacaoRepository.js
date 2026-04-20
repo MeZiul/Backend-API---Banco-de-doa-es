@@ -39,4 +39,4 @@ class ItemDoacaoRepository extends BaseRepository {
     }
 }
 
-export default new ItemDoacaoRepository();
+export default ItemDoacaoRepository();
