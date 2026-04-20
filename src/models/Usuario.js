@@ -74,7 +74,7 @@ class Usuario {
                 total_doacoes:{type: Number, default: 0},
 
                 token_redefinicao:{type: String, select: false, default: null},
-                token_redefinir_expira:{type: Date, select: false, default: null},
+                token_redefinicao_expira:{type: Date, select: false, default: null},
 
         
             },
