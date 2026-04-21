@@ -1,6 +1,7 @@
 import ItemDoacaoModel from "../models/ItemDoacao.js";
 import BaseRepository from "./base/BaseRepository.js";
-import ItemDoacaoFilterBuilder from "../filters/ItemDoacaoFilterBuilder.js";
+import ItemDoacaoFilterBuilder from "./filters/ItemDoocaoFilterBuilder.js";
+
 
 class ItemDoacaoRepository extends BaseRepository {
     constructor() {
