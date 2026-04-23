@@ -18,16 +18,19 @@ import { CustomError } from '../utils/helpers/index.js';
  */
 const authorize = (...papeisPermitidos) => {
     return (req, _res, next) => {
-        const { papeis } = req.user || {};
+        const { papeis, perfil } = req.user || {};
+        const papeisDoUsuario = Array.isArray(papeis) && papeis.length > 0
+            ? papeis
+            : (perfil ? [perfil] : []);
 
-        if (!papeis || !Array.isArray(papeis)) {
+        if (papeisDoUsuario.length === 0) {
             return next(new CustomError({
                 statusCode: 403,
                 customMessage: 'Acesso negado: papéis não identificados',
             }));
         }
 
-        const possuiPapel = papeis.some((p) => papeisPermitidos.includes(p));
+        const possuiPapel = papeisDoUsuario.some((p) => papeisPermitidos.includes(p));
 
         if (!possuiPapel) {
             return next(new CustomError({
