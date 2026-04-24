@@ -179,4 +179,4 @@ class ItemDoacaoService {
     }
 }
 
-export default new ItemDoacaoService();
+export default ItemDoacaoService;
