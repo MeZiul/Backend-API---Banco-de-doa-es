@@ -33,12 +33,12 @@ class Categoria {
                    default: 0
                 },
 
-                timestamps: {createdAt: "data_cadastro",updatedAt: "data_atualizacao"},
-                versionKey: false  
-
-
             },
+            {
+            timestamps: {createdAt: "data_cadastro",updatedAt: "data_atualizacao"},
+            versionKey: false  
 
+            }
 
         );
             
