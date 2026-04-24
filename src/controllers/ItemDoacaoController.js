@@ -1,82 +1,95 @@
 // src/controllers/ItemDoacaoController.js
-import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
+
+import ItemDoacaoService from "../services/ItemDoacaoService.js";
+import CommonResponse from "../utils/helpers/CommonResponse.js";
 
 
 class ItemDoacaoController {
-        async atualizar(req, res) {
+
+    async criar(req, res) {
         try {
-            const { id } = req.params;
-            const usuarioAutenticado = req.usuario;
+            // O req.body já passou pela validação do Zod no middleware
+            const itemCriado = await ItemDoacaoService.criar(req.body, req.usuario);
 
-            const itemOriginal = await ItemDoacaoRepository.buscarPorId(id);
+            return CommonResponse.created(res, itemCriado, "Item cadastrado com sucesso!");
+        } catch (error) {
+            return this._handleError(res, error, "Erro interno ao cadastrar item.");
+        }
+    }
 
-            if (!itemOriginal) {
-                return res.status(404).json({ erro: "Item não encontrado." });
-            }
+    async listar(req, res) {
+        try {
+            // req.query já convertido e validado pelo Zod (ItemDoacaoQuerySchema)
+            const { busca, categoria_id, cidade, condicao_item, uf, page, limit, ordenacao } = req.query;
 
-            if (itemOriginal.usuario_id.toString() !== usuarioAutenticado.id) {
-                return res.status(403).json({ erro: "Você não tem permissão para editar este item." });
-            }
+            const filtros = { busca, categoria_id, cidade, condicao_item, uf };
 
-            if (itemOriginal.status !== "DISPONIVEL") {
-                return res.status(400).json({
-                    erro: `Não é possível editar o item. O status atual é ${itemOriginal.status}.`
-                });
-            }
-
-            const { titulo, descricao, categoria_id, condicao_item, condicoes_doacao, cidade, uf } = req.body;
-            const dadosAtualizacao = { titulo, descricao, categoria_id, condicao_item, condicoes_doacao, cidade, uf };
-
-            if (req.files && req.files.length > 0) {
-                // upload das novas fotos e excluiria as antigas do seu Storage (S3/Disco)
-                // Exemplo: dadosAtualizacao.fotos = await ServicoDeImagem.atualizarFotos(req.files);
-            }
-
-            const itemAtualizado = await ItemDoacaoRepository.atualizar(id, dadosAtualizacao);
-
-            return res.status(200).json({
-                mensagem: "Item atualizado com sucesso!",
-                item: itemAtualizado
+            const resultado = await ItemDoacaoService.listarDisponiveis({
+                filtros,
+                page,
+                limit,
+                ordenacao
             });
 
+            return CommonResponse.success(res, resultado);
         } catch (error) {
-            console.error("Erro ao atualizar item:", error);
-            return res.status(500).json({ erro: "Erro interno ao atualizar o item." });
+            return this._handleError(res, error, "Erro interno ao listar itens.");
+        }
+    }
+
+    async buscarPorId(req, res) {
+        try {
+            const { id } = req.params;
+            const item = await ItemDoacaoService.buscarDetalhes(id);
+
+            return CommonResponse.success(res, item);
+        } catch (error) {
+            return this._handleError(res, error, "Erro interno ao buscar o item.");
+        }
+    }
+
+    async atualizar(req, res) {
+        try {
+            const { id } = req.params;
+            // O Service validará se o usuário é o dono e se o status é DISPONIVEL
+            const itemAtualizado = await ItemDoacaoService.atualizar(id, req.body, req.usuario.id);
+
+            return CommonResponse.success(res, itemAtualizado, 200, "Item atualizado com sucesso!");
+        } catch (error) {
+            return this._handleError(res, error, "Erro interno ao atualizar o item.");
         }
     }
 
     async excluir(req, res) {
         try {
             const { id } = req.params;
-            const usuarioAutenticado = req.usuario;
+            // O Service tratará a mudança de status para CANCELADO e notificações
+            const itemCancelado = await ItemDoacaoService.excluir(id, req.usuario.id);
 
-            const item = await ItemDoacaoRepository.buscarPorId(id);
-
-            if (!item) {
-                return res.status(404).json({ erro: "Item não encontrado." });
-            }
-
-            if (item.usuario_id.toString() !== usuarioAutenticado.id) {
-                return res.status(403).json({ erro: "Você não tem permissão para excluir este item." });
-            }
-
-            if (item.status === "RESERVADO" || item.status === "AGUARDANDO_CONFIRMACAO") {
-                return res.status(400).json({
-                    erro: "Não é possível excluir um item que está em processo de doação."
-                });
-            }
-
-            const itemCancelado = await ItemDoacaoRepository.atualizar(id, { status: "CANCELADO" });
-
-            return res.status(200).json({
-                mensagem: "Item cancelado e removido das buscas com sucesso.",
-                item: itemCancelado
-            });
-
+            return CommonResponse.success(res, itemCancelado, 200, "Item cancelado com sucesso.");
         } catch (error) {
-            console.error("Erro ao excluir/cancelar item:", error);
-            return res.status(500).json({ erro: "Erro interno ao excluir o item." });
+            return this._handleError(res, error, "Erro interno ao excluir o item.");
         }
+    }
+
+    _handleError(res, error, defaultServerMessage) {
+        // Verifica se é um erro operacional disparado propositalmente (ex: validação de negócio)
+        if (error.isOperational || error.statusCode) {
+            return CommonResponse.error(
+                res,
+                error.statusCode || 400,
+                error.errorType || 'businessLogicError',
+                error.field || null,
+                error.details || [],
+                error.customMessage || error.message
+            );
+        }
+
+        // Log do erro real no console para depuração do desenvolvedor
+        console.error(`[CONTROLLER ERROR]: ${defaultServerMessage}`, error);
+
+        // Resposta genérica 500 para o cliente
+        return CommonResponse.serverError(res, defaultServerMessage);
     }
 }
 
