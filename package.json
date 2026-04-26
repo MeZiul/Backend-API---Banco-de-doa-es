@@ -5,7 +5,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "cross-env NODE_ENV=test USE_IN_MEMORY_DB=true jest --detectOpenHandles",
+    "test:coverage": "cross-env NODE_ENV=test USE_IN_MEMORY_DB=true jest --coverage --detectOpenHandles",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },
@@ -63,5 +64,54 @@
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^3.25.4",
     "zod-to-json-schema": "^3.25.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
+    "@jest/globals": "^29.7.0",
+    "babel-jest": "^29.7.0",
+    "babel-plugin-transform-import-meta": "^2.3.2",
+    "cross-env": "^10.1.0",
+    "jest": "^29.7.0",
+    "supertest": "^7.1.1"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ],
+    "plugins": [
+      "babel-plugin-transform-import-meta"
+    ]
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "testEnvironment": "node",
+    "verbose": true,
+    "transformIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/src/tests/test.js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/src/utils/helpers/index.js",
+      "/src/utils/logger.js"
+    ],
+    "moduleNameMapper": {
+      "^\\.\\.\\/models\\/Denuncias\\.js$": "<rootDir>/src/models/Denuncia.js"
+    }
   }
 }

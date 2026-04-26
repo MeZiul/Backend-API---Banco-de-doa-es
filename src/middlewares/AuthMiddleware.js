@@ -1,5 +1,5 @@
 // src/middlewares/AuthMiddleware.js
-import { tokenService, sessionService } from '../containers/services.index.js';
+import jwt from 'jsonwebtoken';
 import AuthenticationError from '../utils/errors/AuthenticationError.js';
 import { CustomError } from '../utils/helpers/index.js';
 
@@ -10,8 +10,6 @@ class AuthMiddleware {
 
   _getTokenAndType(req) {
     const authHeader = req.headers?.authorization ?? null;
-    console.log('[AuthMiddleware] Headers recebidos:', JSON.stringify(req.headers, null, 2));
-    console.log('[AuthMiddleware] Authorization header:', authHeader);
     if (authHeader) {
       const parts = authHeader.split(' ');
       const token = parts.length === 2 ? parts[1] : parts[0];
@@ -23,30 +21,38 @@ class AuthMiddleware {
     throw new AuthenticationError('Token nao informado!');
   }
 
+  _getJwtSecret(type) {
+    if (type === 'recovery') {
+      return process.env.JWT_SECRET_PASSWORD_RECOVERY || process.env.JWT_SECRET;
+    }
+
+    return process.env.JWT_SECRET || process.env.JWT_SECRET_ACCESS_TOKEN;
+  }
+
   async handle(req, res, next) {
     try {
       const { token, type } = this._getTokenAndType(req);
-      const decoded = type === 'access'
-        ? tokenService.verifyAccessToken(token)
-        : tokenService.verifyPasswordRecoveryToken(token);
+      const secret = this._getJwtSecret(type);
+
+      if (!secret) {
+        throw new CustomError({
+          statusCode: 500,
+          customMessage: 'Segredo JWT nao configurado.',
+        });
+      }
+
+      const decoded = jwt.verify(token, secret);
+
       if (!decoded) {
         throw new AuthenticationError('Token JWT expirado, tente novamente.');
       }
-      if (type === 'access') {
-        const sessaoAtiva = await sessionService.verificarSessaoAtiva(decoded.id);
-        if (!sessaoAtiva) {
-          throw new CustomError({
-            statusCode: 401,
-            errorType: 'unauthorized',
-            field: 'Token',
-            details: [],
-            customMessage: 'Sessao expirada, autentique-se novamente!'
-          });
-        }
-      }
+
       req.user = {
-        id: decoded.id,
-        papeis: decoded.papeis || [],
+        id: decoded.id || decoded.userId || decoded._id || null,
+        nome: decoded.nome || null,
+        email: decoded.email || null,
+        perfil: decoded.perfil || null,
+        papeis: decoded.papeis || (decoded.perfil ? [decoded.perfil] : []),
         instituicaoId: decoded.instituicaoId || null,
       };
       next();
