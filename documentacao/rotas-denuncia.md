@@ -1,0 +1,165 @@
+# Rotas de Denúncia
+
+Este documento descreve o contrato funcional das rotas de `denúncia` previstas para a Milestone 2.
+
+Escopo considerado:
+- branches de rota de `denúncia` mergeadas na `dev`
+- autenticação via Bearer Token JWT
+- regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
+
+## Visão Geral
+
+Domínio responsável por:
+- registrar denúncias contra item ou usuário
+- consultar histórico e detalhes das denúncias criadas pelo usuário
+- permitir atualização e exclusão enquanto a análise administrativa não foi concluída
+
+Rotas do módulo:
+- `POST /denuncias`
+- `GET /denuncias`
+- `GET /denuncias/:id`
+- `PUT /denuncias/:id`
+- `DELETE /denuncias/:id`
+
+## POST /denuncias
+
+Objetivo:
+Registrar uma nova denúncia contra um item ou usuário.
+
+Autorização:
+- usuário autenticado
+
+Body esperado:
+
+```json
+{
+  "tipoAlvo": "ITEM",
+  "alvoItemId": "6807f6b90d32b53a1bcb0001",
+  "motivo": "ITEM_PROIBIDO",
+  "descricao": "O anúncio aparenta violar as regras da plataforma."
+}
+```
+
+Regra de negócio:
+- apenas usuários com situação `ATIVO` podem criar denúncia
+- a denúncia deve apontar um alvo válido do tipo `ITEM` ou `USUARIO`
+- o motivo é obrigatório e deve usar valor padronizado
+- os motivos aceitos são `CONTEUDO_INAPROPRIADO`, `ITEM_PROIBIDO`, `FRAUDE`, `ASSEDIO`, `SPAM` e `OUTRO`
+- a descrição detalhada é opcional
+- o mesmo usuário não pode denunciar o mesmo alvo novamente enquanto houver denúncia `EM_ANALISE`
+- a denúncia deve ser criada com status `EM_ANALISE`
+- a data do registro deve ser persistida
+- a administração pode ser notificada para análise posterior
+
+Resposta esperada:
+- `201 Created` com a denúncia criada
+
+Erros comuns:
+- `400 Bad Request` para payload inválido
+- `403 Forbidden` para usuário sem situação válida
+- `404 Not Found` para alvo inexistente
+- `409 Conflict` para denúncia duplicada em análise
+
+## GET /denuncias
+
+Objetivo:
+Listar as denúncias do usuário autenticado.
+
+Autorização:
+- usuário autenticado
+
+Query params suportados:
+- `denuncianteId`
+- `tipoAlvo`
+- `alvoItemId`
+- `alvoUsuarioId`
+- `motivo`
+- `status`
+- `dataInicio`
+- `dataFim`
+- `page`
+- `limit`
+
+Regra de negócio:
+- a rota exige autenticação
+- para usuário comum, devem ser retornadas apenas as denúncias do próprio denunciante
+- cada registro deve exibir tipo do alvo, motivo, status, data da denúncia e resposta administrativa quando houver
+- denúncias `PROCEDENTE` e `IMPROCEDENTE` continuam visíveis para histórico
+
+Resposta esperada:
+- `200 OK` com lista paginada
+
+## GET /denuncias/:id
+
+Objetivo:
+Consultar os detalhes de uma denúncia específica.
+
+Autorização:
+- usuário autenticado
+- acesso permitido ao denunciante responsável ou ao administrador
+
+Regra de negócio:
+- a resposta deve conter alvo denunciado, motivo, descrição, status, resposta administrativa, ação tomada e datas principais
+- se a denúncia não existir, a API deve retornar erro apropriado
+
+Resposta esperada:
+- `200 OK` com o detalhe da denúncia
+
+Erros comuns:
+- `403 Forbidden` para acesso indevido
+- `404 Not Found` para denúncia inexistente
+
+## PUT /denuncias/:id
+
+Objetivo:
+Atualizar uma denúncia antes da conclusão da análise administrativa.
+
+Autorização:
+- usuário autenticado
+- apenas o autor da denúncia
+
+Body esperado:
+
+```json
+{
+  "motivo": "OUTRO",
+  "descricao": "Complementando informações relevantes para a análise."
+}
+```
+
+Regra de negócio:
+- apenas o autor da denúncia pode atualizar
+- a denúncia deve estar com status `EM_ANALISE`
+- o tipo do alvo e o alvo denunciado não podem ser alterados após a criação
+- somente `motivo` e `descricao` podem ser modificados
+- denúncias já analisadas não podem mais ser editadas
+
+Resposta esperada:
+- `200 OK` com a denúncia atualizada
+
+Erros comuns:
+- `400 Bad Request` para body inválido ou estado inconsistente
+- `403 Forbidden` para autor diferente
+- `404 Not Found` para denúncia inexistente
+
+## DELETE /denuncias/:id
+
+Objetivo:
+Remover uma denúncia antes do fim da análise.
+
+Autorização:
+- usuário autenticado
+- apenas o autor da denúncia
+
+Regra de negócio:
+- a exclusão só pode ocorrer enquanto a denúncia estiver `EM_ANALISE`
+- denúncias `PROCEDENTE` e `IMPROCEDENTE` não podem ser removidas pelo usuário
+- a remoção deve ser bloqueada se a administração já tiver iniciado ou concluído a análise
+
+Resposta esperada:
+- `200 OK` com confirmação da remoção
+
+Erros comuns:
+- `400 Bad Request` para estado não removível
+- `403 Forbidden` para autor diferente
+- `404 Not Found` para denúncia inexistente
