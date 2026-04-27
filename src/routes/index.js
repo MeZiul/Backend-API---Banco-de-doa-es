@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 import logRoutes from "../middlewares/LogRoutesMiddleware.js";
 
 // ── Rotas de domínio ────────────────────────────────────
-/* import auth from './authRoutes.js';
+/*
 import usuarios from './usuarioRoutes.js';
 import instituicoes from './instituicaoRoutes.js';
 import filas from './filaRoutes.js';
@@ -22,6 +22,8 @@ import perfil from './perfilRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
 import example from './exampleRoutes.js';
+import usuario from './usuarioRoutes.js'
+import auth from './authRoutes.js';
 
 dotenv.config();
 
@@ -31,14 +33,16 @@ const routes = (app) => {
     }
     // rota para encaminhar da raiz para /docs
     app.get("/", (req, res) => {
-        res.redirect("/");
+         res.json({ message: "DoaI API", version: "1.0.0", status: "online" });
     });
     
     // ── Registro das rotas da API ──────────────────────
     app.use(express.json());
-    /* app.use('/auth', auth); */
+    app.use(auth); 
 
     app.use(example);
+    
+    app.use (usuario);
 };
 
 export default routes;

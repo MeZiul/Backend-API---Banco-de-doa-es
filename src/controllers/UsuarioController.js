@@ -82,6 +82,26 @@ class UsuarioController {
       return CommonResponse.success(res, data);
     } catch (e) { next(e); }
   };
+
+  suspender = async (req, res, next) => {
+    try {
+      UsuarioIdSchema.parse(req.params.id);
+      const { motivo, suspensao_ate } = req.body;
+      const data = await usuarioService.suspender(req.params.id, { motivo, suspensao_ate }, req.user);
+      return CommonResponse.success(res, data);
+    } catch (e) { next(e); }
+  };
+
+  reativar = async (req, res, next) => {
+    try {
+      UsuarioIdSchema.parse(req.params.id);
+      const data = await usuarioService.reativar(req.params.id, req.user);
+      return CommonResponse.success(res, data);
+    } catch (e) { next(e); }
+  };
+
+
+
 }
 
-export default new UsuarioController();
+export default UsuarioController;

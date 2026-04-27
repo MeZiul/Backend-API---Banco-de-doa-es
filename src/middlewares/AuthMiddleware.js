@@ -23,10 +23,9 @@ class AuthMiddleware {
 
   _getJwtSecret(type) {
     if (type === 'recovery') {
-      return process.env.JWT_SECRET_PASSWORD_RECOVERY || process.env.JWT_SECRET;
+    return process.env.JWT_SECRET_PASSWORD_RECOVERY || process.env.JWT_SECRET_ACCESS_TOKEN;
     }
-
-    return process.env.JWT_SECRET || process.env.JWT_SECRET_ACCESS_TOKEN;
+    return process.env.JWT_SECRET_ACCESS_TOKEN || process.env.JWT_SECRET;
   }
 
   async handle(req, res, next) {

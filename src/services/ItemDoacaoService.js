@@ -1,12 +1,11 @@
-// src/services/ItemDoacaoService.js
 
 import { CustomError } from "../utils/helpers/index.js";
 import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
 
 class ItemDoacaoService {
-    // 1. Correção no construtor para receber a injeção limpa
-    constructor(repository) {
-        this.repository = repository;
+    constructor(itemDoacaoRepository, categoriaRepository) {
+        this.repository = itemDoacaoRepository;
+        this.categoriaRepository = categoriaRepository
     }
 
     async criar(dadosItem, usuarioAutenticado) {
@@ -201,4 +200,4 @@ class ItemDoacaoService {
     }
 }
 
-export default new ItemDoacaoService(ItemDoacaoRepository);
+export default ItemDoacaoService;

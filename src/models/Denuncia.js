@@ -94,7 +94,7 @@ class Denuncia {
     schema.index({ status: 1, data_denuncia: -1 });
     schema.index({ denunciante_id: 1 });
 
-    this.model = mongoose.model("denuncias", schema);
+    this.model = mongoose.model("Denuncia", schema);
   }
 }
 

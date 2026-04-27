@@ -75,11 +75,36 @@ class UsuarioService {
         email:  usuario.email,
         perfil: usuario.perfil,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
+      process.env.JWT_SECRET_ACCESS_TOKEN,
+      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "24h" }
     );
+    
+    const removerSenha = usuario.toObject();
+    delete removerSenha.senha;
 
-    return { token, usuario };
+    return { token, usuario: removerSenha};
+  } 
+
+  async esqueciSenha(email) {
+    const usuario = await this.repository.buscarPorEmail(email);
+
+    if (!usuario) {
+      return { message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes." };
+    }
+
+    const crypto = await import("crypto");
+    const token  = crypto.randomBytes(32).toString("hex");
+    const expira = new Date(Date.now() + 60 * 60 * 1000); 
+
+    await this.repository.atualizar(usuario._id, {
+      token_redefinicao:        token,
+      token_redefinicao_expira: expira,
+    });
+
+    return { 
+      message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
+      token, 
+    };
   }
 
   async atualizar(id, dados) {
@@ -150,7 +175,7 @@ class UsuarioService {
       situacao:    "INATIVO",
       nome:        "Usuário Removido",
       email:       `removido_${id}@exemplo.com`,
-      cpf:         "000.000.000-00",
+      cpf:         `removido_${id}`,
       telefone:    null,
       foto_perfil: null,
       bio:         null,
@@ -208,6 +233,16 @@ class UsuarioService {
 
   async buscarPorId(id) {
     return this.ensureExists(id);
+  }
+
+  async listarItens(id, actor = null) {
+    await this.ensureExists(id);
+    return this.itemDoacaoRepository.listarPorUsuario(id);
+  }
+
+  async listarAvaliacoes(id, actor = null) {
+    await this.ensureExists(id);
+    return [];
   }
 
   async ensureExists(id) {
