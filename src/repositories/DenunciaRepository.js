@@ -1,4 +1,4 @@
-import DenunciaModel from "../models/Denuncias.js";
+import DenunciaModel from "../models/Denuncia.js";
 import BaseRepository from "./base/BaseRepository.js";
 
 class DenunciaRepository extends BaseRepository {

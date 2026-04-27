@@ -1,6 +1,15 @@
-import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
+
 import ItemDoacaoService from "../services/ItemDoacaoService.js";
+import {
+  itemDoacaoRepository,
+  categoriaRepository,
+  interesseRepository,
+  //notificacaoRepository,
+} from "./repositories.all.container.js";
 
-const ItemDoacaoService = new ItemDoacaoService(ItemDoacaoRepository);
-
-export { ItemDoacaoService };
+export const itemDoacaoService = new ItemDoacaoService({
+  itemDoacaoRepository,
+  categoriaRepository,
+  interesseRepository,
+  //notificacaoRepository,
+});

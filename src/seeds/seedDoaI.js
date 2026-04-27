@@ -1,4 +1,3 @@
-// src/seeds/seedDoaI.js
 
 import "dotenv/config";
 import mongoose from "mongoose";

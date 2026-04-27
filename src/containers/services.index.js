@@ -20,4 +20,4 @@ export { avaliacaoService }   from "./services.avaliacao.container.js";
 export { denunciaService }    from "./services.denuncia.container.js";
 
 // ── Serviços transversais ────────────────────────────────────────
-export { notificacaoService } from "./services.notificacao.container.js";
+//export { notificacaoService } from "./services.notificacao.container.js";

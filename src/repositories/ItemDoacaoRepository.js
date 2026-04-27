@@ -61,6 +61,27 @@ class ItemDoacaoRepository extends BaseRepository {
     async buscarFotosDoItem(idItem) {
         return this.model.findById(idItem).select('fotos usuario_id status');
     }
+
+    async listarPorUsuario(usuarioId) {
+        return this.model.find({ usuario_id: usuarioId })
+        .sort({ data_cadastro: -1 });
+    }
+
+    async buscarEmAndamentoPorUsuario(usuarioId) {
+        return this.model.find({
+            usuario_id: usuarioId,
+            status: { $in: ["RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
+        });
+    }
+
+    async cancelarItensPorUsuario(usuarioId) {
+        return this.model.updateMany(
+            { usuario_id: usuarioId, status: "DISPONIVEL" },
+            { status: "CANCELADO" }
+        );
+    }
+
+
 }
 
-export default new ItemDoacaoRepository();
+export default ItemDoacaoRepository;

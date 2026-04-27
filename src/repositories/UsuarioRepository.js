@@ -19,7 +19,7 @@ class UsuarioRepository extends BaseRepository {
         return this.model.findOne({email}).select("+senha");
     }
 
-    buscarPorTokenRedefinir(token){
+    buscarPorTokenRedefinicao(token){
         return this.model.findOne({token_redefinicao: token}).select("+token_redefinicao +token_redefinicao_expira");
     }
 
