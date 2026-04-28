@@ -9,7 +9,7 @@ class ItemDoacaoController {
     async criar(req, res) {
         try {
             // O req.body já passou pela validação do Zod no middleware
-            const itemCriado = await ItemDoacaoService.criar(req.body, req.usuario);
+            const itemCriado = await ItemDoacaoService.criar(req.body, req.user);
 
             return CommonResponse.created(res, itemCriado, "Item cadastrado com sucesso!");
         } catch (error) {
@@ -52,7 +52,7 @@ class ItemDoacaoController {
         try {
             const { id } = req.params;
             // O Service validará se o usuário é o dono e se o status é DISPONIVEL
-            const itemAtualizado = await ItemDoacaoService.atualizar(id, req.body, req.usuario.id);
+            const itemAtualizado = await ItemDoacaoService.atualizar(id, req.body, req.user.id);
 
             return CommonResponse.success(res, itemAtualizado, 200, "Item atualizado com sucesso!");
         } catch (error) {
@@ -64,7 +64,7 @@ class ItemDoacaoController {
         try {
             const { id } = req.params;
             // O Service tratará a mudança de status para CANCELADO e notificações
-            const itemCancelado = await ItemDoacaoService.excluir(id, req.usuario.id);
+            const itemCancelado = await ItemDoacaoService.excluir(id, req.user.id);
 
             return CommonResponse.success(res, itemCancelado, 200, "Item cancelado com sucesso.");
         } catch (error) {
