@@ -58,6 +58,10 @@ app.use((req, res) => {
   );
 });
 
+
+// Deixa a pasta 'uploads' pública para a internet conseguir ver as imagens
+app.use('/uploads', express.static('uploads'));
+
 /* ───────────── 6. Eventos globais de erro não tratado ───────────── */
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
