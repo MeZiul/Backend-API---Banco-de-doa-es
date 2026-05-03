@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 import AuthenticationError from '../utils/errors/AuthenticationError.js';
 import { CustomError } from '../utils/helpers/index.js';
+import { tokenBlacklist } from '../utils/tokenBlacklist.js';
 
 class AuthMiddleware {
   constructor() {
@@ -31,6 +32,13 @@ class AuthMiddleware {
   async handle(req, res, next) {
     try {
       const { token, type } = this._getTokenAndType(req);
+      
+      if (tokenBlacklist.has(token)) {
+        console.log("Token na blacklist!"); 
+        throw new AuthenticationError("Token invalido. Faca login novamente.");
+      }
+      console.log("Token verificado:", token.slice(0, 20));
+
       const secret = this._getJwtSecret(type);
 
       if (!secret) {

@@ -5,6 +5,8 @@ import {
   UsuarioRedefinirSenhaSchema,
 } from "../utils/validators/schemas/zod/UsuarioSchema.js";
 import CommonResponse from "../utils/helpers/CommonResponse.js";
+import { tokenBlacklist } from "../utils/tokenBlacklist.js";
+
 
 class AuthController {
 
@@ -31,6 +33,30 @@ class AuthController {
       return CommonResponse.success(res, data);
     } catch (e) { next(e); }
   };
+  
+  logout = async (req, res, next) => {
+    try {
+      const authHeader = req.headers?.authorization;
+      const parts = authHeader?.split(" ");
+      const token = parts?.length === 2 ? parts[1] : parts?.[0];
+
+      if (token) {
+        tokenBlacklist.add(token); 
+      }
+
+      return CommonResponse.success(res, { message: "Logout realizado com sucesso." });
+    } catch (e) { next(e); }
+  };
+
+  refreshToken = async (req, res, next) => {
+  try {
+      const { id, nome, email, perfil } = req.user;
+
+      const novoToken = await usuarioService.refreshToken({ id, nome, email, perfil });
+      return CommonResponse.success(res, { token: novoToken });
+    }   catch (e) { next(e); }
+  };
+  
 }
 
 export default AuthController;

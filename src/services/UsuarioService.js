@@ -106,6 +106,33 @@ class UsuarioService {
       token, 
     };
   }
+  
+  async refreshToken({ id, nome, email, perfil }) {
+    const usuario = await this.repository.buscarPorId(id);
+
+    if (!usuario) {
+      throw new CustomError({
+        statusCode: 401,
+        customMessage: "Usuário não encontrado.",
+      });
+    }
+
+    if (usuario.situacao !== "ATIVO") {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Conta inativa ou suspensa.",
+      });
+    }
+
+    const novoToken = jwt.sign(
+      { id, nome, email, perfil },
+      process.env.JWT_SECRET_ACCESS_TOKEN,
+      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "24h" }
+    );
+
+    return novoToken;
+  }
+
 
   async atualizar(id, dados) {
     await this.ensureExists(id);
