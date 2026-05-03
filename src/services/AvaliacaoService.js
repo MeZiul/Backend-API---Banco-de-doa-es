@@ -78,6 +78,11 @@ class AvaliacaoService {
   async buscarPorId(id) {
     return this.ensureExists(id);
   }
+  
+  async atualizar(id, dados) {
+    await this.ensureExists(id);
+    return this.repository.atualizar(id, dados);
+  }
 
   async _recalcularMedia(avaliado_id) {
     const avaliacoes = await this.repository.listar({
