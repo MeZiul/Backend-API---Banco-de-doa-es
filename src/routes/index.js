@@ -23,7 +23,8 @@ import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
 import example from './exampleRoutes.js';
 import usuario from './usuarioRoutes.js';
-import categoria from './categoriaRoutes.js'
+import categoria from './categoriaRoutes.js';
+import avaliacao from './avaliacaoRotas.js';
 import auth from './authRoutes.js';
 
 dotenv.config();
@@ -46,6 +47,8 @@ const routes = (app) => {
     app.use (usuario);
 
     app.use (categoria);
+    
+    app.use (avaliacao);
 };
 
 export default routes;

@@ -11,7 +11,7 @@ class AvaliacaoController {
   criar = async (req, res, next) => {
     try {
       const dados = AvaliacaoSchema.parse(req.body);
-      const data  = await avaliacaoService.criar(dados, req.user);
+      const data  = await avaliacaoService.criar(dados, req.user.id);
       return CommonResponse.created(res, data);
     } catch (e) { next(e); }
   };
@@ -28,6 +28,15 @@ class AvaliacaoController {
     try {
       AvaliacaoIdSchema.parse(req.params.id);
       const data = await avaliacaoService.buscarPorId(req.params.id, req.user);
+      return CommonResponse.success(res, data);
+    } catch (e) { next(e); }
+  };
+
+  atualizar = async (req, res, next) => {
+    try {
+      AvaliacaoIdSchema.parse(req.params.id);
+      const dados = AvaliacaoSchema.partial().parse(req.body);
+      const data  = await avaliacaoService.atualizar(req.params.id, dados, req.user);
       return CommonResponse.success(res, data);
     } catch (e) { next(e); }
   };
