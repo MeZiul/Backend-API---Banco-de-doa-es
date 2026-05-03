@@ -22,7 +22,8 @@ import perfil from './perfilRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
 import example from './exampleRoutes.js';
-import usuario from './usuarioRoutes.js'
+import usuario from './usuarioRoutes.js';
+import categoria from './categoriaRoutes.js'
 import auth from './authRoutes.js';
 
 dotenv.config();
@@ -43,6 +44,8 @@ const routes = (app) => {
     app.use(example);
     
     app.use (usuario);
+
+    app.use (categoria);
 };
 
 export default routes;
