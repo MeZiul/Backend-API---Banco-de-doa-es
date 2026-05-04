@@ -28,6 +28,8 @@ const administracaoBaseObject = z.object({
   justificativa: optionalTrimmedString(1000, "A justificativa deve ter no máximo 1000 caracteres."),
   suspensao_ate: z.string().min(1, "suspensao_ate inválida.").optional().nullable(),
   suspensaoAte: z.string().min(1, "suspensaoAte inválida.").optional().nullable(),
+  resposta_admin: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
+  respostaAdmin: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
   resposta_administrativa: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
   respostaAdministrativa: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
   acao_tomada: optionalTrimmedString(500, "A ação tomada deve ter no máximo 500 caracteres."),
@@ -41,7 +43,7 @@ const administracaoBaseObject = z.object({
 const normalizeAdministracaoPayload = (data) => ({
   justificativa: data.justificativa ?? null,
   suspensao_ate: data.suspensao_ate ?? data.suspensaoAte ?? null,
-  resposta_administrativa: data.resposta_administrativa ?? data.respostaAdministrativa ?? null,
+  resposta_administrativa: data.resposta_administrativa ?? data.respostaAdministrativa ?? data.resposta_admin ?? data.respostaAdmin ?? null,
   acao_tomada: data.acao_tomada ?? data.acaoTomada ?? null,
   resultado_denuncia: data.resultado_denuncia ?? data.resultadoDenuncia ?? data.resultado ?? data.status ?? null,
 });
@@ -82,7 +84,7 @@ const AdministracaoResponseSchema = z.object({
   tipo_acao: z.enum(TIPOS_ACAO),
   tipo_alvo: z.enum(TIPOS_ALVO),
   alvo_id: objectIdSchema,
-  alvo_model: z.enum(["Usuario", "Item", "Denuncia"]),
+  alvo_model: z.enum(["Usuario", "ItemDoacao", "Denuncia"]),
   justificativa: z.string().nullable().optional(),
   suspensao_ate: z.string().datetime().nullable().optional(),
   resultado_denuncia: z.enum(RESULTADOS_DENUNCIA).nullable().optional(),

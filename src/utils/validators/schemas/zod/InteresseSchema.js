@@ -16,6 +16,7 @@ const optionalNullableText = z.string()
 const InteresseSchema = z.object({
   item_id: objectIdSchema.optional(),
   itemId: objectIdSchema.optional(),
+  mensagem: optionalNullableText,
   mensagem_interessado: optionalNullableText,
   mensagemInteressado: optionalNullableText,
 })
@@ -30,14 +31,15 @@ const InteresseSchema = z.object({
   })
   .transform((data) => ({
     item_id: data.item_id ?? data.itemId,
-    mensagem_interessado: data.mensagem_interessado ?? data.mensagemInteressado ?? null,
+    mensagem_interessado: data.mensagem_interessado ?? data.mensagemInteressado ?? data.mensagem ?? null,
   }));
 
 const InteresseRespostaSchema = z.object({
+  mensagemResposta: optionalNullableText,
   resposta_doador: optionalNullableText,
   respostaDoador: optionalNullableText,
 }).transform((data) => ({
-  resposta_doador: data.resposta_doador ?? data.respostaDoador ?? null,
+  resposta_doador: data.resposta_doador ?? data.respostaDoador ?? data.mensagemResposta ?? null,
 }));
 
 const InteresseResponseSchema = z.object({

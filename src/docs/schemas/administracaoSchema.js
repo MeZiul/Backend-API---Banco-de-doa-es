@@ -69,7 +69,7 @@ const administracaoSchemas = {
                     { $ref: "#/components/schemas/AdministracaoDenunciaResumo" },
                 ],
             },
-            alvo_model: { type: "string", enum: ["Usuario", "Item", "Denuncia"] },
+            alvo_model: { type: "string", enum: ["Usuario", "ItemDoacao", "Denuncia"] },
             justificativa: { type: "string", nullable: true, example: "Violação reiterada das regras da plataforma." },
             suspensao_ate: { type: "string", format: "date-time", nullable: true },
             resultado_denuncia: { type: "string", enum: ["PROCEDENTE", "IMPROCEDENTE"], nullable: true },
@@ -148,6 +148,9 @@ const administracaoSchemas = {
         },
     },
     AdministracaoPaginado: paginatedSchema("#/components/schemas/AdministracaoListagem"),
+    AdministracaoUsuariosPaginado: paginatedSchema("#/components/schemas/AdministracaoUsuarioResultado"),
+    AdministracaoItensPaginado: paginatedSchema("#/components/schemas/AdministracaoItemResultado"),
+    AdministracaoDenunciasPaginado: paginatedSchema("#/components/schemas/AdministracaoDenunciaResultado"),
 };
 
 export default administracaoSchemas;

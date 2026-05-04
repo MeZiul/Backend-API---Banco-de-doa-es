@@ -16,15 +16,98 @@ Domínio responsável por:
 - análise e resolução de denúncias
 
 Rotas do módulo:
+- `GET /admin/administracoes`
+- `GET /admin/administracoes/:id`
+- `GET /admin/alvos/:alvoId/administracoes`
+- `GET /admin/administradores/:administradorId/administracoes`
 - `GET /admin/usuarios`
 - `GET /admin/usuarios/:id`
 - `PUT /admin/usuarios/:id/bloquear`
 - `PUT /admin/usuarios/:id/desbloquear`
 - `DELETE /admin/usuarios/:id`
+- `PUT /admin/usuarios/:id/inativar`
 - `GET /admin/itens`
 - `DELETE /admin/itens/:id`
+- `PUT /admin/itens/:id/cancelar`
 - `GET /admin/denuncias`
 - `PUT /admin/denuncias/:id/resolver`
+
+Observação:
+- `DELETE /admin/usuarios/:id` e `PUT /admin/usuarios/:id/inativar` executam a mesma regra de inativação lógica
+- `DELETE /admin/itens/:id` e `PUT /admin/itens/:id/cancelar` executam a mesma regra de cancelamento administrativo
+- as rotas `/admin/administracoes` são auxiliares de auditoria da moderação implementada
+
+## GET /admin/administracoes
+
+Objetivo:
+Listar ações administrativas registradas pela moderação.
+
+Autorização:
+- usuário autenticado com perfil `ADMINISTRADOR`
+
+Query params suportados:
+- `administradorId`
+- `tipoAcao`
+- `tipoAlvo`
+- `alvoId`
+- `resultadoDenuncia`
+- `dataInicio`
+- `dataFim`
+- `page`
+- `limit`
+
+Regra de negócio:
+- a rota exige autenticação e perfil `ADMINISTRADOR`
+- permite rastrear bloqueios, desbloqueios, inativações, cancelamentos e resoluções de denúncia
+- a listagem é paginada e pode ser filtrada por responsável, alvo, ação, resultado e período
+
+Resposta esperada:
+- `200 OK` com lista paginada de ações administrativas
+
+## GET /admin/administracoes/:id
+
+Objetivo:
+Consultar o detalhe de uma ação administrativa.
+
+Autorização:
+- usuário autenticado com perfil `ADMINISTRADOR`
+
+Regra de negócio:
+- a rota exige autenticação e perfil `ADMINISTRADOR`
+- se a ação não existir, a API deve retornar erro apropriado
+
+Resposta esperada:
+- `200 OK` com o detalhe da ação administrativa
+
+## GET /admin/alvos/:alvoId/administracoes
+
+Objetivo:
+Listar ações administrativas relacionadas a um alvo específico.
+
+Autorização:
+- usuário autenticado com perfil `ADMINISTRADOR`
+
+Regra de negócio:
+- a rota exige autenticação e perfil `ADMINISTRADOR`
+- o alvo pode representar usuário, item ou denúncia moderada
+
+Resposta esperada:
+- `200 OK` com lista paginada de ações do alvo
+
+## GET /admin/administradores/:administradorId/administracoes
+
+Objetivo:
+Listar ações realizadas por um administrador específico.
+
+Autorização:
+- usuário autenticado com perfil `ADMINISTRADOR`
+
+Regra de negócio:
+- a rota exige autenticação e perfil `ADMINISTRADOR`
+- permite auditar o histórico de ações de um responsável administrativo
+
+Resposta esperada:
+- `200 OK` com lista paginada de ações do administrador
 
 ## GET /admin/usuarios
 
@@ -34,12 +117,14 @@ Listar todos os usuários da plataforma com foco em moderação.
 Autorização:
 - usuário autenticado com perfil `ADMINISTRADOR`
 
-Query params sugeridos:
+Query params suportados:
+- `nome`
+- `email`
+- `cpf`
 - `situacao`
 - `perfil`
 - `cidade`
-- `dataCadastroInicio`
-- `dataCadastroFim`
+- `uf`
 - `page`
 - `limit`
 
@@ -150,13 +235,15 @@ Listar itens da plataforma para fiscalização administrativa.
 Autorização:
 - usuário autenticado com perfil `ADMINISTRADOR`
 
-Query params sugeridos:
+Query params suportados:
 - `status`
 - `categoriaId`
-- `cidade`
 - `usuarioId`
-- `dataCadastroInicio`
-- `dataCadastroFim`
+- `cidade`
+- `uf`
+- `condicaoItem`
+- `busca`
+- `ordenacao`
 - `page`
 - `limit`
 

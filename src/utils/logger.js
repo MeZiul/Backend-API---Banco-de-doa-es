@@ -20,8 +20,7 @@ class Logger {
             this.logMaxSizeGB = 50;
         }
 
-        if (isNaN(this.logMaxSizeGB) || this.logMaxSizeGB <= 0) { // Linha 20
-            console.log('Linha 20: logMaxSizeGB inválido');
+        if (isNaN(this.logMaxSizeGB) || this.logMaxSizeGB <= 0) {
             throw new Error('LOG_MAX_SIZE_GB deve ser um número positivo');
         }
 
@@ -31,8 +30,7 @@ class Logger {
         if (process.env.LOG_ENABLED !== undefined) {
             this.logEnabled = process.env.LOG_ENABLED === 'true';
         } else {
-            console.log('Linha 33: logEnabled padrão true');
-            this.logEnabled = true; // Linha 33
+            this.logEnabled = true;
         }
 
         // Inicializa o logger
@@ -71,7 +69,6 @@ class Logger {
         }
 
         return createLogger({
-            // Linha 60 permanece a mesma
             level: process.env.LOG_LEVEL || 'info',
             format: format.combine(
                 format.timestamp(),

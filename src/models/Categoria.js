@@ -43,7 +43,6 @@ class Categoria {
         );
             
         schema.plugin(mongoosePaginate);
-        schema.index({ nome: 1 }, { unique: true });
         schema.index({ ativo: 1 });
         schema.index({ ordem: 1 });
 

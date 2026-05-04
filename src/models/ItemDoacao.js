@@ -21,7 +21,7 @@ class ItemDoacao {
 
                 interesse_aceito_id: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: "interesses"
+                    ref: "Interesse"
                 },
 
                 titulo: {
@@ -126,7 +126,7 @@ class ItemDoacao {
 
         schema.plugin(mongoosePaginate);
 
-        this.model = mongoose.model('ItemDoacao', schema);
+        this.model = mongoose.model('ItemDoacao', schema, 'itens_doacao');
     }
 }
 

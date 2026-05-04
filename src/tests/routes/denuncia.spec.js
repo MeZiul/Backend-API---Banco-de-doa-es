@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globa
 import CustomError from "../../utils/helpers/CustomError.js";
 import { createControllerTestApp, createRegularUser, testIds } from "../test.js";
 
-const denunciaServiceMock = {
+const mockDenunciaService = {
   criar: jest.fn(),
   listar: jest.fn(),
   buscarPorId: jest.fn(),
@@ -11,13 +11,13 @@ const denunciaServiceMock = {
   deletar: jest.fn(),
 };
 
+jest.mock("../../containers/services.denuncia.container.js", () => ({
+  denunciaService: mockDenunciaService,
+}));
+
 let app;
 
 beforeAll(async () => {
-  jest.unstable_mockModule("../../containers/services.denuncia.container.js", () => ({
-    denunciaService: denunciaServiceMock,
-  }));
-
   const { default: denunciaController } = await import("../../controllers/DenunciaController.js");
 
   app = createControllerTestApp({
@@ -33,36 +33,40 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  Object.values(denunciaServiceMock).forEach((mockFn) => mockFn.mockReset());
+  Object.values(mockDenunciaService).forEach((mockFn) => mockFn.mockReset());
 });
 
 describe("Testes das Rotas de Denúncia", () => {
   test("Deve criar uma denúncia", async () => {
     const payload = { _id: testIds.denuncia, status: "EM_ANALISE" };
-    denunciaServiceMock.criar.mockResolvedValue(payload);
-
-    const body = {
-      tipo_alvo: "ITEM",
-      alvo_item_id: testIds.item,
-      motivo: "FRAUDE",
-      descricao: "O item não corresponde ao anunciado.",
-    };
+    mockDenunciaService.criar.mockResolvedValue(payload);
 
     const res = await request(app)
       .post("/denuncias")
-      .send(body);
+      .send({
+        tipoAlvo: "ITEM",
+        alvoItemId: testIds.item,
+        motivo: "FRAUDE",
+        descricao: "O item não corresponde ao anunciado.",
+      });
 
     expect(res.statusCode).toBe(201);
     expect(res.body.data).toEqual(payload);
-    expect(denunciaServiceMock.criar).toHaveBeenCalledWith(
-      body,
+    expect(mockDenunciaService.criar).toHaveBeenCalledWith(
+      {
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+        alvo_usuario_id: null,
+        motivo: "FRAUDE",
+        descricao: "O item não corresponde ao anunciado.",
+      },
       expect.objectContaining({ id: testIds.usuario, perfil: "USUARIO" })
     );
   });
 
   test("Deve listar denúncias do usuário autenticado", async () => {
     const payload = { docs: [{ _id: testIds.denuncia }] };
-    denunciaServiceMock.listar.mockResolvedValue(payload);
+    mockDenunciaService.listar.mockResolvedValue(payload);
 
     const res = await request(app)
       .get("/denuncias")
@@ -70,18 +74,18 @@ describe("Testes das Rotas de Denúncia", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
-    expect(denunciaServiceMock.listar).toHaveBeenCalledWith(
+    expect(mockDenunciaService.listar).toHaveBeenCalledWith(
       {
-        filtros: { status: "EM_ANALISE", page: "1", limit: "10" },
-        page: "1",
-        limit: "10",
+        filtros: { status: "EM_ANALISE" },
+        page: 1,
+        limit: 10,
       },
       expect.objectContaining({ id: testIds.usuario })
     );
   });
 
   test("Deve tratar erro ao atualizar denúncia", async () => {
-    denunciaServiceMock.atualizar.mockRejectedValue(
+    mockDenunciaService.atualizar.mockRejectedValue(
       new CustomError({
         statusCode: 400,
         errorType: "operationalError",
@@ -95,7 +99,7 @@ describe("Testes das Rotas de Denúncia", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe("Somente denúncias em análise podem ser atualizadas.");
-    expect(denunciaServiceMock.atualizar).toHaveBeenCalledWith(
+    expect(mockDenunciaService.atualizar).toHaveBeenCalledWith(
       testIds.denuncia,
       { descricao: "Nova descrição" },
       expect.objectContaining({ id: testIds.usuario })

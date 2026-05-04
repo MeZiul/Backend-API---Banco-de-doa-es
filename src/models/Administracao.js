@@ -33,7 +33,7 @@ class Administracao {
         },
         alvo_model: {
           type: String,
-          enum: ["Usuario", "Item", "Denuncia"],
+          enum: ["Usuario", "ItemDoacao", "Denuncia"],
           required: true
         },
         justificativa: {
@@ -86,7 +86,7 @@ class Administracao {
 
     schema.pre("validate", function syncAlvoModel(next) {
       if (this.tipo_alvo === "USUARIO") this.alvo_model = "Usuario";
-      if (this.tipo_alvo === "ITEM") this.alvo_model = "Item";
+      if (this.tipo_alvo === "ITEM") this.alvo_model = "ItemDoacao";
       if (this.tipo_alvo === "DENUNCIA") this.alvo_model = "Denuncia";
       next();
     });
@@ -97,7 +97,7 @@ class Administracao {
     schema.index({ tipo_alvo: 1, alvo_id: 1, data_acao: -1 });
     schema.index({ tipo_acao: 1, data_acao: -1 });
 
-    this.model = mongoose.model("administracoes", schema);
+    this.model = mongoose.model("Administracao", schema, "administracoes");
   }
 }
 

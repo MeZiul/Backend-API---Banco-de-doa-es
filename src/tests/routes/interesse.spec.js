@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globa
 import CustomError from "../../utils/helpers/CustomError.js";
 import { createControllerTestApp, createRegularUser, testIds } from "../test.js";
 
-const interesseServiceMock = {
+const mockInteresseService = {
   criar: jest.fn(),
   listar: jest.fn(),
   buscarPorId: jest.fn(),
@@ -12,13 +12,13 @@ const interesseServiceMock = {
   cancelar: jest.fn(),
 };
 
+jest.mock("../../containers/services.interesse.container.js", () => ({
+  interesseService: mockInteresseService,
+}));
+
 let app;
 
 beforeAll(async () => {
-  jest.unstable_mockModule("../../containers/services.interesse.container.js", () => ({
-    interesseService: interesseServiceMock,
-  }));
-
   const { default: interesseController } = await import("../../controllers/InteresseController.js");
 
   app = createControllerTestApp({
@@ -35,34 +35,35 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  Object.values(interesseServiceMock).forEach((mockFn) => mockFn.mockReset());
+  Object.values(mockInteresseService).forEach((mockFn) => mockFn.mockReset());
 });
 
 describe("Testes das Rotas de Interesse", () => {
   test("Deve criar um interesse", async () => {
     const payload = { _id: testIds.administracao, status: "PENDENTE" };
-    interesseServiceMock.criar.mockResolvedValue(payload);
-
-    const body = {
-      item_id: testIds.item,
-      mensagem_interessado: "Tenho interesse no item.",
-    };
+    mockInteresseService.criar.mockResolvedValue(payload);
 
     const res = await request(app)
       .post("/interesses")
-      .send(body);
+      .send({
+        itemId: testIds.item,
+        mensagem: "Tenho interesse no item.",
+      });
 
     expect(res.statusCode).toBe(201);
     expect(res.body.data).toEqual(payload);
-    expect(interesseServiceMock.criar).toHaveBeenCalledWith(
-      body,
+    expect(mockInteresseService.criar).toHaveBeenCalledWith(
+      {
+        item_id: testIds.item,
+        mensagem_interessado: "Tenho interesse no item.",
+      },
       expect.objectContaining({ id: testIds.interessado, perfil: "USUARIO" })
     );
   });
 
   test("Deve listar interesses do usuário autenticado", async () => {
     const payload = { docs: [{ _id: testIds.administracao }] };
-    interesseServiceMock.listar.mockResolvedValue(payload);
+    mockInteresseService.listar.mockResolvedValue(payload);
 
     const res = await request(app)
       .get("/interesses")
@@ -70,18 +71,18 @@ describe("Testes das Rotas de Interesse", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
-    expect(interesseServiceMock.listar).toHaveBeenCalledWith(
+    expect(mockInteresseService.listar).toHaveBeenCalledWith(
       {
-        filtros: { status: "PENDENTE", page: "1", limit: "10" },
-        page: "1",
-        limit: "10",
+        filtros: { status: "PENDENTE" },
+        page: 1,
+        limit: 10,
       },
       expect.objectContaining({ id: testIds.interessado })
     );
   });
 
   test("Deve propagar erro do service ao aceitar interesse", async () => {
-    interesseServiceMock.aceitar.mockRejectedValue(
+    mockInteresseService.aceitar.mockRejectedValue(
       new CustomError({
         statusCode: 403,
         errorType: "operationalError",
@@ -91,11 +92,11 @@ describe("Testes das Rotas de Interesse", () => {
 
     const res = await request(app)
       .put(`/interesses/${testIds.administracao}/aceitar`)
-      .send({ resposta_doador: "Item reservado para você." });
+      .send({ mensagemResposta: "Item reservado para você." });
 
     expect(res.statusCode).toBe(403);
     expect(res.body.message).toBe("Apenas o doador responsável pode realizar esta operação.");
-    expect(interesseServiceMock.aceitar).toHaveBeenCalledWith(
+    expect(mockInteresseService.aceitar).toHaveBeenCalledWith(
       testIds.administracao,
       { resposta_doador: "Item reservado para você." },
       expect.objectContaining({ id: testIds.interessado })

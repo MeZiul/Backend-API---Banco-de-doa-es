@@ -18,6 +18,7 @@ export { itemDoacaoService }  from "./services.itemDoacao.container.js";
 export { interesseService }   from "./services.interesse.container.js";
 export { avaliacaoService }   from "./services.avaliacao.container.js";
 export { denunciaService }    from "./services.denuncia.container.js";
+export { administracaoService } from "./services.administracao.container.js";
 
 // ── Serviços transversais ────────────────────────────────────────
 //export { notificacaoService } from "./services.notificacao.container.js";

@@ -34,10 +34,8 @@ class AuthMiddleware {
       const { token, type } = this._getTokenAndType(req);
       
       if (tokenBlacklist.has(token)) {
-        console.log("Token na blacklist!"); 
         throw new AuthenticationError("Token invalido. Faca login novamente.");
       }
-      console.log("Token verificado:", token.slice(0, 20));
 
       const secret = this._getJwtSecret(type);
 

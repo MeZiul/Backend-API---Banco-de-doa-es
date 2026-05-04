@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import DenunciaModel from "../../models/Denuncia.js";
-import ItemDoacaoModel from "../../models/ItemDoacao.js";
 import AdministracaoService from "../../services/AdministracaoService.js";
 import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("AdministracaoService", () => {
   let administracaoRepository;
   let usuarioRepository;
+  let itemDoacaoRepository;
+  let denunciaRepository;
   let service;
 
   beforeEach(() => {
@@ -21,11 +21,27 @@ describe("AdministracaoService", () => {
     usuarioRepository = {
       buscarPorId: jest.fn(),
       atualizar: jest.fn(),
+      listar: jest.fn(),
+    };
+
+    itemDoacaoRepository = {
+      buscarPorId: jest.fn(),
+      atualizar: jest.fn(),
+      listarTodos: jest.fn(),
+      cancelarItensPorUsuario: jest.fn(),
+    };
+
+    denunciaRepository = {
+      buscarPorIdDetalhado: jest.fn(),
+      atualizar: jest.fn(),
+      listar: jest.fn(),
     };
 
     service = new AdministracaoService({
       administracaoRepository,
       usuarioRepository,
+      itemDoacaoRepository,
+      denunciaRepository,
     });
   });
 
@@ -57,6 +73,7 @@ describe("AdministracaoService", () => {
         administrador_id: testIds.admin,
         tipo_acao: "BLOQUEIO_USUARIO",
         tipo_alvo: "USUARIO",
+        alvo_model: "Usuario",
         alvo_id: testIds.usuario,
         justificativa: "Violação das regras",
       })
@@ -81,19 +98,16 @@ describe("AdministracaoService", () => {
       alvo_item_id: testIds.item,
     };
 
-    const secondPopulate = jest.fn().mockResolvedValue(denuncia);
-    const firstPopulate = jest.fn().mockReturnValue({ populate: secondPopulate });
-
-    jest.spyOn(DenunciaModel, "findById").mockReturnValue({ populate: firstPopulate });
-    jest.spyOn(DenunciaModel, "findByIdAndUpdate").mockResolvedValue({
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
+    denunciaRepository.atualizar.mockResolvedValue({
       _id: testIds.denuncia,
       status: "PROCEDENTE",
     });
-    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
     });
-    const itemUpdateSpy = jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({
+    itemDoacaoRepository.atualizar.mockResolvedValue({
       _id: testIds.item,
       status: "CANCELADO",
     });
@@ -105,18 +119,19 @@ describe("AdministracaoService", () => {
       createAdminUser()
     );
 
-    expect(itemUpdateSpy).toHaveBeenCalledWith(testIds.item, { status: "CANCELADO" });
-    expect(DenunciaModel.findByIdAndUpdate).toHaveBeenCalledWith(
+    expect(itemDoacaoRepository.atualizar).toHaveBeenCalledWith(testIds.item, { status: "CANCELADO" });
+    expect(denunciaRepository.atualizar).toHaveBeenCalledWith(
       testIds.denuncia,
       expect.objectContaining({
         status: "PROCEDENTE",
         admin_id: testIds.admin,
-      }),
-      { new: true }
+      })
     );
     expect(administracaoRepository.criar).toHaveBeenCalledWith(
       expect.objectContaining({
         tipo_acao: "RESOLUCAO_DENUNCIA",
+        tipo_alvo: "DENUNCIA",
+        alvo_model: "Denuncia",
         resultado_denuncia: "PROCEDENTE",
       })
     );

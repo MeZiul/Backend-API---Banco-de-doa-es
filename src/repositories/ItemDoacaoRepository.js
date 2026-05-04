@@ -28,6 +28,27 @@ class ItemDoacaoRepository extends BaseRepository {
         });
     }
 
+    listarTodos({ filtros = {}, page = 1, limit = 15, ordenacao = "recentes" } = {}) {
+        const builder = new ItemDoacaoFilterBuilder()
+            .comStatus(filtros.status)
+            .comBuscaTextual(filtros.busca)
+            .comCategoria(filtros.categoria_id || filtros.categoriaId)
+            .comCidade(filtros.cidade)
+            .comCondicao(filtros.condicao_item || filtros.condicaoItem)
+            .comUf(filtros.uf)
+            .comUsuario(filtros.usuario_id || filtros.usuarioId);
+
+        return this.listarComPaginacao(builder.build(), {
+            page,
+            limit,
+            sort: ItemDoacaoFilterBuilder.construirOrdenacao(ordenacao),
+            populate: [
+                { path: 'categoria_id', select: 'nome descricao' },
+                { path: 'usuario_id', select: 'nome email cidade uf situacao' },
+            ],
+        });
+    }
+
     buscarDetalhes(id) {
         return this.model.findByIdAndUpdate(
             id,
@@ -76,7 +97,10 @@ class ItemDoacaoRepository extends BaseRepository {
 
     async cancelarItensPorUsuario(usuarioId) {
         return this.model.updateMany(
-            { usuario_id: usuarioId, status: "DISPONIVEL" },
+            {
+                usuario_id: usuarioId,
+                status: { $in: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
+            },
             { status: "CANCELADO" }
         );
     }

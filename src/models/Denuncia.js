@@ -18,7 +18,7 @@ class Denuncia {
 
         alvo_item_id: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Item", 
+          ref: "ItemDoacao",
           required: [
             function () {
               return this.tipo_alvo === "ITEM";
@@ -94,7 +94,7 @@ class Denuncia {
     schema.index({ status: 1, data_denuncia: -1 });
     schema.index({ denunciante_id: 1 });
 
-    this.model = mongoose.model("Denuncia", schema);
+    this.model = mongoose.model("Denuncia", schema, "denuncias");
   }
 }
 

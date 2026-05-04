@@ -167,7 +167,7 @@ class InteresseService {
         const interesse = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
-        if (interesse.usuario_interessado_id._id.toString() !== usuarioId) {
+        if (this.getEntityId(interesse.usuario_interessado_id) !== usuarioId) {
             throw new CustomError({
                 statusCode: 403,
                 customMessage: "Apenas o usuário interessado pode cancelar este interesse.",
@@ -244,7 +244,7 @@ class InteresseService {
 
     ensureDoadorOuAdmin(item, usuario, permitirAdmin = true) {
         const usuarioId = this.getActorId(usuario);
-        const isOwner = item.usuario_id.toString() === usuarioId;
+        const isOwner = this.getEntityId(item.usuario_id) === usuarioId;
 
         if (isOwner) {
             return;
@@ -275,7 +275,8 @@ class InteresseService {
     }
 
     isAdmin(usuario) {
-        return usuario?.perfil === "ADMINISTRADOR";
+        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
+        return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
     }
 
     getActorId(usuario) {
@@ -289,6 +290,11 @@ class InteresseService {
         }
 
         return actorId.toString();
+    }
+
+    getEntityId(entidade) {
+        const entityId = entidade?._id ?? entidade;
+        return entityId?.toString?.() ?? entityId;
     }
 }
 

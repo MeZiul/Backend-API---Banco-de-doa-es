@@ -6,7 +6,7 @@ import { uploadFotos } from "../middlewares/uploadMiddleware.js"; // Middleware 
 import asyncWrapper from "../middlewares/asyncWrapper.js";
 import { validate } from "../middlewares/validateMiddleware.js";
 import { itemDoacaoSchema } from "../utils/validators/schemas/zod/ItemDoacaoSchema.js";
-import { itemDoacaoQuerySchema } from "../utils/validators/schemas/zod/ItemDoacaoQuerySchema.js";
+import { itemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/ItemDoacaoQuerySchema.js";
 
 const router = express.Router();
 
