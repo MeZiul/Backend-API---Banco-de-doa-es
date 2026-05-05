@@ -49,6 +49,13 @@ class ItemDoacaoFilterBuilder {
         return this;
     }
 
+    comUsuario(usuarioId) {
+        if (usuarioId) {
+            this.query.usuario_id = usuarioId;
+        }
+        return this;
+    }
+
     build() {
         return this.query;
     }

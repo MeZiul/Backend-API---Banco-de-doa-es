@@ -33,7 +33,22 @@ Abordagem:
 Ferramentas previstas:
 - `Jest`
 - `Supertest`
-- `mongodb-memory-server` ou mocks controlados, conforme a necessidade da suíte
+- `mongodb-memory-server`, configurado pelos scripts de teste com `USE_IN_MEMORY_DB=true`
+- mocks controlados para isolar services e controllers quando a regra de negócio não depende do banco real
+
+Comandos de execução:
+
+```bash
+npm test
+npm run test:coverage
+```
+
+No PowerShell, se `npm.ps1` estiver bloqueado ou se for necessário reduzir concorrência entre suítes:
+
+```powershell
+npm.cmd test -- --runInBand
+npm.cmd run test:coverage -- --runInBand
+```
 
 Critérios mínimos de aprovação:
 - fluxo principal de cada módulo testado
@@ -158,6 +173,15 @@ Durante a milestone, apresentar:
 - um cenário feliz por módulo
 - um cenário de bloqueio por regra de negócio em cada módulo
 
+Evidência da revisão atual:
+- suíte executada com `npm.cmd test -- --runInBand`
+- cobertura executada com `npm.cmd run test:coverage -- --runInBand`
+- resultado atual da suíte: 6 suites aprovadas e 19 testes aprovados
+- cobertura global atual: 55,52% statements, 44,06% branches, 54,95% functions e 54,99% lines
+- módulos de rota cobertos: `administracao`, `interesse` e `denuncia`
+- módulos de service cobertos no recorte atual: `AdministracaoService`, `InteresseService` e `DenunciaService`
+- o banco de teste é isolado por `mongodb-memory-server`
+
 Sugestão de roteiro:
 1. mostrar o arquivo de documentação da rota
 2. mostrar o teste do service associado à principal regra de negócio
@@ -172,6 +196,8 @@ Pontos que precisam estar integrados para a demonstração sair estável:
 - middleware de autenticação e autorização ativo
 - schemas Zod conectados aos controllers ou middlewares de validação
 - massa de teste coerente com os estados do domínio
+- `.env` configurado para MongoDB real ou `USE_IN_MEMORY_DB=true` em validação local
+- usuário administrador disponível para testar rotas `/admin`
 
 ## Resultado Esperado
 

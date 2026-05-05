@@ -98,6 +98,87 @@ Regras de negócio:
             },
         },
     },
+    "/admin/usuarios": {
+        get: {
+            tags: ["Administração"],
+            summary: "Listar usuários para moderação",
+            description: `Lista usuários cadastrados para análise administrativa.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- Permite filtros por nome, e-mail, CPF, cidade, UF, perfil e situação.
+- A resposta não deve expor senha nem dados sensíveis de autenticação.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "nome", in: "query", schema: { type: "string" } },
+                { name: "email", in: "query", schema: { type: "string", format: "email" } },
+                { name: "cpf", in: "query", schema: { type: "string" } },
+                { name: "cidade", in: "query", schema: { type: "string" } },
+                { name: "uf", in: "query", schema: { type: "string", minLength: 2, maxLength: 2 } },
+                { name: "perfil", in: "query", schema: { type: "string", enum: ["USUARIO", "ADMINISTRADOR"] } },
+                { name: "situacao", in: "query", schema: { type: "string", enum: ["ATIVO", "SUSPENSO", "INATIVO"] } },
+                { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoUsuariosPaginado"),
+                403: commonResponses[403](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/admin/usuarios/{id}": {
+        get: {
+            tags: ["Administração"],
+            summary: "Consultar usuário para moderação",
+            description: `Retorna os dados de um usuário específico para análise administrativa.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- Caso o usuário não exista, retorna erro apropriado.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "id", in: "path", required: true, schema: { type: "string" } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoUsuarioResultado"),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+        delete: {
+            tags: ["Administração"],
+            summary: "Inativar usuário",
+            description: `Inativa um usuário e cancela administrativamente itens ativos vinculados a ele.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- O usuário alvo passa para situação INATIVO.
+- Itens ativos vinculados ao usuário podem ser alterados para CANCELADO.
+- A ação deve gerar registro administrativo.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "id", in: "path", required: true, schema: { type: "string" } },
+            ],
+            requestBody: {
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/AdministracaoAcaoBody" },
+                    },
+                },
+            },
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoUsuarioResultado"),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
     "/admin/usuarios/{id}/bloquear": {
         put: {
             tags: ["Administração"],
@@ -126,6 +207,94 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/admin/itens": {
+        get: {
+            tags: ["Administração"],
+            summary: "Listar itens para moderação",
+            description: `Lista itens cadastrados para fiscalização administrativa.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- Permite consulta de itens em qualquer status.
+- A resposta traz dados suficientes para moderação.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "status", in: "query", schema: { type: "string", enum: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"] } },
+                { name: "categoriaId", in: "query", schema: { type: "string" } },
+                { name: "usuarioId", in: "query", schema: { type: "string" } },
+                { name: "cidade", in: "query", schema: { type: "string" } },
+                { name: "uf", in: "query", schema: { type: "string", minLength: 2, maxLength: 2 } },
+                { name: "condicaoItem", in: "query", schema: { type: "string", enum: ["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"] } },
+                { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoItensPaginado"),
+                403: commonResponses[403](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/admin/itens/{id}": {
+        delete: {
+            tags: ["Administração"],
+            summary: "Cancelar item administrativamente",
+            description: `Cancela um item por ação administrativa.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- O item alvo passa para status CANCELADO.
+- A ação deve ser registrada administrativamente.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "id", in: "path", required: true, schema: { type: "string" } },
+            ],
+            requestBody: {
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/AdministracaoAcaoBody" },
+                    },
+                },
+            },
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoItemResultado"),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/admin/denuncias": {
+        get: {
+            tags: ["Administração"],
+            summary: "Listar denúncias para análise",
+            description: `Lista denúncias registradas para análise administrativa.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR.
+- Exibe denúncias em qualquer status.
+- Permite filtros por status, tipo de alvo, motivo, denunciante e período.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "status", in: "query", schema: { type: "string", enum: ["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"] } },
+                { name: "tipoAlvo", in: "query", schema: { type: "string", enum: ["ITEM", "USUARIO"] } },
+                { name: "motivo", in: "query", schema: { type: "string", enum: ["CONTEUDO_INAPROPRIADO", "ITEM_PROIBIDO", "FRAUDE", "ASSEDIO", "SPAM", "OUTRO"] } },
+                { name: "denuncianteId", in: "query", schema: { type: "string" } },
+                { name: "dataInicio", in: "query", schema: { type: "string", format: "date" } },
+                { name: "dataFim", in: "query", schema: { type: "string", format: "date" } },
+                { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/AdministracaoDenunciasPaginado"),
+                403: commonResponses[403](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },

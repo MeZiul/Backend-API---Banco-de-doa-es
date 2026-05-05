@@ -124,7 +124,7 @@ class DenunciaService {
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
-        if (denuncia.denunciante_id._id.toString() !== usuarioId) {
+        if (this.getEntityId(denuncia.denunciante_id) !== usuarioId) {
             throw new CustomError({
                 statusCode: 403,
                 customMessage: "Apenas o autor da denúncia pode atualizá-la.",
@@ -145,7 +145,7 @@ class DenunciaService {
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
-        if (denuncia.denunciante_id._id.toString() !== usuarioId) {
+        if (this.getEntityId(denuncia.denunciante_id) !== usuarioId) {
             throw new CustomError({
                 statusCode: 403,
                 customMessage: "Apenas o autor da denúncia pode removê-la.",
@@ -294,7 +294,8 @@ class DenunciaService {
     }
 
     isAdmin(usuario) {
-        return usuario?.perfil === "ADMINISTRADOR";
+        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
+        return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
     }
 
     getActorId(usuario) {
@@ -308,6 +309,11 @@ class DenunciaService {
         }
 
         return actorId.toString();
+    }
+
+    getEntityId(entidade) {
+        const entityId = entidade?._id ?? entidade;
+        return entityId?.toString?.() ?? entityId;
     }
 }
 

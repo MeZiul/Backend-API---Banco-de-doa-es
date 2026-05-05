@@ -1,14 +1,31 @@
-# Backend API - Banco de Doações
+# Backend API - Banco de Doacoes
 
-API backend do projeto DoaÍ, desenvolvida em Node.js, Express e MongoDB, com organização em camadas para controllers, services, repositories, models e middlewares.
+API backend do projeto DoaI, desenvolvida em Node.js, Express e MongoDB, com organizacao em camadas para `routes`, `controllers`, `services`, `repositories`, `models`, `middlewares`, `validators`, `docs` e `tests`.
 
-O repositório também mantém a documentação funcional da API em:
-- [Documentação_da_api_Banco_de_Doação.md](./Documentação_da_api_Banco_de_Doação.md)
-- [Especificacao_API_REST_DoaI.html](./Especificacao_API_REST_DoaI.html)
+## Documentacao
+
+Documentacao-base da API, usada como contrato funcional do projeto:
+
+- [documentacao/Documentação_da_api_Banco_de_Doação.md](./documentacao/Documentação_da_api_Banco_de_Doação.md)
+- [documentacao/Especificacao_API_REST_DoaI.html](./documentacao/Especificacao_API_REST_DoaI.html)
+
+Documentacao de apoio da Milestone 2:
+
+- [documentacao/rotas-administracao.md](./documentacao/rotas-administracao.md)
+- [documentacao/rotas-interesse.md](./documentacao/rotas-interesse.md)
+- [documentacao/rotas-denuncia.md](./documentacao/rotas-denuncia.md)
+- [documentacao/plano-teste-milestone-2.md](./documentacao/plano-teste-milestone-2.md)
+
+Documentacao Swagger em runtime:
+
+- `GET /docs`
+- `GET /docs.json`
+
+Nesta milestone, o Swagger cobre os modulos de `administracao`, `interesse` e `denuncia`.
 
 ## Objetivo
 
-Centralizar as regras de negócio do sistema de doações, cobrindo autenticação, usuários, perfil, itens, interesses, avaliações, denúncias, administração e upload de imagens.
+Centralizar as regras de negocio do sistema de doacoes, cobrindo autenticacao, usuarios, perfil, categorias, itens de doacao, interesses, avaliacoes, denuncias, administracao e upload de imagens.
 
 ## Stack
 
@@ -16,14 +33,15 @@ Centralizar as regras de negócio do sistema de doações, cobrindo autenticaç�
 - Express 5
 - MongoDB
 - Mongoose
-- JWT para autenticação
+- JWT para autenticacao
 - Bcrypt para hash de senha
-- Nodemailer para envio de e-mails
-- Swagger (`swagger-jsdoc` e `swagger-ui-express`) como dependência do projeto
+- Zod para validacao
+- Jest e Supertest para testes
+- `mongodb-memory-server` para testes com banco em memoria
+- Swagger (`swagger-jsdoc` e `swagger-ui-express`)
 - Winston para logging
-- Zod para validação
 
-## Estrutura do projeto
+## Estrutura
 
 ```text
 .
@@ -45,53 +63,70 @@ Centralizar as regras de negócio do sistema de doações, cobrindo autenticaç�
 │   ├── services/
 │   ├── tests/
 │   └── utils/
+├── documentacao/
 ├── .env EXAMPLE
-├── Documentação_da_api_Banco_de_Doação.md
-└── Especificacao_API_REST_DoaI.html
+└── package.json
 ```
 
 ## Arquitetura
 
-O projeto segue uma organização em camadas:
+O projeto segue organizacao em camadas, alinhada ao padrao usado no material do professor:
 
-- `routes`: define os endpoints HTTP e conecta controllers.
-- `controllers`: recebe `req` e `res`, delega para services e padroniza a resposta.
-- `services`: concentra regras de negócio.
+- `routes`: define endpoints HTTP e conecta middlewares/controllers.
+- `controllers`: valida entrada, extrai usuario autenticado e delega para services.
+- `services`: concentra regras de negocio.
 - `repositories`: encapsula acesso ao MongoDB via Mongoose.
-- `models`: define os schemas e models.
-- `middlewares`: autenticação, autorização, logging e tratamento transversal.
-- `utils` e `infra`: helpers, logger, serviços auxiliares e integrações.
-- `containers`: composição manual de dependências entre repository e service.
+- `models`: define schemas e models.
+- `middlewares`: autenticacao, autorizacao, logging e tratamento transversal.
+- `utils/validators`: schemas Zod e validacoes auxiliares.
+- `containers`: composicao manual de dependencias.
+- `docs`: configuracao, paths e schemas do Swagger.
+- `tests`: testes de rotas/controllers e services.
 
-## Estado atual do repositório
+## Estado Atual
 
-Este ponto é importante para quem for clonar ou continuar o desenvolvimento:
+Rotas registradas em `src/routes/index.js`:
 
-- A estrutura de domínio está em construção.
-- Parte da modelagem, repositories, filters e alguns controllers/services já existem.
-- Nem todas as rotas documentadas estão registradas em `src/routes/index.js`.
-- Hoje o registro de rotas ativo no código está reduzido e usa `exampleRoutes.js` como referência de estrutura.
-- Existem arquivos de service, docs e testes ainda vazios ou parciais.
-- O README documenta o objetivo e a arquitetura do projeto, não garante que 100% das rotas da documentação já estejam operacionais no runtime atual.
+- autenticacao
+- usuarios
+- categorias
+- avaliacoes
+- itens de doacao
+- interesses
+- denuncias
+- administracao
+- exemplo estrutural
 
-## Pré-requisitos
+Para a Milestone 2, o foco de revisao e demonstracao esta em:
 
-- Node.js 20+ recomendado
+- `POST /interesses`, `GET /interesses`, `GET /interesses/:id`, `PUT /interesses/:id/aceitar`, `PUT /interesses/:id/recusar`, `DELETE /interesses/:id`
+- `POST /denuncias`, `GET /denuncias`, `GET /denuncias/:id`, `PUT /denuncias/:id`, `DELETE /denuncias/:id`
+- `GET /admin/usuarios`, `GET /admin/usuarios/:id`, `PUT /admin/usuarios/:id/bloquear`, `PUT /admin/usuarios/:id/desbloquear`, `DELETE /admin/usuarios/:id`
+- `GET /admin/itens`, `DELETE /admin/itens/:id`
+- `GET /admin/denuncias`, `PUT /admin/denuncias/:id/resolver`
+- rotas auxiliares de auditoria administrativa em `/admin/administracoes`
+
+## Pre-requisitos
+
+- Node.js 20+
 - npm
-- MongoDB acessível por URI
+- MongoDB acessivel por URI ou `USE_IN_MEMORY_DB=true` para ambiente local/teste
 
-## Configuração de ambiente
+## Configuracao
 
-1. Crie o arquivo `.env` a partir de `.env EXAMPLE`.
-2. Ajuste as variáveis obrigatórias para o seu ambiente.
+Crie o `.env` a partir do exemplo:
 
-Exemplo:
+```powershell
+copy ".env EXAMPLE" ".env"
+```
+
+No Git Bash/Linux/macOS:
 
 ```bash
 cp ".env EXAMPLE" .env
 ```
 
-Variáveis mais importantes para subir a aplicação:
+Variaveis principais:
 
 - `APP_PORT`
 - `DB_URL`
@@ -101,193 +136,110 @@ Variáveis mais importantes para subir a aplicação:
 - `JWT_ACCESS_TOKEN_EXPIRATION`
 - `JWT_SECRET_REFRESH_TOKEN`
 - `JWT_REFRESH_TOKEN_EXPIRATION`
-- `JWT_SECRET_PASSWORD_RECOVERY`
-- `JWT_PASSWORD_RECOVERY_EXPIRATION`
 - `SALT_LENGTH`
 - `LOG_LEVEL`
 - `LOG_ENABLED`
 - `DEBUGLOG`
+- `SWAGGER_DEV_URL`
+- `SWAGGER_PROD_URL`
 
-Variáveis adicionais já previstas no projeto:
+Para rodar sem MongoDB local, use:
 
-- Firebase App Check
-- SMTP e envio de e-mail
-- chaves para serviço externo de mail
-- URLs base de frontend e backend
-- credenciais administrativas usadas em seed/configuração local
+```env
+USE_IN_MEMORY_DB=true
+NODE_ENV=development
+APP_PORT=7340
+```
 
-## Instalação
+Para rodar com MongoDB real, use `USE_IN_MEMORY_DB=false` e configure `DB_URL`.
 
-```bash
+## Instalacao
+
+```powershell
 npm install
 ```
 
-## Execução
+Se o PowerShell bloquear `npm.ps1`, use:
+
+```powershell
+npm.cmd install
+```
+
+## Execucao
 
 Ambiente de desenvolvimento:
 
-```bash
+```powershell
 npm run dev
 ```
 
-Execução normal:
+Alternativa no PowerShell quando `npm.ps1` estiver bloqueado:
 
-```bash
+```powershell
+npm.cmd run dev
+```
+
+Execucao normal:
+
+```powershell
 npm start
 ```
 
-Scripts disponíveis em `package.json`:
+URL local padrao:
 
-- `npm run dev`: sobe com `nodemon`
-- `npm start`: sobe com `node server.js`
-- `npm test`: atualmente não possui suíte configurada; o script falha por padrão
+- `http://localhost:7340`
+- `http://localhost:7340/docs`
+- `http://localhost:7340/docs.json`
 
-## Inicialização da aplicação
+## Testes
 
-O fluxo atual de boot é:
+Os scripts de teste ja configuram `NODE_ENV=test` e `USE_IN_MEMORY_DB=true`.
 
-1. `server.js` carrega variáveis de ambiente e inicializa o `app`.
-2. `src/app.js` abre a conexão com o banco via `DbConnect.conectar()`.
-3. Middlewares globais são registrados.
-4. As rotas são montadas por `src/routes/index.js`.
-5. Há tratamento centralizado para `404` e para erros não tratados.
+Executar a suite:
 
-## Banco de dados
-
-A conexão com MongoDB é feita em `src/config/DbConnect.js` com Mongoose.
-
-Características atuais da conexão:
-
-- suporte a `MongoMemoryServer` quando `USE_IN_MEMORY_DB=true`
-- `strictQuery` condicionado ao ambiente
-- `autoIndex` habilitado
-- logging de eventos de conexão
-- timeout configurado para seleção de servidor, socket e conexão
-
-## Rotas e documentação
-
-A especificação funcional completa da API está nos arquivos:
-
-- `Documentação_da_api_Banco_de_Doação.md`
-- `Especificacao_API_REST_DoaI.html`
-
-Domínios documentados:
-
-- usuários
-- autenticação
-- perfil
-- categorias
-- itens de doação
-- interesses
-- avaliações
-- denúncias
-- administração
-- upload de imagens
-
-Estado do código de rotas:
-
-- `src/routes/index.js` ainda não registra todos esses domínios
-- a rota de exemplo está ativa e serve como base estrutural
-- a integração completa entre documentação e runtime ainda depende da evolução das branches de implementação
-
-## Respostas e tratamento de erro
-
-O projeto usa um formato padronizado de resposta com `CommonResponse`, incluindo:
-
-- `message`
-- `data`
-- `errors`
-
-O middleware `errorHandler` centraliza o tratamento das exceções da aplicação.
-
-## Logging
-
-O projeto usa logger próprio com suporte a configuração por variáveis de ambiente.
-
-Parâmetros já previstos:
-
-- `LOG_LEVEL`
-- `LOG_MAX_SIZE_GB`
-- `LOG_ENABLED`
-- `DEBUGLOG`
-
-Quando `DEBUGLOG` está habilitado, o middleware de logging de rotas é registrado em `src/routes/index.js`.
-
-## Segurança
-
-Recursos já previstos no código e na configuração:
-
-- hash de senha com bcrypt
-- autenticação por JWT
-- App Check com Firebase
-- controle de sessão com refresh token
-- cabeçalho `X-Robots-Tag` para bloquear indexação
-- endpoint `/robots.txt` bloqueando rastreamento
-
-## Seeds, testes e documentação interna
-
-Estado atual dos diretórios auxiliares:
-
-- `src/seeds/seedDoai.js` existe, mas está vazio neste momento
-- `src/tests/test.js` existe, mas está vazio neste momento
-- `src/docs/index.js` existe, mas está vazio neste momento
-
-Isso significa que a base estrutural para seed, testes e documentação interna já foi criada, mas ainda exige implementação para uso efetivo.
-
-## Fluxo de desenvolvimento recomendado
-
-1. Criar ou ajustar o `.env`.
-2. Instalar dependências com `npm install`.
-3. Garantir acesso ao MongoDB configurado em `DB_URL`.
-4. Subir a API com `npm run dev`.
-5. Implementar o domínio por camada:
-   `model -> repository -> filter -> service -> controller -> route`
-6. Validar manualmente os endpoints conforme a documentação `.md` e `.html`.
-
-## Convenções adotadas no projeto
-
-- módulos ES (`"type": "module"`)
-- separação por responsabilidade em camadas
-- repositories com paginação via `mongoose-paginate-v2`
-- filters dedicados para composição de consultas
-- containers para composição explícita de dependências
-- documentação funcional separada da implementação
-
-## Limitações atuais
-
-- o `README` anterior era apenas o template padrão do GitLab; este arquivo substitui isso
-- o script de teste ainda não representa uma suíte automatizada real
-- nem todos os domínios documentados já estão expostos em rotas ativas
-- há arquivos parciais ou vazios em alguns módulos
-- o `.env EXAMPLE` contém valores de exemplo e deve ser revisado antes de qualquer uso real
-
-## Referência rápida
-
-Subir localmente:
-
-```bash
-npm install
-cp ".env EXAMPLE" .env
-npm run dev
+```powershell
+npm test
 ```
 
-Entrada principal:
+Executar com cobertura:
 
-- [server.js](./server.js)
+```powershell
+npm run test:coverage
+```
 
-Bootstrap da aplicação:
+No PowerShell, se houver bloqueio de `npm.ps1` ou instabilidade por concorrencia de suites:
 
-- [src/app.js](./src/app.js)
+```powershell
+npm.cmd test -- --runInBand
+npm.cmd run test:coverage -- --runInBand
+```
 
-Registro de rotas:
+## Validacao Manual das Rotas
 
-- [src/routes/index.js](./src/routes/index.js)
+As rotas protegidas exigem `Authorization: Bearer <token>`.
 
-Conexão com banco:
+Para rotas administrativas, o token precisa representar usuario com `perfil: ADMINISTRADOR`.
 
-- [src/config/DbConnect.js](./src/config/DbConnect.js)
+Fluxo minimo recomendado para Postman:
 
-Documentação funcional:
+1. Criar/autenticar usuario comum.
+2. Criar/autenticar usuario administrador.
+3. Criar ou usar um item disponivel.
+4. Testar interesse com usuario comum.
+5. Testar denuncia com usuario comum.
+6. Resolver denuncia e moderar usuario/item com administrador.
+7. Conferir respostas no Swagger e na documentacao Markdown da milestone.
 
-- [Documentação_da_api_Banco_de_Doação.md](./Documentação_da_api_Banco_de_Doação.md)
-- [Especificacao_API_REST_DoaI.html](./Especificacao_API_REST_DoaI.html)
+## Scripts
+
+- `npm run dev`: sobe a API com `nodemon`.
+- `npm start`: sobe a API com `node server.js`.
+- `npm test`: executa Jest com banco em memoria.
+- `npm run test:coverage`: executa Jest com relatorio de cobertura.
+
+## Observacoes
+
+- A documentacao-base em `documentacao/Documentação_da_api_Banco_de_Doação.md` e `documentacao/Especificacao_API_REST_DoaI.html` deve ser tratada como contrato da API.
+- As documentacoes Markdown por rota explicam o recorte implementado para a Milestone 2.
+- O Swagger atual e gerado em memoria no boot da aplicacao e pode ser acessado em `/docs`.
+- O seed local existe em `src/seeds/seedDoaI.js`, mas nao ha script dedicado no `package.json` para executa-lo automaticamente.

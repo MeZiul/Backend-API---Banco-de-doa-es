@@ -1,13 +1,11 @@
-import DenunciaModel from "../models/Denuncias.js";
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
 
 class AdministracaoService {
-    constructor({ administracaoRepository, usuarioRepository }) {
+    constructor({ administracaoRepository, usuarioRepository, itemDoacaoRepository, denunciaRepository }) {
         this.repository = administracaoRepository;
         this.usuarioRepository = usuarioRepository;
-        this.itemModel = ItemDoacaoModel;
-        this.denunciaModel = DenunciaModel;
+        this.itemDoacaoRepository = itemDoacaoRepository;
+        this.denunciaRepository = denunciaRepository;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -43,6 +41,42 @@ class AdministracaoService {
         });
     }
 
+    async listarUsuarios({ filtros = {}, page = 1, limit = 15 }, usuarioAdmin) {
+        this.ensureAdmin(usuarioAdmin);
+
+        return this.usuarioRepository.listar({
+            filtros,
+            page: Number(page),
+            limit: Number(limit),
+        });
+    }
+
+    async buscarUsuarioPorId(usuarioId, usuarioAdmin) {
+        this.ensureAdmin(usuarioAdmin);
+        return this.ensureUsuarioExists(usuarioId);
+    }
+
+    async listarItens({ filtros = {}, page = 1, limit = 15, ordenacao = "recentes" }, usuarioAdmin) {
+        this.ensureAdmin(usuarioAdmin);
+
+        return this.itemDoacaoRepository.listarTodos({
+            filtros,
+            page: Number(page),
+            limit: Number(limit),
+            ordenacao,
+        });
+    }
+
+    async listarDenuncias({ filtros = {}, page = 1, limit = 15 }, usuarioAdmin) {
+        this.ensureAdmin(usuarioAdmin);
+
+        return this.denunciaRepository.listar({
+            filtros,
+            page: Number(page),
+            limit: Number(limit),
+        });
+    }
+
     async bloquearUsuario(usuarioId, dados = {}, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
 
@@ -62,16 +96,15 @@ class AdministracaoService {
             suspensao_ate: dados.suspensao_ate ?? dados.suspensaoAte ?? null,
         });
 
-        await this.repository.criar({
+        await this.registrarAcao({
             administrador_id: this.getActorId(usuarioAdmin),
             tipo_acao: "BLOQUEIO_USUARIO",
             tipo_alvo: "USUARIO",
-            alvo_id: usuario._id,
+            alvo_id: this.getEntityId(usuario),
             justificativa,
             suspensao_ate: dados.suspensao_ate ?? dados.suspensaoAte ?? null,
             resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
             acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário suspenso.",
-            data_acao: new Date(),
         });
 
         return usuarioAtualizado;
@@ -95,14 +128,13 @@ class AdministracaoService {
             suspensao_ate: null,
         });
 
-        await this.repository.criar({
+        await this.registrarAcao({
             administrador_id: this.getActorId(usuarioAdmin),
             tipo_acao: "DESBLOQUEIO_USUARIO",
             tipo_alvo: "USUARIO",
-            alvo_id: usuario._id,
+            alvo_id: this.getEntityId(usuario),
             resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
             acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário reativado.",
-            data_acao: new Date(),
         });
 
         return usuarioAtualizado;
@@ -119,24 +151,15 @@ class AdministracaoService {
             suspensao_ate: null,
         });
 
-        await this.itemModel.updateMany(
-            {
-                usuario_id: usuario._id,
-                status: { $in: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
-            },
-            {
-                status: "CANCELADO",
-            }
-        );
+        await this.itemDoacaoRepository.cancelarItensPorUsuario(this.getEntityId(usuario));
 
-        await this.repository.criar({
+        await this.registrarAcao({
             administrador_id: this.getActorId(usuarioAdmin),
             tipo_acao: "INATIVACAO_USUARIO",
             tipo_alvo: "USUARIO",
-            alvo_id: usuario._id,
+            alvo_id: this.getEntityId(usuario),
             resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
             acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário inativado administrativamente.",
-            data_acao: new Date(),
         });
 
         return usuarioAtualizado;
@@ -147,22 +170,17 @@ class AdministracaoService {
 
         const item = await this.ensureItemExists(itemId);
 
-        const itemAtualizado = await this.itemModel.findByIdAndUpdate(
-            itemId,
-            {
-                status: "CANCELADO",
-            },
-            { new: true }
-        );
+        const itemAtualizado = await this.itemDoacaoRepository.atualizar(itemId, {
+            status: "CANCELADO",
+        });
 
-        await this.repository.criar({
+        await this.registrarAcao({
             administrador_id: this.getActorId(usuarioAdmin),
             tipo_acao: "CANCELAMENTO_ITEM",
             tipo_alvo: "ITEM",
-            alvo_id: item._id,
+            alvo_id: this.getEntityId(item),
             resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
             acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Item cancelado administrativamente.",
-            data_acao: new Date(),
         });
 
         return itemAtualizado;
@@ -189,22 +207,10 @@ class AdministracaoService {
         }
 
         if (resultado === "PROCEDENTE") {
-            if (denuncia.tipo_alvo === "ITEM") {
-                const itemId = denuncia.alvo_item_id?._id || denuncia.alvo_item_id;
-                await this.itemModel.findByIdAndUpdate(itemId, { status: "CANCELADO" });
-            }
-
-            if (denuncia.tipo_alvo === "USUARIO") {
-                const usuarioId = denuncia.alvo_usuario_id?._id || denuncia.alvo_usuario_id;
-                await this.usuarioRepository.atualizar(usuarioId, {
-                    situacao: "SUSPENSO",
-                    motivo_suspensao: dados.acao_tomada ?? dados.acaoTomada ?? "Suspensão por denúncia procedente.",
-                    suspensao_ate: dados.suspensao_ate ?? dados.suspensaoAte ?? null,
-                });
-            }
+            await this.aplicarAcaoProcedente(denuncia, dados);
         }
 
-        const denunciaAtualizada = await this.denunciaModel.findByIdAndUpdate(
+        const denunciaAtualizada = await this.denunciaRepository.atualizar(
             denunciaId,
             {
                 status: resultado,
@@ -212,22 +218,47 @@ class AdministracaoService {
                 resposta_admin: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? dados.resposta_admin ?? dados.respostaAdmin ?? null,
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? null,
                 data_analise: new Date(),
-            },
-            { new: true }
+            }
         );
 
-        await this.repository.criar({
+        await this.registrarAcao({
             administrador_id: this.getActorId(usuarioAdmin),
             tipo_acao: "RESOLUCAO_DENUNCIA",
             tipo_alvo: "DENUNCIA",
-            alvo_id: denuncia._id,
+            alvo_id: this.getEntityId(denuncia),
             resultado_denuncia: resultado,
             resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? dados.resposta_admin ?? dados.respostaAdmin ?? null,
             acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? null,
-            data_acao: new Date(),
         });
 
         return denunciaAtualizada;
+    }
+
+    async aplicarAcaoProcedente(denuncia, dados) {
+        if (denuncia.tipo_alvo === "ITEM") {
+            const itemId = this.getEntityId(denuncia.alvo_item_id);
+            await this.ensureItemExists(itemId);
+            await this.itemDoacaoRepository.atualizar(itemId, { status: "CANCELADO" });
+            return;
+        }
+
+        if (denuncia.tipo_alvo === "USUARIO") {
+            const usuarioId = this.getEntityId(denuncia.alvo_usuario_id);
+            await this.ensureUsuarioExists(usuarioId);
+            await this.usuarioRepository.atualizar(usuarioId, {
+                situacao: "SUSPENSO",
+                motivo_suspensao: dados.acao_tomada ?? dados.acaoTomada ?? "Suspensão por denúncia procedente.",
+                suspensao_ate: dados.suspensao_ate ?? dados.suspensaoAte ?? null,
+            });
+        }
+    }
+
+    async registrarAcao(dados) {
+        return this.repository.criar({
+            ...dados,
+            alvo_model: this.getAlvoModel(dados.tipo_alvo),
+            data_acao: new Date(),
+        });
     }
 
     async ensureExists(id) {
@@ -257,7 +288,7 @@ class AdministracaoService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemModel.findById(id);
+        const item = await this.itemDoacaoRepository.buscarPorId(id);
 
         if (!item) {
             throw new CustomError({
@@ -270,9 +301,7 @@ class AdministracaoService {
     }
 
     async ensureDenunciaExists(id) {
-        const denuncia = await this.denunciaModel.findById(id)
-            .populate("alvo_item_id")
-            .populate("alvo_usuario_id", "nome email cidade uf situacao");
+        const denuncia = await this.denunciaRepository.buscarPorIdDetalhado(id);
 
         if (!denuncia) {
             throw new CustomError({
@@ -285,7 +314,9 @@ class AdministracaoService {
     }
 
     ensureAdmin(usuario) {
-        if (usuario?.perfil !== "ADMINISTRADOR") {
+        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
+
+        if (usuario?.perfil !== "ADMINISTRADOR" && !papeis.includes("ADMINISTRADOR")) {
             throw new CustomError({
                 statusCode: 403,
                 customMessage: "Apenas administradores podem realizar esta operação.",
@@ -304,6 +335,21 @@ class AdministracaoService {
         }
 
         return actorId.toString();
+    }
+
+    getEntityId(entidade) {
+        const entityId = entidade?._id ?? entidade;
+        return entityId?.toString?.() ?? entityId;
+    }
+
+    getAlvoModel(tipoAlvo) {
+        const modelos = {
+            USUARIO: "Usuario",
+            ITEM: "ItemDoacao",
+            DENUNCIA: "Denuncia",
+        };
+
+        return modelos[tipoAlvo];
     }
 }
 

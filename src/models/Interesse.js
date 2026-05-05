@@ -7,7 +7,7 @@ class Interesse {
       {
         item_id: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Item",
+          ref: "ItemDoacao",
           required: [true, "A referência ao item de doação é obrigatória."]
         },
         usuario_interessado_id: {
@@ -68,7 +68,7 @@ class Interesse {
       }
     );
 
-    this.model = mongoose.model("interesses", schema);
+    this.model = mongoose.model("Interesse", schema, "interesses");
   }
 }
 

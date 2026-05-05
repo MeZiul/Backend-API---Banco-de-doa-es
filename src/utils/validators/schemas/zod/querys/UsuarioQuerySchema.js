@@ -32,6 +32,11 @@ export const UsuarioQuerySchema = z.object({
   page: z.string().optional()
     .transform((val) => (val ? parseInt(val, 10) : 1))
     .refine((val) => Number.isInteger(val) && val > 0, { message: "Page deve ser inteiro maior que 0" }),
+  limit: z.string().optional()
+    .transform((val) => (val ? parseInt(val, 10) : undefined))
+    .refine((val) => val === undefined || (Number.isInteger(val) && val > 0 && val <= 100), {
+      message: "Limit deve ser entre 1 e 100",
+    }),
   limite: z.string().optional()
     .transform((val) => (val ? parseInt(val, 10) : 20))
     .refine((val) => Number.isInteger(val) && val > 0 && val <= 100, { message: "Limite deve ser entre 1 e 100" }),
