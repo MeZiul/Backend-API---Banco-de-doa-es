@@ -11,9 +11,11 @@ Documentacao-base da API, usada como contrato funcional do projeto:
 
 Documentacao de apoio da Milestone 2:
 
+- [documentacao/rotas-autenticacao.md](./documentacao/rotas-autenticacao.md)
 - [documentacao/rotas-administracao.md](./documentacao/rotas-administracao.md)
 - [documentacao/rotas-interesse.md](./documentacao/rotas-interesse.md)
 - [documentacao/rotas-denuncia.md](./documentacao/rotas-denuncia.md)
+- [documentacao/rotas-avaliacao.md](./documentacao/rotas-avaliacao.md)
 - [documentacao/plano-teste-milestone-2.md](./documentacao/plano-teste-milestone-2.md)
 
 Documentacao Swagger em runtime:
@@ -21,7 +23,7 @@ Documentacao Swagger em runtime:
 - `GET /docs`
 - `GET /docs.json`
 
-Nesta milestone, o Swagger cobre os modulos de `administracao`, `interesse` e `denuncia`.
+Nesta milestone, o Swagger cobre os modulos de `autenticacao`, `administracao`, `interesse`, `denuncia` e `avaliacao`.
 
 ## Objetivo
 
@@ -99,11 +101,13 @@ Rotas registradas em `src/routes/index.js`:
 
 Para a Milestone 2, o foco de revisao e demonstracao esta em:
 
+- `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh-token`, `POST /auth/esqueci-senha`, `PUT /auth/redefinir-senha`
 - `POST /interesses`, `GET /interesses`, `GET /interesses/:id`, `PUT /interesses/:id/aceitar`, `PUT /interesses/:id/recusar`, `DELETE /interesses/:id`
 - `POST /denuncias`, `GET /denuncias`, `GET /denuncias/:id`, `PUT /denuncias/:id`, `DELETE /denuncias/:id`
 - `GET /admin/usuarios`, `GET /admin/usuarios/:id`, `PUT /admin/usuarios/:id/bloquear`, `PUT /admin/usuarios/:id/desbloquear`, `DELETE /admin/usuarios/:id`
 - `GET /admin/itens`, `DELETE /admin/itens/:id`
 - `GET /admin/denuncias`, `PUT /admin/denuncias/:id/resolver`
+- `POST /avaliacoes`, `GET /avaliacoes`, `GET /avaliacoes/:id`, `PUT /avaliacoes/:id`, `DELETE /avaliacoes/:id`
 - rotas auxiliares de auditoria administrativa em `/admin/administracoes`
 
 ## Pre-requisitos
