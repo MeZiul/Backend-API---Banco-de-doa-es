@@ -43,6 +43,10 @@ function pastDate(daysAgo) {
   return new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 }
 
+function sameId(a, b) {
+  return a?.toString?.() === b?.toString?.();
+}
+
 async function safeClear(Model, nome) {
   try {
     await Model.deleteMany();
@@ -456,7 +460,7 @@ function buildInteresses(usuarios, itens) {
       item_id:                itemMap["Camisetas masculinas tamanho M"]._id,
       usuario_interessado_id: ana._id,
       usuario_doador_id:      carlos._id,
-      mensagem:               "Tenho interesse nas camisetas! Posso retirar amanha.",
+      mensagem_interessado:   "Tenho interesse nas camisetas! Posso retirar amanha.",
       status:                 "PENDENTE",
       data_interesse:         pastDate(1),
     },
@@ -471,7 +475,7 @@ function buildInteresses(usuarios, itens) {
       item_id:                itemMap["Bicicleta infantil aro 16"]._id,
       usuario_interessado_id: joao._id,
       usuario_doador_id:      carlos._id,
-      mensagem:               "Meu filho vai adorar! Obrigado.",
+      mensagem_interessado:   "Meu filho vai adorar! Obrigado.",
       status:                 "ACEITO",
       data_interesse:         pastDate(5),
       data_resposta:          pastDate(4),
@@ -499,6 +503,16 @@ function buildInteresses(usuarios, itens) {
       status:                 "EXPIRADO",
       data_interesse:         pastDate(30),
     },
+    {
+      item_id:                itemMap["Roupas femininas tamanho P"]._id,
+      usuario_interessado_id: joao._id,
+      usuario_doador_id:      pedro._id,
+      mensagem_interessado:   "Tenho interesse nas roupas e posso retirar ainda hoje.",
+      resposta_doador:        "Combinado, vou separar para retirada.",
+      status:                 "ACEITO",
+      data_interesse:         pastDate(6),
+      data_resposta:          pastDate(4),
+    },
   ];
 }
 
@@ -507,14 +521,30 @@ async function seedInteresses(usuarios, itens) {
 
   const interesses = buildInteresses(usuarios, itens);
   const result     = await safeInsert(Interesse, interesses, "Interesses");
+  const docs       = Array.isArray(result) ? result : await Interesse.find();
 
-  console.log(`[OK] ${Array.isArray(result) ? result.length : "?"} Interesses inseridos`);
+  for (const item of itens) {
+    const interessesDoItem = docs.filter((interesse) => sameId(interesse.item_id, item._id));
+    const interesseAceito  = interessesDoItem.find((interesse) => interesse.status === "ACEITO");
+
+    const dadosItem = {
+      total_interesses: interessesDoItem.length,
+    };
+
+    if (interesseAceito) {
+      dadosItem.interesse_aceito_id = interesseAceito._id;
+    }
+
+    await ItemDoacao.findByIdAndUpdate(item._id, dadosItem);
+  }
+
+  console.log(`[OK] ${docs.length} Interesses inseridos`);
 
   const resumo = {};
   for (const i of interesses) resumo[i.status] = (resumo[i.status] || 0) + 1;
   console.log("   Status:", resumo);
 
-  return Array.isArray(result) ? result : await Interesse.find();
+  return docs;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -554,13 +584,29 @@ async function seedAvaliacoes(usuarios, itens) {
 
   const avaliacoes = buildAvaliacoes(usuarios, itens);
   const result     = await safeInsert(Avaliacao, avaliacoes, "Avaliacoes");
+  const docs       = Array.isArray(result) ? result : await Avaliacao.find();
 
-  const [admin, carlos, ana, pedro, maria, joao] = usuarios;
-  await Usuario.findByIdAndUpdate(pedro._id, { media_avaliacoes: 5, total_avaliacoes: 1 });
-  await Usuario.findByIdAndUpdate(joao._id,  { media_avaliacoes: 4, total_avaliacoes: 1 });
+  await recalcularMediasAvaliacoes(docs);
 
-  console.log(`[OK] ${Array.isArray(result) ? result.length : "?"} Avaliacoes inseridas`);
-  return Array.isArray(result) ? result : await Avaliacao.find();
+  console.log(`[OK] ${docs.length} Avaliacoes inseridas`);
+  return docs;
+}
+
+async function recalcularMediasAvaliacoes(avaliacoes) {
+  const avaliadosIds = [...new Set(avaliacoes.map((avaliacao) => avaliacao.avaliado_id.toString()))];
+
+  for (const avaliadoId of avaliadosIds) {
+    const avaliacoesDoUsuario = await Avaliacao.find({ avaliado_id: avaliadoId });
+    const total = avaliacoesDoUsuario.length;
+    const media = total > 0
+      ? avaliacoesDoUsuario.reduce((acc, avaliacao) => acc + avaliacao.nota, 0) / total
+      : 0;
+
+    await Usuario.findByIdAndUpdate(avaliadoId, {
+      media_avaliacoes: parseFloat(media.toFixed(1)),
+      total_avaliacoes: total,
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
