@@ -1,6 +1,6 @@
 # Plano de Teste - Milestone 2
 
-Este plano organiza os testes da entrega de `administração`, `interesse` e `denúncia` para a Milestone 2.
+Este plano organiza os testes da entrega de `administração`, `interesse`, `denúncia`, `autenticação` e `avaliação` para a Milestone 2.
 
 Objetivos:
 - validar o fluxo principal das funcionalidades implementadas
@@ -10,9 +10,11 @@ Objetivos:
 ## Escopo da Milestone 2
 
 Módulos cobertos:
+- `autenticação`
 - `interesse`
 - `denúncia`
 - `administração`
+- `avaliação`
 
 Camadas cobertas:
 - testes unitários de `services`
@@ -20,7 +22,7 @@ Camadas cobertas:
 
 Fora do escopo deste plano:
 - testes de upload
-- testes de autenticação completa fim a fim
+- testes de autenticação com envio real de e-mail
 - testes E2E com frontend
 
 ## Estratégia de Teste
@@ -58,17 +60,40 @@ Critérios mínimos de aprovação:
 ## Fluxo Principal Apresentado
 
 Fluxo principal recomendado para a milestone:
-1. um usuário manifesta interesse em um item disponível
-2. outro usuário denuncia um item ou usuário
-3. o administrador consulta a denúncia e resolve a moderação
-4. o administrador bloqueia ou desbloqueia usuário, quando aplicável
-5. o doador aceita ou recusa o interesse conforme o estado final do item
+1. usuário realiza login e obtém token de autenticação
+2. um usuário manifesta interesse em um item disponível
+3. outro usuário denuncia um item ou usuário
+4. o administrador consulta a denúncia e resolve a moderação
+5. o administrador bloqueia ou desbloqueia usuário, quando aplicável
+6. o doador aceita ou recusa o interesse conforme o estado final do item
+7. após uma doação concluída, uma das partes registra avaliação da outra
 
 Esse fluxo permite demonstrar:
 - autenticação e autorização
 - mudança de estado de interesse
 - criação e resolução de denúncia
 - ação administrativa associada à moderação
+- avaliação vinculada a uma doação concluída
+
+## Matriz de Cenários - Autenticação
+
+### Testes de route
+
+`/auth` deve cobrir:
+- `POST /auth/login` retorna token quando as credenciais são válidas
+- `POST /auth/login` retorna erro de validação quando e-mail ou senha são inválidos
+- `POST /auth/esqueci-senha` aceita e-mail válido e retorna resposta padronizada
+- `PUT /auth/redefinir-senha` aceita token e nova senha válida
+- `POST /auth/refresh-token` gera novo token para usuário autenticado
+- `POST /auth/logout` invalida o token informado no header `Authorization`
+
+Mapeamento de regra de negócio:
+- RN-AUTH-01: login exige e-mail e senha válidos
+- RN-AUTH-02: credenciais válidas geram token JWT
+- RN-AUTH-03: contas suspensas ou inativas não devem autenticar
+- RN-AUTH-04: recuperação de senha não deve revelar se o e-mail existe
+- RN-AUTH-05: redefinição exige token válido e senha dentro do padrão de segurança
+- RN-AUTH-06: logout deve invalidar o token usado na sessão
 
 ## Matriz de Cenários - Interesse
 
@@ -165,6 +190,43 @@ Mapeamento de regra de negócio:
 - `GET /admin/denuncias` lista denúncias para análise
 - `PUT /admin/denuncias/:id/resolver` conclui denúncia em análise
 
+## Matriz de Cenários - Avaliação
+
+### Testes de service
+
+`AvaliacaoService` deve cobrir:
+- criar avaliação quando o item está `DOADO`
+- impedir avaliação quando o item não está `DOADO`
+- impedir avaliação fora do prazo de 30 dias após a doação
+- validar se o usuário avaliado existe
+- validar se o avaliador participou da doação
+- validar se o avaliado é a outra parte da doação
+- impedir avaliação duplicada para o mesmo item e tipo
+- permitir atualização apenas pelo autor da avaliação
+- recalcular média do usuário avaliado quando a nota é alterada
+- permitir remoção apenas pelo autor da avaliação
+- recalcular média do usuário avaliado quando a avaliação é removida
+
+Mapeamento de regra de negócio:
+- RN-AVA-01: avaliação exige usuário autenticado
+- RN-AVA-02: avaliação só pode ocorrer após doação confirmada
+- RN-AVA-03: apenas participantes da doação podem avaliar
+- RN-AVA-04: o avaliado deve ser a outra parte da doação
+- RN-AVA-05: não deve haver avaliação duplicada no mesmo sentido
+- RN-AVA-06: edição e remoção pertencem ao autor da avaliação
+- RN-AVA-07: alteração de nota deve atualizar média e total de avaliações do avaliado
+
+### Testes de route
+
+`/avaliacoes` deve cobrir:
+- `POST /avaliacoes` retorna `201` no cenário feliz
+- `POST /avaliacoes` retorna erro quando payload é inválido
+- `GET /avaliacoes` lista avaliações com filtros aceitos
+- `GET /avaliacoes/:id` consulta uma avaliação por ID
+- `PUT /avaliacoes/:id` atualiza apenas `nota` e `comentario`
+- `PUT /avaliacoes/:id` rejeita alteração de campos sensíveis como `item_id`, `avaliado_id` e `tipo`
+- `DELETE /avaliacoes/:id` propaga erro quando o usuário não é autor
+
 ## Evidências para Apresentação
 
 Durante a milestone, apresentar:
@@ -176,11 +238,13 @@ Durante a milestone, apresentar:
 Evidência da revisão atual:
 - suíte executada com `npm.cmd test -- --runInBand`
 - cobertura executada com `npm.cmd run test:coverage -- --runInBand`
-- resultado atual da suíte: 6 suites aprovadas e 19 testes aprovados
-- cobertura global atual: 55,52% statements, 44,06% branches, 54,95% functions e 54,99% lines
-- módulos de rota cobertos: `administracao`, `interesse` e `denuncia`
-- módulos de service cobertos no recorte atual: `AdministracaoService`, `InteresseService` e `DenunciaService`
+- resultado base antes da expansão: 6 suites aprovadas e 19 testes aprovados
+- resultado esperado após integração das branches de autenticação e avaliação: 9 suites aprovadas e 34 testes aprovados
+- cobertura global esperada após integração: aproximadamente 60% statements, 45% branches, 61% functions e 59% lines
+- módulos de rota cobertos: `auth`, `avaliacao`, `administracao`, `interesse` e `denuncia`
+- módulos de service cobertos no recorte atual: `AvaliacaoService`, `AdministracaoService`, `InteresseService` e `DenunciaService`
 - o banco de teste é isolado por `mongodb-memory-server`
+- a massa manual de apresentação deve ser gerada com `npm.cmd run seed`, após configurar o MongoDB local
 
 Sugestão de roteiro:
 1. mostrar o arquivo de documentação da rota
@@ -198,6 +262,8 @@ Pontos que precisam estar integrados para a demonstração sair estável:
 - massa de teste coerente com os estados do domínio
 - `.env` configurado para MongoDB real ou `USE_IN_MEMORY_DB=true` em validação local
 - usuário administrador disponível para testar rotas `/admin`
+- usuário comum ativo, usuário suspenso e usuário inativo disponíveis para testar autenticação
+- item `DOADO` com interesse aceito vinculado disponível para testar avaliação
 
 ## Resultado Esperado
 
@@ -205,4 +271,4 @@ Ao final da Milestone 2, a equipe deve conseguir demonstrar:
 - rotas documentadas em Markdown
 - regras de negócio explicitadas por endpoint
 - plano de teste alinhado com o fluxo principal
-- testes unitários e de rota cobrindo os cenários centrais de `interesse`, `denúncia` e `administração`
+- testes unitários e de rota cobrindo os cenários centrais de `autenticação`, `interesse`, `denúncia`, `administração` e `avaliação`
