@@ -1,6 +1,7 @@
 import { avaliacaoService } from "../containers/services.index.js";
 import {
   AvaliacaoSchema,
+  AvaliacaoUpdateSchema,
   AvaliacaoIdSchema,
   AvaliacaoQuerySchema,
 } from "../utils/validators/schemas/zod/AvaliacaoSchema.js";
@@ -35,7 +36,7 @@ class AvaliacaoController {
   atualizar = async (req, res, next) => {
     try {
       AvaliacaoIdSchema.parse(req.params.id);
-      const dados = AvaliacaoSchema.partial().parse(req.body);
+      const dados = AvaliacaoUpdateSchema.parse(req.body);
       const data  = await avaliacaoService.atualizar(req.params.id, dados, req.user);
       return CommonResponse.success(res, data);
     } catch (e) { next(e); }
