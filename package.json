@@ -7,6 +7,7 @@
   "scripts": {
     "test": "cross-env NODE_ENV=test USE_IN_MEMORY_DB=true jest --detectOpenHandles",
     "test:coverage": "cross-env NODE_ENV=test USE_IN_MEMORY_DB=true jest --coverage --detectOpenHandles",
+    "seed": "node src/seeds/seedDoaI.js",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },
