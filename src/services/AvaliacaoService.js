@@ -2,9 +2,10 @@ import { CustomError } from "../utils/helpers/index.js";
 
 class AvaliacaoService {
 
-  constructor({ avaliacaoRepository, itemDoacaoRepository, usuarioRepository }) {
+  constructor({ avaliacaoRepository, itemDoacaoRepository, interesseRepository, usuarioRepository }) {
     this.repository             = avaliacaoRepository;
     this.itemDoacaoRepository   = itemDoacaoRepository;
+    this.interesseRepository    = interesseRepository;
     this.usuarioRepository      = usuarioRepository;
   }
 
@@ -26,6 +27,13 @@ class AvaliacaoService {
       });
     }
 
+    if (!item.data_doacao) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: "A data de conclusão da doação é obrigatória para avaliação.",
+      });
+    }
+
     const trintaDiasAtras = new Date();
     trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
     if (item.data_doacao < trintaDiasAtras) {
@@ -34,6 +42,9 @@ class AvaliacaoService {
         customMessage: "O prazo para avaliar esta doação expirou (30 dias).",
       });
     }
+
+    await this.ensureUsuarioExists(avaliado_id);
+    await this.ensureParticipouDaDoacao(item, { avaliado_id, tipo }, usuarioId);
 
     const jaAvaliou = await this.repository.buscarPorAvaliadorItemTipo(
       usuarioId,
@@ -61,8 +72,9 @@ class AvaliacaoService {
     return avaliacao;
   }
 
-  async deletar(id) {
+  async deletar(id, usuario) {
     const avaliacao = await this.ensureExists(id);
+    this.ensureAutorDaAvaliacao(avaliacao, usuario);
 
     await this.repository.deletar(id);
 
@@ -79,9 +91,17 @@ class AvaliacaoService {
     return this.ensureExists(id);
   }
   
-  async atualizar(id, dados) {
-    await this.ensureExists(id);
-    return this.repository.atualizar(id, dados);
+  async atualizar(id, dados, usuario) {
+    const avaliacao = await this.ensureExists(id);
+    this.ensureAutorDaAvaliacao(avaliacao, usuario);
+
+    const avaliacaoAtualizada = await this.repository.atualizar(id, dados);
+
+    if (dados.nota !== undefined) {
+      await this._recalcularMedia(avaliacao.avaliado_id);
+    }
+
+    return avaliacaoAtualizada;
   }
 
   async _recalcularMedia(avaliado_id) {
@@ -112,6 +132,112 @@ class AvaliacaoService {
       });
     }
     return avaliacao;
+  }
+
+  async ensureUsuarioExists(id) {
+    const usuario = await this.usuarioRepository.buscarPorId(id);
+    if (!usuario) {
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Usuário avaliado não encontrado.",
+      });
+    }
+    return usuario;
+  }
+
+  async ensureParticipouDaDoacao(item, { avaliado_id, tipo }, usuarioId) {
+    const doadorId = this.getEntityId(item.usuario_id);
+    const interesse = await this.getInteresseAceito(item);
+    const interessadoId = this.getEntityId(interesse.usuario_interessado_id);
+    const avaliadorId = this.getEntityId(usuarioId);
+    const avaliadoId = this.getEntityId(avaliado_id);
+
+    if (!interessadoId) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: "A doação não possui interessado aceito para avaliação.",
+      });
+    }
+
+    if (tipo === "DOADOR_PARA_INTERESSADO") {
+      if (avaliadorId !== doadorId || avaliadoId !== interessadoId) {
+        throw new CustomError({
+          statusCode: 403,
+          customMessage: "Apenas o doador pode avaliar o interessado aceito neste item.",
+        });
+      }
+      return;
+    }
+
+    if (avaliadorId !== interessadoId || avaliadoId !== doadorId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Apenas o interessado aceito pode avaliar o doador deste item.",
+      });
+    }
+  }
+
+  async getInteresseAceito(item) {
+    const interesseAceito = item.interesse_aceito_id;
+
+    if (!interesseAceito) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: "A doação não possui interesse aceito vinculado.",
+      });
+    }
+
+    if (interesseAceito.usuario_interessado_id) {
+      if (interesseAceito.status && interesseAceito.status !== "ACEITO") {
+        throw new CustomError({
+          statusCode: 400,
+          customMessage: "Interesse aceito não encontrado para esta doação.",
+        });
+      }
+
+      return interesseAceito;
+    }
+
+    const interesse = await this.interesseRepository.buscarPorIdDetalhado(this.getEntityId(interesseAceito));
+
+    if (!interesse || interesse.status !== "ACEITO") {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: "Interesse aceito não encontrado para esta doação.",
+      });
+    }
+
+    return interesse;
+  }
+
+  ensureAutorDaAvaliacao(avaliacao, usuario) {
+    const usuarioId = this.getActorId(usuario);
+    const avaliadorId = this.getEntityId(avaliacao.avaliador_id);
+
+    if (usuarioId !== avaliadorId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Apenas o autor da avaliação pode alterar ou remover este registro.",
+      });
+    }
+  }
+
+  getActorId(usuario) {
+    const actorId = usuario?.id || usuario?._id;
+
+    if (!actorId) {
+      throw new CustomError({
+        statusCode: 401,
+        customMessage: "Usuário autenticado não informado.",
+      });
+    }
+
+    return this.getEntityId(actorId);
+  }
+
+  getEntityId(entidade) {
+    const entityId = entidade?._id ?? entidade;
+    return entityId?.toString?.() ?? entityId;
   }
 }
 

@@ -7,7 +7,7 @@ class Avaliacao {
             {
                 item_id: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: 'ItemDeDoacao',
+                    ref: 'ItemDoacao',
                     required: true
                 },
 

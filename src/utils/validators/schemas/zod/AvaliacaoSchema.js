@@ -14,7 +14,19 @@ const AvaliacaoSchema = z.object({
   tipo: z.enum(["DOADOR_PARA_INTERESSADO", "INTERESSADO_PARA_DOADOR"], {
     errorMap: () => ({ message: "tipo deve ser DOADOR_PARA_INTERESSADO ou INTERESSADO_PARA_DOADOR" }),
   }),
-});
+}).strict();
+
+const AvaliacaoUpdateSchema = z.object({
+  nota: z.number().int()
+    .min(1, "Nota mínima é 1")
+    .max(5, "Nota máxima é 5")
+    .optional(),
+  comentario: z.string().trim().optional().nullable(),
+})
+  .strict()
+  .refine((data) => data.nota !== undefined || data.comentario !== undefined, {
+    message: "Informe ao menos um campo para atualizar a avaliação.",
+  });
 
 const AvaliacaoResponseSchema = z.object({
   _id:            z.string(),
@@ -27,4 +39,4 @@ const AvaliacaoResponseSchema = z.object({
   data_avaliacao: z.string().datetime(),
 }).strict();
 
-export { AvaliacaoSchema, AvaliacaoResponseSchema };
+export { AvaliacaoSchema, AvaliacaoUpdateSchema, AvaliacaoResponseSchema };
