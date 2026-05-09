@@ -292,7 +292,7 @@ async function seedUsuarios() {
   }
 
   for (const u of fixos) {
-    await Usuario.findOneAndUpdate({ email: u.email }, { $set: u }, { upsert: true, new: true });
+    await Usuario.findOneAndUpdate({ cpf: u.cpf }, { $set: u }, { upsert: true, new: true });
   }
   try {
     await Usuario.insertMany(aleatorios, { ordered: false });

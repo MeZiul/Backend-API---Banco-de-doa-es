@@ -10,11 +10,22 @@ import denunciasSchemas from "../schemas/denunciasSchema.js";
 import interessesSchemas from "../schemas/interessesSchema.js";
 
 const getServersInCorrectOrder = () => {
-    const devUrl = { url: process.env.SWAGGER_DEV_URL || "http://localhost:7340" };
-    const prodUrl = { url: process.env.SWAGGER_PROD_URL || "http://localhost:7340" };
+    const devUrl = process.env.SWAGGER_DEV_URL?.trim();
+    const prodUrl = process.env.SWAGGER_PROD_URL?.trim();
+    const configuredServers = process.env.NODE_ENV === "production"
+        ? [prodUrl, devUrl]
+        : [devUrl, prodUrl];
 
-    if (process.env.NODE_ENV === "production") return [prodUrl, devUrl];
-    return [devUrl, prodUrl];
+    const seenUrls = new Set();
+
+    return configuredServers
+        .filter(Boolean)
+        .filter((url) => {
+            if (seenUrls.has(url)) return false;
+            seenUrls.add(url);
+            return true;
+        })
+        .map((url) => ({ url }));
 };
 
 const getSwaggerOptions = () => ({

@@ -20,10 +20,10 @@ MONGO_INITDB_DATABASE="Aula"
 ############################################
 # Porta principal da aplicação
 APP_PORT=7340
-# Porta para desenvolvimento do Swagger
-SWAGGER_DEV_URL="http://localhost:7340"
-# URL de produção do Swagger
-SWAGGER_PROD_URL="http://localhost:7340"
+# O Swagger usa o mesmo host de /docs por padrão.
+# Preencha apenas se quiser listar uma API externa publicada.
+# SWAGGER_DEV_URL="http://localhost:7340"
+# SWAGGER_PROD_URL="https://api.exemplo.com"
 
 ############################################
 # Configurações de Segurança e Autenticação
@@ -63,9 +63,9 @@ FIREBASE_PROJECT_ID=filascidada-65461
 APP_CHECK_ENABLED=true
 
 # Conta do admin criada na seed
-ADMIN_EMAIL="magali.thompson@ethereal.email"
-ADMIN_PASSWORD="FCjfKR8Jzxzu9rwT8e"
-ADMIN_NAME="admin"
+ADMIN_EMAIL="admin@doai.com"
+ADMIN_SENHA="Admin@123"
+ADMIN_NOME="Administrador DoaI"
 
 ############################################
 # Configuração do Email
@@ -81,8 +81,8 @@ EMAIL_SECURE=false
 # Controla se o envio de e-mails está ativo (true ou false)
 DISABLED_EMAIL=false
 
-# Email do administrador para receber notificações de erro
-ADMIN_EMAIL="filacidada@gmail.com"  # Obs.: já declarado na seção de Administrador
+# As notificações de erro usam ADMIN_EMAIL. Não redeclare essa variável aqui,
+# para não sobrescrever a conta do admin criada pela seed.
 
 # URL do Frontend e Base para links enviados por email
 FRONTEND_URL="http://localhost:7340"

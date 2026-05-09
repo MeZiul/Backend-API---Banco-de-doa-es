@@ -32,6 +32,23 @@ import administracao from './administracaoRoutes.js';
 
 dotenv.config();
 
+const buildSwaggerDocsForRequest = (swaggerDocs, req) => {
+    const seenUrls = new Set();
+    const servers = [
+        { url: "/", description: "Mesmo host da documentação" },
+        ...(swaggerDocs.servers || []),
+    ].filter(({ url }) => {
+        if (!url || seenUrls.has(url)) return false;
+        seenUrls.add(url);
+        return true;
+    });
+
+    return {
+        ...swaggerDocs,
+        servers,
+    };
+};
+
 const routes = (app) => {
     if (process.env.DEBUGLOG) {
         app.use(logRoutes);
@@ -44,12 +61,15 @@ const routes = (app) => {
     const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
 
     app.get('/docs.json', (req, res) => {
+        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
+
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Content-Disposition', 'attachment; filename="doai-api-docs.json"');
-        res.json(swaggerDocs);
+        res.json(docs);
     });
 
     app.get('/docs', (req, res) => {
+        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
         const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -88,7 +108,7 @@ const routes = (app) => {
     <script>
         window.onload = function() {
             SwaggerUIBundle({
-                spec: ${JSON.stringify(swaggerDocs)},
+                spec: ${JSON.stringify(docs)},
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
