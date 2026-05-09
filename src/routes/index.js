@@ -29,6 +29,7 @@ import itemDoacao from './itemDoacaoRoutes.js';
 import interesse from './interesseRoutes.js';
 import denuncia from './denunciaRoutes.js';
 import administracao from './administracaoRoutes.js';
+import notificacao from './notificacaoRoutes.js';
 
 dotenv.config();
 
@@ -145,6 +146,7 @@ const routes = (app) => {
     app.use(interesse);
     app.use(denuncia);
     app.use(administracao);
+    app.use(notificacao);
 };
 
 export default routes;

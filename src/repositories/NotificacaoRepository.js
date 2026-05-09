@@ -1,19 +1,35 @@
-import Notificacao from '../model/Notificacao.js';
-import BaseRepository from '../repositories/BaseRepository.js';
+import Notificacao from '../models/Notificacao.js';
+import BaseRepository from '../repositories/base/BaseRepository.js';
 
 class NotificacaoRepository extends BaseRepository {
     constructor() {
         super(Notificacao);
     }
 
-    //Lista as notificações de um usuário e ordena sempre da mais recente
-    listarDoUsuarios(usuarioId, options = { page: 1, limit: 20 }) {
+    async listarDoUsuario(usuarioId, { page, limit }) {
+        const skip = (page - 1) * limit;
+
+        // ⚠️ ATENÇÃO: Verifique se no seu Banco/Model o campo é 'usuario_id' ou 'usuario'
         const query = { usuario_id: usuarioId };
 
-        return this.listarComPaginacao(query, {
-            ...options,
-            sort: { data_criacao: -1 }
-        });
+        // O erro pode estar aqui se o this.model não estiver definido ou se os métodos do Mongoose falharem
+        const notificacoes = await this.model.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const total = await this.model.countDocuments(query);
+
+        return {
+            notificacoes,
+            paginacao: {
+                total,
+                pagina: page,
+                limite: limit,
+                total_paginas: Math.ceil(total / limit)
+            }
+        };
     }
 
     //Retorna a quantidade de notificações que ainda não foram lidas

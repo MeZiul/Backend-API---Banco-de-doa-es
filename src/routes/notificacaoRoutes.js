@@ -3,7 +3,7 @@ import NotificacaoController from "../controllers/NotificacaoController.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";
 import { validate } from "../middlewares/validateMiddleware.js";
-import { notificacaoQuerySchema} from "../utils/validators/schemas/zod/querys/NotificacaoQuerySchema.js"
+import { notificacaoQuerySchema } from "../utils/validators/schemas/zod/querys/NotificacaoQuerySchema.js"
 
 const router = express.Router();
 
