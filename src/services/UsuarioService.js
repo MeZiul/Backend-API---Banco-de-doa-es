@@ -74,6 +74,7 @@ class UsuarioService {
         nome:   usuario.nome,
         email:  usuario.email,
         perfil: usuario.perfil,
+        situacao: usuario.situacao //mudança realizada
       },
       process.env.JWT_SECRET_ACCESS_TOKEN,
       { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "24h" }

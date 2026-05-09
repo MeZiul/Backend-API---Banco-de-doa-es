@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 
 class ImagemItemService {
+
     constructor(repository) {
         this.repository = repository;
     }
@@ -12,11 +13,13 @@ class ImagemItemService {
         if (!arquivos || arquivos.length === 0) {
             throw new CustomError({
                 statusCode: 400,
-                customMessage:"Nenhuma imagem foi enviada.",
+                customMessage: "Nenhuma imagem foi enviada.",
             });
         }
 
-        const item = await this.repository.buscarFotosDoItem(idItem);
+        // buscarPorId em vez de buscarFotosDoItem
+        const item = await this.repository.buscarPorId(idItem);
+
         if (!item) {
             this._apagarArquivos(arquivos);
             throw new CustomError({
@@ -25,10 +28,10 @@ class ImagemItemService {
             });
         }
 
+        // Validação de dono e status
         if (item.usuario_id.toString() !== usuarioAutenticadoId) {
             this._apagarArquivos(arquivos);
             throw new CustomError({
-
                 statusCode: 403,
                 customMessage: "Você não tem permissão para adicionar fotos a este item."
             });
@@ -60,7 +63,10 @@ class ImagemItemService {
             mime_type: file.mimetype
         }));
 
-        return await this.repository.adicionarFotos(idItem, novasFotos);
+        // Usar o método atualizar com $push para o MongoDB
+        return await this.repository.atualizar(idItem, {
+            $push: { fotos: { $each: novasFotos } }
+        });
     }
 
     _apagarArquivos(arquivos) {
@@ -71,6 +77,33 @@ class ImagemItemService {
             }
         });
     }
+
+    async removerFoto(idItem, fotoId, usuarioId) {
+        const item = await this.repository.buscarPorId(idItem);
+
+        if (!item) throw new CustomError({ statusCode: 404, customMessage: "Item não encontrado." });
+        if (item.usuario_id.toString() !== usuarioId) throw new CustomError({ statusCode: 403, customMessage: "Acesso negado." });
+
+        // 1. Achar a foto no array (tentando pelo nome do arquivo ou pelo ID da foto)
+        const foto = item.fotos.find(f => f.url.includes(fotoId) || f._id.toString() === fotoId);
+
+        if (!foto) throw new CustomError({ statusCode: 404, customMessage: "Foto não encontrada no registro do item." });
+
+        // Apaga o arquivo físico
+        const nomeArquivoReal = foto.url.split('/').pop();
+        const caminhoArquivo = path.resolve(`./uploads/itens/${nomeArquivoReal}`);
+
+        if (fs.existsSync(caminhoArquivo)) {
+            fs.unlinkSync(caminhoArquivo);
+        }
+
+        // Remover do array no Banco usando o _id ÚNICO da sub-coleção
+        return await this.repository.atualizar(idItem, {
+            $pull: {
+                fotos: { _id: foto._id }
+            }
+        });
+    }
 }
 
-export default new ImagemItemService(ItemDoacaoRepository);
+export default new ImagemItemService(new ItemDoacaoRepository());

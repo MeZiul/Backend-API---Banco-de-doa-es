@@ -3,12 +3,18 @@ import { CustomError } from "../utils/helpers/index.js";
 import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
 
 class ItemDoacaoService {
-    constructor(itemDoacaoRepository, categoriaRepository) {
+    // 1. Adicione o interesseRepository aqui nos parâmetros
+    constructor(itemDoacaoRepository, categoriaRepository, interesseRepository) {
         this.repository = itemDoacaoRepository;
-        this.categoriaRepository = categoriaRepository
+        this.categoriaRepository = categoriaRepository;
+        this.interesseRepository = interesseRepository; // Agora a variável existe!
     }
 
     async criar(dadosItem, usuarioAutenticado) {
+        console.log("=== DEBUG USUARIO ===");
+        console.log(usuarioAutenticado);
+        console.log("=====================");
+
         if (usuarioAutenticado.situacao !== "ATIVO") {
             throw new CustomError({
                 statusCode: 403,
@@ -200,4 +206,5 @@ class ItemDoacaoService {
     }
 }
 
+// Volte para isto:
 export default ItemDoacaoService;

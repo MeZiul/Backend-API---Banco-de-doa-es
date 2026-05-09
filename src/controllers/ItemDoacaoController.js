@@ -1,15 +1,16 @@
 // src/controllers/ItemDoacaoController.js
 
-import ItemDoacaoService from "../services/ItemDoacaoService.js";
+import { itemDoacaoService } from '../containers/services.itemDoacao.container.js';
 import CommonResponse from "../utils/helpers/CommonResponse.js";
+
 
 
 class ItemDoacaoController {
 
-    async criar(req, res) {
+    criar = async (req, res) => {
         try {
             // O req.body já passou pela validação do Zod no middleware
-            const itemCriado = await ItemDoacaoService.criar(req.body, req.user);
+            const itemCriado = await itemDoacaoService.criar(req.body, req.user);
 
             return CommonResponse.created(res, itemCriado, "Item cadastrado com sucesso!");
         } catch (error) {
@@ -17,14 +18,14 @@ class ItemDoacaoController {
         }
     }
 
-    async listar(req, res) {
+    listar = async (req, res) => {
         try {
             // req.query já convertido e validado pelo Zod (ItemDoacaoQuerySchema)
             const { busca, categoria_id, cidade, condicao_item, uf, page, limit, ordenacao } = req.query;
 
             const filtros = { busca, categoria_id, cidade, condicao_item, uf };
 
-            const resultado = await ItemDoacaoService.listarDisponiveis({
+            const resultado = await itemDoacaoService.listarDisponiveis({
                 filtros,
                 page,
                 limit,
@@ -33,6 +34,7 @@ class ItemDoacaoController {
 
             return CommonResponse.success(res, resultado);
         } catch (error) {
+            // Agora o 'this' estará disponível aqui dentro!
             return this._handleError(res, error, "Erro interno ao listar itens.");
         }
     }
@@ -40,7 +42,7 @@ class ItemDoacaoController {
     async buscarPorId(req, res) {
         try {
             const { id } = req.params;
-            const item = await ItemDoacaoService.buscarDetalhes(id);
+            const item = await itemDoacaoService.buscarDetalhes(id);
 
             return CommonResponse.success(res, item);
         } catch (error) {
@@ -52,7 +54,7 @@ class ItemDoacaoController {
         try {
             const { id } = req.params;
             // O Service validará se o usuário é o dono e se o status é DISPONIVEL
-            const itemAtualizado = await ItemDoacaoService.atualizar(id, req.body, req.user.id);
+            const itemAtualizado = await itemDoacaoService.atualizar(id, req.body, req.user.id);
 
             return CommonResponse.success(res, itemAtualizado, 200, "Item atualizado com sucesso!");
         } catch (error) {
@@ -60,11 +62,11 @@ class ItemDoacaoController {
         }
     }
 
-    async excluir(req, res) {
+    async deletar(req, res) {
         try {
             const { id } = req.params;
             // O Service tratará a mudança de status para CANCELADO e notificações
-            const itemCancelado = await ItemDoacaoService.excluir(id, req.user.id);
+            const itemCancelado = await itemDoacaoService.deletar(id, req.user.id);
 
             return CommonResponse.success(res, itemCancelado, 200, "Item cancelado com sucesso.");
         } catch (error) {
