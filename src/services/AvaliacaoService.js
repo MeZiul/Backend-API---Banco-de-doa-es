@@ -74,12 +74,13 @@ class AvaliacaoService {
 
   async deletar(id, usuario) {
     const avaliacao = await this.ensureExists(id);
-    this.ensureAutorDaAvaliacao(avaliacao, usuario);
+
+    if (usuario?.perfil !== "ADMINISTRADOR") {
+      this.ensureAutorDaAvaliacao(avaliacao, usuario);
+    }
 
     await this.repository.deletar(id);
-
     await this._recalcularMedia(avaliacao.avaliado_id);
-
     return { message: "Avaliação removida com sucesso." };
   }
 
