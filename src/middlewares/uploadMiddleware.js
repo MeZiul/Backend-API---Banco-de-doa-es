@@ -6,7 +6,7 @@ import { CustomError } from "../utils/helpers/index.js";
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         // Pasta para onde os arquivo vão cair
-        cb(null, "upload/itens/");
+        cb(null, "uploads/itens/");
     },
     filename: (req, file, cb) => {
         const hash = crypto.randomBytes(16).toString('hex');

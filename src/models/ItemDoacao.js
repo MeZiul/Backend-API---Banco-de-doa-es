@@ -14,7 +14,7 @@ class ItemDoacao {
 
                 categoria_id: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: "categorias",
+                    ref: "Categoria",
                     required: true,
                     index: true
                 },

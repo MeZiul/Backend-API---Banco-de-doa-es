@@ -1,21 +1,33 @@
 import CommonResponse from "../utils/helpers/CommonResponse.js";
-
+import { ZodError } from "zod";
 
 export const validate = (schema, source = 'body') => (req, res, next) => {
     try {
-        // Valida e substitui os dados pelos valores parseados (importante para coerção de números)
         const validatedData = schema.parse(req[source]);
-        req[source] = validatedData;
+
+        // Se for query, não sobrescrevemos o objeto, apenas alteramos as propriedades
+        if (source === 'query') {
+            // Remove o que tinha antes para não sobrar lixo não validado
+            Object.keys(req.query).forEach(key => delete req.query[key]);
+            // Adiciona os dados validados/convertidos pelo Zod
+            Object.assign(req.query, validatedData);
+        } else {
+            // Para body e params, geralmente a sobrescrita direta funciona,
+            // mas usar Object.assign é mais seguro globalmente:
+            req[source] = validatedData;
+        }
 
         next();
     } catch (error) {
-        // Formata a lista de erros do Zod para o padrão do CommonResponse
-        const validationErrors = error.errors.map(err => ({
+        if (!(error instanceof ZodError)) {
+            return next(error);
+        }
+
+        const validationErrors = error.issues.map(err => ({
             campo: err.path.join('.'),
             mensagem: err.message
         }));
 
-        // Utiliza o seu CommonResponse.error
         return CommonResponse.error(
             res,
             400,

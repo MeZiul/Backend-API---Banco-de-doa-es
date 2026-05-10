@@ -10,52 +10,23 @@ import { itemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/It
 
 const router = express.Router();
 
-/**
- * Rotas Públicas (RF-003 / RF-011)
- */
-router.get(
-    "/itemdoacao",
-    validate(itemDoacaoQuerySchema, 'query'),
-    asyncWrapper(ItemDoacaoController.listar)
-);
+router
+    .get("/itemdoacao", validate(itemDoacaoQuerySchema, 'query'),
+        asyncWrapper(ItemDoacaoController.listar))
 
-router.get(
-    "/itemdoacao/:id",
-    asyncWrapper(ItemDoacaoController.buscarPorId)
-);
+    .get("/itemdoacao/:id", asyncWrapper(ItemDoacaoController.buscarPorId))
 
-/**
- * Rotas Privadas (Exigem Autenticação)
- */
-router.post(
-    "/itemdoacao",
-    AuthMiddleware,
-    validate(itemDoacaoSchema, 'body'),
-    asyncWrapper(ItemDoacaoController.criar)
-);
+    .post("/itemdoacao", AuthMiddleware, validate(itemDoacaoSchema, 'body'),
+        asyncWrapper(ItemDoacaoController.criar))
 
-router.put(
-    "/itemdoacao/:id",
-    AuthMiddleware,
-    validate(itemDoacaoSchema, 'body'),
-    asyncWrapper(ItemDoacaoController.atualizar)
-);
+    .put("/itemdoacao/:id", AuthMiddleware, validate(itemDoacaoSchema.partial(), 'body'),
+        asyncWrapper(ItemDoacaoController.atualizar))
 
-router.delete(
-    "/itemdoacao/:id",
-    AuthMiddleware,
-    asyncWrapper(ItemDoacaoController.excluir)
-);
+    .delete("/itemdoacao/:id", AuthMiddleware, asyncWrapper(ItemDoacaoController.deletar))
 
-/**
- * ROTA DE UPLOAD DE IMAGENS (RF-012)
- * Aqui usamos o Multer para processar o array de fotos antes do Controller.
- */
-router.post(
-    "/itemdoacao/:id/fotos",
-    AuthMiddleware,
-    uploadFotos.array("fotos", 5), // 'fotos' é o nome do campo no FormData
-    asyncWrapper(ImagemItemController.upload)
-);
+    .post("/itemdoacao/:id/fotos", AuthMiddleware, uploadFotos.array("fotos", 5),
+        asyncWrapper(ImagemItemController.upload))
+
+    .delete("/itemdoacao/:id/fotos/:fotoId", AuthMiddleware, asyncWrapper(ImagemItemController.deletar));
 
 export default router;
