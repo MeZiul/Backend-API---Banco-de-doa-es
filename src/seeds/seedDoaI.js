@@ -15,7 +15,7 @@ import ItemDoacao  from "../models/ItemDoacao.js";
 import Avaliacao   from "../models/Avaliacao.js";
 import Interesse   from "../models/Interesse.js";
 import Denuncia    from "../models/Denuncia.js";
-//import Notificacao from "../models/Notificacao.js";
+import Notificacao from "../models/Notificacao.js";
 
 // ── Schemas de validação ──────────────────────────────────────────────────────
 import { UsuarioSeedSchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
@@ -678,7 +678,7 @@ async function seedDenuncias(usuarios, itens) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 7) NOTIFICACOES
 // ─────────────────────────────────────────────────────────────────────────────
-/*function buildNotificacoes(usuarios, itens) {
+function buildNotificacoes(usuarios, itens) {
   const [admin, carlos, ana, pedro, maria, joao] = usuarios;
 
   const itemMap = {};
@@ -764,7 +764,7 @@ async function seedNotificacoes(usuarios, itens) {
 
   return Array.isArray(result) ? result : await Notificacao.find();
 }
-*/
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EXECUCAO PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -780,9 +780,9 @@ export async function seedAll() {
   const interesses   = await seedInteresses(usuarios, itens);
   const avaliacoes   = await seedAvaliacoes(usuarios, itens);
   const denuncias    = await seedDenuncias(usuarios, itens);
-  //const notificacoes = await seedNotificacoes(usuarios, itens);
+  const notificacoes = await seedNotificacoes(usuarios, itens);
 
-  return { categorias, usuarios, itens, interesses, avaliacoes, denuncias, /*notificacoes*/};
+  return { categorias, usuarios, itens, interesses, avaliacoes, denuncias, notificacoes};
 }
 
 async function run() {
@@ -791,7 +791,7 @@ async function run() {
 
   await DbConect.conectar();
 
-  const { categorias, usuarios, itens, interesses, avaliacoes, denuncias, /*notificacoes*/ } = await seedAll();
+  const { categorias, usuarios, itens, interesses, avaliacoes, denuncias, notificacoes } = await seedAll();
 
   const total =
     categorias.length   +
@@ -799,8 +799,8 @@ async function run() {
     itens.length        +
     interesses.length   +
     avaliacoes.length   +
-    denuncias.length    ;
-    /*notificacoes.length*/
+    denuncias.length    +
+    notificacoes.length;
 
   console.log("\n───────────────────────────────────────");
   console.log(`Seed concluido! ~${total} documentos inseridos.`);
@@ -811,7 +811,7 @@ async function run() {
   console.log(`Interesses:    ${interesses.length}`);
   console.log(`Avaliacoes:    ${avaliacoes.length}`);
   console.log(`Denuncias:     ${denuncias.length}`);
-  //console.log(`Notificacoes:  ${notificacoes.length}`);
+  console.log(`Notificacoes:  ${notificacoes.length}`);
   console.log("\nCredenciais para teste:");
   console.log(`   Admin:    ${process.env.ADMIN_EMAIL || "admin@doai.com"} / ${process.env.ADMIN_SENHA || "Admin@123"}`);
   console.log("   Usuario:  carlos@email.com / Senha@123");
