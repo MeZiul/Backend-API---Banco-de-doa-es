@@ -187,3 +187,4 @@ Especificacao_API_REST_DoaI.html
 # Ignore documents markdown AI context
 AGENTS.md
 /.ai-memory
+/docs
