@@ -1,0 +1,192 @@
+{
+  "info": {
+    "_postman_id": "a62c4ec1-4079-4b2a-99b0-2d0a11110002",
+    "name": "DoaI - Apresentacao Fluxo Principal",
+    "description": "Collection enxuta para apresentacao com tela dividida entre Figma e Postman. Nao inclui login no fluxo principal: preencha doadorToken e beneficiadoToken antes de apresentar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:7340", "type": "string" },
+    { "key": "doadorToken", "value": "", "type": "string" },
+    { "key": "beneficiadoToken", "value": "", "type": "string" },
+    { "key": "categoriaId", "value": "", "type": "string" },
+    { "key": "itemId", "value": "", "type": "string" },
+    { "key": "interesseId", "value": "", "type": "string" },
+    { "key": "buscaProduto", "value": "cadeira", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "00 - Preparar antes de apresentar",
+      "description": "Rode esta pasta antes da apresentacao, sem mostrar se nao quiser. Ela tenta descobrir uma categoria para criar item.",
+      "item": [
+        {
+          "name": "Buscar categorias e salvar primeira categoriaId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const docs = json?.data?.docs || json?.data || [];",
+                  "const first = Array.isArray(docs) ? docs[0] : docs?.docs?.[0];",
+                  "if (first?._id) pm.collectionVariables.set('categoriaId', first._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/categorias?page=1&limite=10" }
+          }
+        },
+        {
+          "name": "Fallback: buscar item existente e salvar itemId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const docs = json?.data?.docs || json?.data || [];",
+                  "const first = Array.isArray(docs) ? docs[0] : docs?.docs?.[0];",
+                  "if (first?._id) pm.collectionVariables.set('itemId', first._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/itemdoacao?page=1&limit=10" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Doador",
+      "description": "Mostrar no Figma a tela de cadastro de item e executar no Postman a criacao do item.",
+      "item": [
+        {
+          "name": "Doador cria item de doacao",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doadorToken}}", "type": "string" }] },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?._id) pm.collectionVariables.set('itemId', json.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Cadeira de escritorio\",\n  \"descricao\": \"Cadeira em bom estado para retirada no bairro Centro.\",\n  \"categoria_id\": \"{{categoriaId}}\",\n  \"condicao_item\": \"USADO_BOM\",\n  \"cidade\": \"Porto Velho\",\n  \"uf\": \"RO\",\n  \"bairro\": \"Centro\",\n  \"condicoes_doacao\": \"Retirada combinada pelo chat.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/itemdoacao" }
+          }
+        },
+        {
+          "name": "Doador acompanha interesses recebidos",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doadorToken}}", "type": "string" }] },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/interesses/recebidos?page=1&limite=10" }
+          }
+        },
+        {
+          "name": "Doador aceita interesse",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doadorToken}}", "type": "string" }] },
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagemResposta\": \"Pode retirar amanha no periodo da tarde.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/interesses/{{interesseId}}/aceitar" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Beneficiado",
+      "description": "Mostrar no Figma a busca/listagem do produto e executar no Postman a pesquisa e a demonstracao de interesse.",
+      "item": [
+        {
+          "name": "Beneficiado pesquisa produto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const docs = json?.data?.docs || json?.data || [];",
+                  "const first = Array.isArray(docs) ? docs[0] : docs?.docs?.[0];",
+                  "if (first?._id && !pm.collectionVariables.get('itemId')) pm.collectionVariables.set('itemId', first._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/itemdoacao?busca={{buscaProduto}}&page=1&limit=10" }
+          }
+        },
+        {
+          "name": "Beneficiado abre detalhes do item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/itemdoacao/{{itemId}}" }
+          }
+        },
+        {
+          "name": "Beneficiado demonstra interesse",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{beneficiadoToken}}", "type": "string" }] },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?._id) pm.collectionVariables.set('interesseId', json.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{itemId}}\",\n  \"mensagem_interessado\": \"Tenho interesse neste item e posso retirar no horario combinado.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/interesses" }
+          }
+        },
+        {
+          "name": "Beneficiado consulta seus interesses",
+          "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{beneficiadoToken}}", "type": "string" }] },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/interesses?page=1&limite=10" }
+          }
+        }
+      ]
+    }
+  ]
+}

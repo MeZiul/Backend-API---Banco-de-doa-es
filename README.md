@@ -28,6 +28,12 @@ Planos de teste:
 - [AdministracaoService](./documentacao/doc-service/Administracao.md)
 - [AvaliacaoService](./documentacao/doc-service/Avaliacao.md)
 
+Collections Postman:
+
+- [Todas as rotas implementadas](./documentacao/postman/doai-todas-rotas.postman_collection.json)
+- [Apresentacao - fluxo principal](./documentacao/postman/doai-apresentacao-fluxo-principal.postman_collection.json)
+- [Guia de uso das collections](./documentacao/postman/README.md)
+
 Swagger em runtime:
 
 - `GET /docs`
