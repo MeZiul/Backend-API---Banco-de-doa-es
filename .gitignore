@@ -51,8 +51,6 @@ coverage
 /dataSources/
 /dataSources.local.xml
 
-
-
 .idea
 # Bower dependency directory (https://bower.io/)
 bower_components
@@ -103,7 +101,6 @@ web_modules/
 # Next.js build output
 .next
 out
-
 
 # Nuxt.js build / generate output
 .nuxt
@@ -185,3 +182,8 @@ vite.config.ts.timestamp-*
 
 # Ignore documents html api
 Especificacao_API_REST_DoaI.html
+
+
+# Ignore documents markdown AI context
+AGENTS.md
+/.ai-memory
