@@ -1,274 +1,262 @@
 # Plano de Teste - Milestone 2
 
-Este plano organiza os testes da entrega de `administração`, `interesse`, `denúncia`, `autenticação` e `avaliação` para a Milestone 2.
+Este documento organiza o plano geral de testes da Milestone 2 da API DoaI. Ele deve ser usado como visao de integracao: fluxo principal, comandos de execucao, evidencias e limites da entrega.
 
-Objetivos:
-- validar o fluxo principal das funcionalidades implementadas
-- associar regra de negócio aos cenários de teste
-- sustentar a apresentação prática e a demonstração de cobertura
+Os detalhes por modulo ficam separados em `documentacao/doc-service/`.
 
-## Escopo da Milestone 2
+## 1. Objetivo
 
-Módulos cobertos:
-- `autenticação`
-- `interesse`
-- `denúncia`
-- `administração`
-- `avaliação`
+Validar que os modulos entregues na Milestone 2 funcionam de forma integrada, com foco em:
+
+- contrato HTTP das rotas implementadas;
+- autenticacao e autorizacao por perfil;
+- regras de negocio principais;
+- cenarios negativos esperados;
+- evidencia de testes e cobertura para apresentacao.
+
+## 2. Escopo Geral
+
+Modulos demonstraveis nesta milestone:
+
+- `autenticacao`;
+- `interesse`;
+- `denuncia`;
+- `administracao`;
+- `avaliacao`;
+- `usuario`, com implementacao e testes existentes, mas ainda com ajustes de contrato/documentacao pendentes;
+- `categoria`, com rota registrada, mas fora do recorte principal de testes e documentacao desta milestone.
 
 Camadas cobertas:
-- testes unitários de `services`
-- testes de contrato HTTP das `routes`
+
+- testes de route/controller com `Supertest`;
+- testes unitarios de service com dependencias mockadas;
+- documentacao Markdown das rotas;
+- Swagger em runtime para os modulos ja documentados em `src/docs/`.
 
 Fora do escopo deste plano:
-- testes de upload
-- testes de autenticação com envio real de e-mail
-- testes E2E com frontend
 
-## Estratégia de Teste
+- testes E2E com frontend;
+- testes com envio real de e-mail;
+- testes de upload de imagens;
+- testes de repository com MongoDB real;
+- correcao completa de contrato das rotas de `usuario` e cobertura de `categoria`, previstas para milestone futura.
 
-Abordagem:
-- validar regra de negócio no nível de `service`
-- validar contrato HTTP, autorização e respostas principais no nível de `route`
-- usar dados controlados e cenários determinísticos
+## 3. Planos Especificos de Teste
 
-Ferramentas previstas:
-- `Jest`
-- `Supertest`
-- `mongodb-memory-server`, configurado pelos scripts de teste com `USE_IN_MEMORY_DB=true`
-- mocks controlados para isolar services e controllers quando a regra de negócio não depende do banco real
+Os cenarios detalhados por modulo ficam nos arquivos abaixo:
 
-Comandos de execução:
+| Modulo | Arquivo |
+| ------ | ------- |
+| Autenticacao | `documentacao/doc-service/Autenticacao.md` |
+| Usuario | `documentacao/doc-service/Usuario.md` |
+| Interesse | `documentacao/doc-service/Interesse.md` |
+| Denuncia | `documentacao/doc-service/Denuncia.md` |
+| Administracao | `documentacao/doc-service/Administracao.md` |
+| Avaliacao | `documentacao/doc-service/Avaliacao.md` |
 
-```bash
+## 4. Estrategia de Teste
+
+Os testes seguem duas abordagens:
+
+- Route/controller: validam status HTTP, payload, autenticacao, autorizacao e propagacao de erros.
+- Service: validam regras de negocio isoladas, usando repositories e dependencias externas mockadas.
+
+Ferramentas:
+
+- `Jest`;
+- `Supertest`;
+- `mongodb-memory-server`;
+- mocks com `jest.fn()`;
+- cobertura com `jest --coverage`.
+
+Os scripts de teste configuram `NODE_ENV=test` e `USE_IN_MEMORY_DB=true`, entao nao dependem do seed nem do MongoDB local.
+
+## 5. Comandos de Execucao
+
+Suite completa:
+
+```powershell
 npm test
-npm run test:coverage
 ```
 
-No PowerShell, se `npm.ps1` estiver bloqueado ou se for necessário reduzir concorrência entre suítes:
+Fallback recomendado no PowerShell:
 
 ```powershell
 npm.cmd test -- --runInBand
+```
+
+Cobertura:
+
+```powershell
+npm run test:coverage
+```
+
+Fallback de cobertura no PowerShell:
+
+```powershell
 npm.cmd run test:coverage -- --runInBand
 ```
 
-Critérios mínimos de aprovação:
-- fluxo principal de cada módulo testado
-- cenários de negação cobrindo autorização, validação e conflito
-- evidência de cobertura de testes unitários durante a apresentação
+## 6. Fluxo Principal da Milestone
 
-## Fluxo Principal Apresentado
+Fluxo recomendado para demonstracao:
 
-Fluxo principal recomendado para a milestone:
-1. usuário realiza login e obtém token de autenticação
-2. um usuário manifesta interesse em um item disponível
-3. outro usuário denuncia um item ou usuário
-4. o administrador consulta a denúncia e resolve a moderação
-5. o administrador bloqueia ou desbloqueia usuário, quando aplicável
-6. o doador aceita ou recusa o interesse conforme o estado final do item
-7. após uma doação concluída, uma das partes registra avaliação da outra
+1. Usuario realiza login e obtem token JWT.
+2. Usuario autenticado manifesta interesse em item disponivel.
+3. Usuario autenticado cria denuncia contra item ou usuario.
+4. Administrador consulta denuncias pendentes.
+5. Administrador resolve denuncia e aplica moderacao quando necessario.
+6. Doador aceita ou recusa interesse.
+7. Apos doacao concluida, usuario registra avaliacao.
 
-Esse fluxo permite demonstrar:
-- autenticação e autorização
-- mudança de estado de interesse
-- criação e resolução de denúncia
-- ação administrativa associada à moderação
-- avaliação vinculada a uma doação concluída
+Esse fluxo demonstra autenticacao, autorizacao, mudanca de estado, moderacao administrativa e avaliacao vinculada ao ciclo de doacao.
 
-## Matriz de Cenários - Autenticação
+## 7. Cenarios de Integracao por Modulo
 
-### Testes de route
+### Autenticacao
 
-`/auth` deve cobrir:
-- `POST /auth/login` retorna token quando as credenciais são válidas
-- `POST /auth/login` retorna erro de validação quando e-mail ou senha são inválidos
-- `POST /auth/esqueci-senha` aceita e-mail válido e retorna resposta padronizada
-- `PUT /auth/redefinir-senha` aceita token e nova senha válida
-- `POST /auth/refresh-token` gera novo token para usuário autenticado
-- `POST /auth/logout` invalida o token informado no header `Authorization`
+Rotas cobertas:
 
-Mapeamento de regra de negócio:
-- RN-AUTH-01: login exige e-mail e senha válidos
-- RN-AUTH-02: credenciais válidas geram token JWT
-- RN-AUTH-03: contas suspensas ou inativas não devem autenticar
-- RN-AUTH-04: recuperação de senha não deve revelar se o e-mail existe
-- RN-AUTH-05: redefinição exige token válido e senha dentro do padrão de segurança
-- RN-AUTH-06: logout deve invalidar o token usado na sessão
+- `POST /auth/login`;
+- `POST /auth/esqueci-senha`;
+- `PUT /auth/redefinir-senha`;
+- `POST /auth/refresh-token`;
+- `POST /auth/logout`.
 
-## Matriz de Cenários - Interesse
+Pontos validados:
 
-### Testes de service
+- login com credenciais validas;
+- rejeicao de payload invalido;
+- recuperacao e redefinicao de senha;
+- renovacao de token;
+- blacklist de token no logout.
 
-`InteresseService` deve cobrir:
-- criar interesse com item `DISPONIVEL` e usuário válido
-- impedir interesse em item próprio
-- impedir interesse duplicado ativo para o mesmo item
-- aceitar interesse `PENDENTE`
-- ao aceitar, reservar item e recusar demais interesses pendentes
-- recusar interesse `PENDENTE`
-- cancelar interesse `PENDENTE`
-- cancelar interesse `ACEITO` e devolver item para `DISPONIVEL`
+### Interesse
 
-Mapeamento de regra de negócio:
-- RN-INT-01: somente usuário ativo pode manifestar interesse
-- RN-INT-02: item deve estar `DISPONIVEL`
-- RN-INT-03: não permitir interesse em item próprio
-- RN-INT-04: não permitir duplicidade ativa
-- RN-INT-05: aceite reserva item e recusa os demais pendentes
-- RN-INT-06: cancelamento de interesse aceito desfaz reserva
+Rotas cobertas:
 
-### Testes de route
+- `POST /interesses`;
+- `GET /interesses`;
+- `PUT /interesses/:id/aceitar`.
 
-`/interesses` deve cobrir:
-- `POST /interesses` retorna `201` no cenário feliz
-- `POST /interesses` retorna erro para payload inválido
-- `GET /interesses` retorna apenas interesses do usuário autenticado
-- `GET /interesses/:id` bloqueia acesso de terceiro não autorizado
-- `PUT /interesses/:id/aceitar` aceita apenas quando o usuário é o doador
-- `PUT /interesses/:id/recusar` recusa apenas quando o usuário é o doador
-- `DELETE /interesses/:id` cancela apenas quando o usuário é o interessado
+Pontos validados:
 
-## Matriz de Cenários - Denúncia
+- criacao de interesse;
+- listagem limitada ao usuario autenticado;
+- propagacao de erro quando usuario sem permissao tenta aceitar interesse.
 
-### Testes de service
+### Denuncia
 
-`DenunciaService` deve cobrir:
-- criar denúncia válida com alvo `ITEM`
-- criar denúncia válida com alvo `USUARIO`
-- impedir denúncia duplicada em `EM_ANALISE` para o mesmo alvo
-- listar apenas denúncias do denunciante comum
-- atualizar denúncia somente em `EM_ANALISE`
-- impedir alteração de alvo após criação
-- remover denúncia somente em `EM_ANALISE`
+Rotas cobertas:
 
-Mapeamento de regra de negócio:
-- RN-DEN-01: somente usuário `ATIVO` pode denunciar
-- RN-DEN-02: alvo deve ser válido
-- RN-DEN-03: motivo obrigatório e padronizado
-- RN-DEN-04: não permitir duplicidade enquanto houver `EM_ANALISE`
-- RN-DEN-05: edição somente antes da conclusão administrativa
-- RN-DEN-06: exclusão somente antes da conclusão administrativa
+- `POST /denuncias`;
+- `GET /denuncias`;
+- `PUT /denuncias/:id`.
 
-### Testes de route
+Pontos validados:
 
-`/denuncias` deve cobrir:
-- `POST /denuncias` retorna `201` no cenário feliz
-- `POST /denuncias` retorna conflito para denúncia duplicada em análise
-- `GET /denuncias` retorna apenas denúncias do usuário autenticado
-- `GET /denuncias/:id` permite acesso ao autor ou admin
-- `PUT /denuncias/:id` impede alteração por usuário diferente do autor
-- `DELETE /denuncias/:id` impede remoção de denúncia já concluída
+- criacao de denuncia;
+- listagem limitada ao usuario autenticado;
+- erro ao atualizar denuncia fora da regra de negocio.
 
-## Matriz de Cenários - Administração
+### Administracao
 
-### Testes de service
+Rotas cobertas:
 
-`AdministracaoService` deve cobrir:
-- bloquear usuário com justificativa
-- impedir desbloqueio de usuário que não está suspenso
-- desbloquear usuário suspenso
-- inativar usuário e cancelar itens ativos vinculados
-- resolver denúncia com resultado `PROCEDENTE`
-- resolver denúncia com resultado `IMPROCEDENTE`
+- `GET /admin/administracoes`;
+- `GET /admin/denuncias`;
+- `PUT /admin/usuarios/:id/bloquear`;
+- `PUT /admin/denuncias/:id/resolver`.
 
-Mapeamento de regra de negócio:
-- RN-ADM-01: somente `ADMINISTRADOR` pode executar moderação
-- RN-ADM-02: bloqueio exige justificativa
-- RN-ADM-03: desbloqueio exige usuário previamente suspenso
-- RN-ADM-04: inativação cancela itens ativos do usuário
-- RN-ADM-05: resolução de denúncia aceita somente estado `EM_ANALISE`
-- RN-ADM-06: ação administrativa deve registrar responsável e resultado
+Pontos validados:
 
-### Testes de route
+- listagem de acoes administrativas;
+- listagem de denuncias para moderacao;
+- bloqueio de usuario;
+- erro operacional ao resolver denuncia invalida.
 
-`/admin` deve cobrir:
-- negar acesso a usuário comum nas rotas administrativas
-- `GET /admin/usuarios` retorna dados de moderação para admin
-- `PUT /admin/usuarios/:id/bloquear` exige justificativa
-- `PUT /admin/usuarios/:id/desbloquear` funciona apenas para usuário suspenso
-- `DELETE /admin/usuarios/:id` executa inativação lógica
-- `GET /admin/denuncias` lista denúncias para análise
-- `PUT /admin/denuncias/:id/resolver` conclui denúncia em análise
+### Avaliacao
 
-## Matriz de Cenários - Avaliação
+Rotas cobertas:
 
-### Testes de service
+- `POST /avaliacoes`;
+- `GET /avaliacoes`;
+- `PUT /avaliacoes/:id`;
+- `DELETE /avaliacoes/:id`.
 
-`AvaliacaoService` deve cobrir:
-- criar avaliação quando o item está `DOADO`
-- impedir avaliação quando o item não está `DOADO`
-- impedir avaliação fora do prazo de 30 dias após a doação
-- validar se o usuário avaliado existe
-- validar se o avaliador participou da doação
-- validar se o avaliado é a outra parte da doação
-- impedir avaliação duplicada para o mesmo item e tipo
-- permitir atualização apenas pelo autor da avaliação
-- recalcular média do usuário avaliado quando a nota é alterada
-- permitir remoção apenas pelo autor da avaliação
-- recalcular média do usuário avaliado quando a avaliação é removida
+Pontos validados:
 
-Mapeamento de regra de negócio:
-- RN-AVA-01: avaliação exige usuário autenticado
-- RN-AVA-02: avaliação só pode ocorrer após doação confirmada
-- RN-AVA-03: apenas participantes da doação podem avaliar
-- RN-AVA-04: o avaliado deve ser a outra parte da doação
-- RN-AVA-05: não deve haver avaliação duplicada no mesmo sentido
-- RN-AVA-06: edição e remoção pertencem ao autor da avaliação
-- RN-AVA-07: alteração de nota deve atualizar média e total de avaliações do avaliado
+- criacao de avaliacao;
+- listagem com filtros;
+- atualizacao apenas de campos permitidos;
+- rejeicao de campos sensiveis;
+- erro ao remover avaliacao de outro usuario.
 
-### Testes de route
+### Usuario
 
-`/avaliacoes` deve cobrir:
-- `POST /avaliacoes` retorna `201` no cenário feliz
-- `POST /avaliacoes` retorna erro quando payload é inválido
-- `GET /avaliacoes` lista avaliações com filtros aceitos
-- `GET /avaliacoes/:id` consulta uma avaliação por ID
-- `PUT /avaliacoes/:id` atualiza apenas `nota` e `comentario`
-- `PUT /avaliacoes/:id` rejeita alteração de campos sensíveis como `item_id`, `avaliado_id` e `tipo`
-- `DELETE /avaliacoes/:id` propaga erro quando o usuário não é autor
+Rotas atualmente testadas:
 
-## Evidências para Apresentação
+- `POST /usuario`;
+- `GET /usuario`;
+- `GET /usuario/:id`;
+- `PUT /usuario/:id`;
+- `DELETE /usuario/:id`;
+- `GET /usuario/:id/itens`;
+- `PATCH /usuario/:id/suspender`;
+- `PATCH /usuario/:id/reativar`.
 
-Durante a milestone, apresentar:
-- execução da suíte de testes
-- cobertura gerada pela suíte unitária
-- um cenário feliz por módulo
-- um cenário de bloqueio por regra de negócio em cada módulo
+Ponto de atencao:
 
-Evidência da revisão atual:
-- suíte executada com `npm.cmd test -- --runInBand`
-- cobertura executada com `npm.cmd run test:coverage -- --runInBand`
-- resultado base antes da expansão: 6 suites aprovadas e 19 testes aprovados
-- resultado esperado após integração das branches de autenticação e avaliação: 9 suites aprovadas e 34 testes aprovados
-- cobertura global esperada após integração: aproximadamente 60% statements, 45% branches, 61% functions e 59% lines
-- módulos de rota cobertos: `auth`, `avaliacao`, `administracao`, `interesse` e `denuncia`
-- módulos de service cobertos no recorte atual: `AvaliacaoService`, `AdministracaoService`, `InteresseService` e `DenunciaService`
-- o banco de teste é isolado por `mongodb-memory-server`
-- a massa manual de apresentação deve ser gerada com `npm.cmd run seed`, após configurar o MongoDB local
+- a documentacao-base define `/usuarios` no plural, mas a implementacao atual ainda usa `/usuario` no singular. A correcao de contrato ficou planejada para milestone futura.
 
-Sugestão de roteiro:
-1. mostrar o arquivo de documentação da rota
-2. mostrar o teste do service associado à principal regra de negócio
-3. mostrar o teste da route correspondente
-4. executar a rota no Postman para fechar a demonstração prática
+## 8. Evidencias Atuais
 
-## Riscos Conhecidos
+Ultima validacao executada:
 
-Pontos que precisam estar integrados para a demonstração sair estável:
-- merge das branches de rota na `dev`
-- registro das rotas em `src/routes/index.js`
-- middleware de autenticação e autorização ativo
-- schemas Zod conectados aos controllers ou middlewares de validação
-- massa de teste coerente com os estados do domínio
-- `.env` configurado para MongoDB real ou `USE_IN_MEMORY_DB=true` em validação local
-- usuário administrador disponível para testar rotas `/admin`
-- usuário comum ativo, usuário suspenso e usuário inativo disponíveis para testar autenticação
-- item `DOADO` com interesse aceito vinculado disponível para testar avaliação
+```powershell
+npm.cmd run test:coverage -- --runInBand
+```
 
-## Resultado Esperado
+Resultado:
 
-Ao final da Milestone 2, a equipe deve conseguir demonstrar:
-- rotas documentadas em Markdown
-- regras de negócio explicitadas por endpoint
-- plano de teste alinhado com o fluxo principal
-- testes unitários e de rota cobrindo os cenários centrais de `autenticação`, `interesse`, `denúncia`, `administração` e `avaliação`
+| Item | Resultado |
+| ---- | --------- |
+| Test suites | 11 aprovadas |
+| Testes | 67 aprovados |
+| Statements | 62.95% |
+| Branches | 48.09% |
+| Functions | 67.66% |
+| Lines | 62.66% |
+
+Observacao: os `warn` exibidos durante os testes fazem parte dos cenarios negativos esperados, como payload invalido, permissao negada, senha incorreta e estado de negocio invalido.
+
+## 9. Evidencias para a Apresentacao
+
+Durante a apresentacao, demonstrar:
+
+- execucao de `npm test` ou `npm.cmd test -- --runInBand`;
+- tela de cobertura com `npm run test:coverage`;
+- Swagger em `GET /docs`;
+- uma rota de interesse no Postman;
+- uma rota de denuncia no Postman;
+- um exemplo de documentacao Markdown de rota;
+- um exemplo de plano unitario em `documentacao/doc-service/`.
+
+## 10. Riscos Conhecidos
+
+- `usuario` ainda precisa alinhar caminho singular/plural com o contrato oficial.
+- `categoria` esta registrada, mas ainda nao tem a mesma cobertura documental/testes dos modulos principais.
+- Para demonstracao manual no Postman, o seed exige MongoDB local ativo ou outra URI Mongo configurada.
+- Os testes automatizados nao precisam de seed, pois usam banco em memoria.
+
+## 11. Resultado Esperado
+
+Ao final da Milestone 2, a equipe deve conseguir apresentar:
+
+- rotas principais documentadas em Markdown;
+- Swagger acessivel em runtime;
+- plano geral de teste por fluxo de integracao;
+- planos unitarios por service;
+- suite automatizada passando;
+- cobertura de testes demonstravel;
+- demonstracao pratica no Postman para os fluxos principais.
