@@ -1,209 +1,184 @@
-
 import { CustomError } from "../utils/helpers/index.js";
 import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
 
 class ItemDoacaoService {
-    // 1. Adicione o interesseRepository aqui nos parâmetros
-    constructor(itemDoacaoRepository, categoriaRepository, interesseRepository) {
-        this.repository = itemDoacaoRepository;
-        this.categoriaRepository = categoriaRepository;
-        this.interesseRepository = interesseRepository; // Agora a variável existe!
+  // 1. Adicione o interesseRepository aqui nos parâmetros
+  constructor(itemDoacaoRepository, categoriaRepository, interesseRepository) {
+    this.repository = itemDoacaoRepository;
+    this.categoriaRepository = categoriaRepository;
+    this.interesseRepository = interesseRepository; // Agora a variável existe!
+  }
+
+  async criar(dadosItem, usuarioAutenticado) {
+    console.log("=== DEBUG USUARIO ===");
+    console.log(usuarioAutenticado);
+    console.log("=====================");
+
+    if (usuarioAutenticado.situacao !== "ATIVO") {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage:
+          "Apenas usuários com situação ATIVO podem cadastrar itens.",
+      });
     }
 
-    async criar(dadosItem, usuarioAutenticado) {
-        console.log("=== DEBUG USUARIO ===");
-        console.log(usuarioAutenticado);
-        console.log("=====================");
-
-        if (usuarioAutenticado.situacao !== "ATIVO") {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Apenas usuários com situação ATIVO podem cadastrar itens.",
-            });
-        }
-
-        if (!dadosItem.titulo || !dadosItem.descricao || !dadosItem.categoria_id || !dadosItem.condicao_item) {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "Título, descrição, categoria e condição do item são obrigatórios."
-            });
-        }
-
-        const cidade = dadosItem.cidade || usuarioAutenticado.cidade;
-        const uf = dadosItem.uf || usuarioAutenticado.uf;
-
-        const novoItem = {
-            ...dadosItem,
-            cidade,
-            uf,
-            usuario_id: usuarioAutenticado.id,
-            status: "DISPONIVEL",
-            visualizacoes: 0,
-            total_interesses: 0
-        };
-
-        // 2. Corrigido para usar this.repository
-        return await this.repository.criar(novoItem);
+    if (
+      !dadosItem.titulo ||
+      !dadosItem.descricao ||
+      !dadosItem.categoria_id ||
+      !dadosItem.condicao_item
+    ) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage:
+          "Título, descrição, categoria e condição do item são obrigatórios.",
+      });
     }
 
+    const cidade = dadosItem.cidade || usuarioAutenticado.cidade;
+    const uf = dadosItem.uf || usuarioAutenticado.uf;
 
-    async listarDisponiveis({ filtros, page, limit, ordenacao }) {
-        return await this.repository.listarDisponiveis({ filtros, page, limit, ordenacao });
+    const novoItem = {
+      ...dadosItem,
+      cidade,
+      uf,
+      usuario_id: usuarioAutenticado.id,
+      status: "DISPONIVEL",
+      visualizacoes: 0,
+      total_interesses: 0,
+    };
+
+    // 2. Corrigido para usar this.repository
+    return await this.repository.criar(novoItem);
+  }
+
+  async listarDisponiveis({ filtros, page, limit, ordenacao }) {
+    return await this.repository.listarDisponiveis({
+      filtros,
+      page,
+      limit,
+      ordenacao,
+    });
+  }
+
+  async buscarDetalhes(id) {
+    const item = await this.repository.buscarDetalhes(id);
+    if (!item) {
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
+    }
+    return item;
+  }
+
+  async atualizar(id, dadosAtualizacao, usuarioAutenticadoId) {
+    const item = await this.repository.buscarPorId(id);
+    if (!item)
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
+
+    if (item.usuario_id.toString() !== usuarioAutenticadoId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Você não tem permissão para editar este item.",
+      });
     }
 
-    async buscarDetalhes(id) {
-        const item = await this.repository.buscarDetalhes(id);
-        if (!item) {
-            throw new CustomError({ statusCode: 404, customMessage: "Item não encontrado." });
-        }
-        return item;
+    if (item.status !== "DISPONIVEL") {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: `Edição bloqueada. O status atual do item é ${item.status}.`,
+      });
     }
 
-    async atualizar(id, dadosAtualizacao, usuarioAutenticadoId) {
-        const item = await this.repository.buscarPorId(id);
-        if (!item) throw new CustomError({
-            statusCode: 404,
-            customMessage: "Item não encontrado."
-        });
+    delete dadosAtualizacao.status;
+    delete dadosAtualizacao.usuario_id;
+    delete dadosAtualizacao.interesse_aceito_id;
 
-        if (item.usuario_id.toString() !== usuarioAutenticadoId) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Você não tem permissão para editar este item."
-            });
-        }
+    return await this.repository.atualizar(id, dadosAtualizacao);
+  }
 
-        if (item.status !== "DISPONIVEL") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: `Edição bloqueada. O status atual do item é ${item.status}.`
-            });
-        }
+  async deletar(id, usuarioAutenticadoId) {
+    const item = await this.repository.buscarPorId(id);
+    if (!item)
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
 
-        delete dadosAtualizacao.status;
-        delete dadosAtualizacao.usuario_id;
-        delete dadosAtualizacao.interesse_aceito_id;
-
-        return await this.repository.atualizar(id, dadosAtualizacao);
+    if (item.usuario_id.toString() !== usuarioAutenticadoId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Você não tem permissão para excluir este item.",
+      });
     }
 
-    async excluir(id, usuarioAutenticadoId) {
-        const item = await this.repository.buscarPorId(id);
-        if (!item) throw new CustomError({
-            statusCode: 404,
-            customMessage:"Item não encontrado."
-        });
-
-        if (item.usuario_id.toString() !== usuarioAutenticadoId) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Você não tem permissão para excluir este item."
-            });
-        }
-
-        if (item.status === "RESERVADO" || item.status === "AGUARDANDO_CONFIRMACAO") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "Não é possível excluir um item que está em processo de doação (Reservado ou Aguardando Confirmação)."
-            });
-        }
-
-        return await this.repository.atualizar(id, { status: "CANCELADO" });
+    if (
+      item.status === "RESERVADO" ||
+      item.status === "AGUARDANDO_CONFIRMACAO"
+    ) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage:
+          "Não é possível excluir um item que está em processo de doação.",
+      });
     }
 
-    async aceitarInteresse(idItem, idInteresse, usuarioAutenticadoId) {
-        const item = await this.repository.buscarPorId(idItem);
-        if (!item) throw new CustomError({
-            statusCode: 404,
-            customMessage: "Item não encontrado."
-        });
+    return await this.repository.deletar(id);
+  }
 
-        if (item.usuario_id.toString() !== usuarioAutenticadoId) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Apenas o doador pode aceitar um interesse."
-            });
-        }
+  async confirmarEntrega(idItem, usuarioAutenticadoId) {
+    const item = await this.repository.buscarPorId(idItem);
+    if (!item)
+      throw new CustomError({
+        statusCode: 404, // Mudei para 404 (Not Found) em vez de 400
+        customMessage: "Item não encontrado.",
+      });
 
-        if (item.status !== "DISPONIVEL") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "O item não está mais disponível para reserva."
-            });
-        }
-
-        return await this.repository.atualizar(idItem, {
-            status: "RESERVADO",
-            interesse_aceito_id: idInteresse
-        });
+    if (item.usuario_id.toString() !== usuarioAutenticadoId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Apenas o doador pode marcar o item como entregue.",
+      });
     }
 
-    async cancelarReserva(idItem, usuarioAutenticadoId) {
-        const item = await this.repository.buscarPorId(idItem);
-
-        // 4. Corrigido de "new Error" para "new CustomError"
-        if (!item) throw new CustomError({ statusCode: 404, customMessage: "Item não encontrado." });
-
-        if (item.usuario_id.toString() !== usuarioAutenticadoId) {
-            throw new CustomError({ statusCode: 403, customMessage: "Apenas o doador pode cancelar esta reserva." });
-        }
-
-        if (item.status !== "RESERVADO") {
-            throw new CustomError({ statusCode: 400, customMessage: "Apenas itens reservados podem ter a reserva cancelada." });
-        }
-
-        return await this.repository.atualizar(idItem, {
-            status: "DISPONIVEL",
-            interesse_aceito_id: null // Limpa o interesse aceito
-        });
+    if (item.status !== "RESERVADO") {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage:
+          "O item precisa estar reservado para ser marcado como entregue.",
+      });
     }
 
-    async marcarComoEntregue(idItem, usuarioAutenticadoId) {
-        const item = await this.repository.buscarPorId(idItem);
-        if (!item) throw new CustomError({
-            statusCode: 404, // Mudei para 404 (Not Found) em vez de 400
-            customMessage: "Item não encontrado."
-        });
+    return await this.repository.atualizar(idItem, {
+      status: "AGUARDANDO_CONFIRMACAO",
+    });
+  }
 
-        if (item.usuario_id.toString() !== usuarioAutenticadoId) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Apenas o doador pode marcar o item como entregue."
-            });
-        }
+  async confirmarRecebimento(idItem, interessadoAutenticadoId) {
+    const item = await this.repository.buscarPorId(idItem);
+    if (!item)
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
 
-        if (item.status !== "RESERVADO") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "O item precisa estar reservado para ser marcado como entregue."
-            });
-        }
-
-        return await this.repository.atualizar(idItem, {
-            status: "AGUARDANDO_CONFIRMACAO"
-        });
+    if (item.status !== "AGUARDANDO_CONFIRMACAO") {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage:
+          "Este item não está aguardando confirmação de recebimento.",
+      });
     }
 
-    async confirmarRecebimento(idItem, interessadoAutenticadoId) {
-        const item = await this.repository.buscarPorId(idItem);
-        if (!item) throw new CustomError({
-            statusCode: 404,
-            customMessage: "Item não encontrado."
-        });
-
-        if (item.status !== "AGUARDANDO_CONFIRMACAO") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "Este item não está aguardando confirmação de recebimento."
-            });
-        }
-
-
-        return await this.repository.atualizar(idItem, {
-            status: "DOADO",
-            data_doacao: new Date() // Registra o momento exato do sucesso
-        });
-    }
+    return await this.repository.atualizar(idItem, {
+      status: "DOADO",
+      data_doacao: new Date(), // Registra o momento exato do sucesso
+    });
+  }
 }
 
 // Volte para isto:

@@ -20,57 +20,60 @@ import auditorias from './auditoriaRoutes.js';
 import perfil from './perfilRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
-import example from './exampleRoutes.js';
-import usuario from './usuarioRoutes.js';
-import categoria from './categoriaRoutes.js';
-import avaliacao from './avaliacaoRotas.js';
-import auth from './authRoutes.js';
-import itemDoacao from './itemDoacaoRoutes.js';
-import interesse from './interesseRoutes.js';
-import denuncia from './denunciaRoutes.js';
-import administracao from './administracaoRoutes.js';
-
+import example from "./exampleRoutes.js";
+import usuario from "./usuarioRoutes.js";
+import categoria from "./categoriaRoutes.js";
+import avaliacao from "./avaliacaoRotas.js";
+import auth from "./authRoutes.js";
+import itemDoacao from "./itemDoacaoRoutes.js";
+import interesse from "./interesseRoutes.js";
+import denuncia from "./denunciaRoutes.js";
+import administracao from "./administracaoRoutes.js";
+//import notificacoes from "./notificacaoRoutes.js";
 dotenv.config();
 
 const buildSwaggerDocsForRequest = (swaggerDocs, req) => {
-    const seenUrls = new Set();
-    const servers = [
-        { url: "/", description: "Mesmo host da documentação" },
-        ...(swaggerDocs.servers || []),
-    ].filter(({ url }) => {
-        if (!url || seenUrls.has(url)) return false;
-        seenUrls.add(url);
-        return true;
-    });
+  const seenUrls = new Set();
+  const servers = [
+    { url: "/", description: "Mesmo host da documentação" },
+    ...(swaggerDocs.servers || []),
+  ].filter(({ url }) => {
+    if (!url || seenUrls.has(url)) return false;
+    seenUrls.add(url);
+    return true;
+  });
 
-    return {
-        ...swaggerDocs,
-        servers,
-    };
+  return {
+    ...swaggerDocs,
+    servers,
+  };
 };
 
 const routes = (app) => {
-    if (process.env.DEBUGLOG) {
-        app.use(logRoutes);
-    }
-    // rota para encaminhar da raiz para /docs
-    app.get("/", (req, res) => {
-        res.redirect("/docs");
-    });
+  if (process.env.DEBUGLOG) {
+    app.use(logRoutes);
+  }
+  // rota para encaminhar da raiz para /docs
+  app.get("/", (req, res) => {
+    res.redirect("/docs");
+  });
 
-    const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
+  const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
 
-    app.get('/docs.json', (req, res) => {
-        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
+  app.get("/docs.json", (req, res) => {
+    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', 'attachment; filename="doai-api-docs.json"');
-        res.json(docs);
-    });
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="doai-api-docs.json"',
+    );
+    res.json(docs);
+  });
 
-    app.get('/docs', (req, res) => {
-        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
-        const html = `
+  app.get("/docs", (req, res) => {
+    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
+    const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -125,26 +128,27 @@ const routes = (app) => {
     </script>
 </body>
 </html>`;
-        res.setHeader('Content-Type', 'text/html');
-        res.send(html);
-    });
-    
-    // ── Registro das rotas da API ──────────────────────
-    app.use(express.json());
-    app.use(auth); 
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
 
-    app.use(example);
-    
-    app.use(usuario);
+  // ── Registro das rotas da API ──────────────────────
+  app.use(express.json());
+  app.use(auth);
 
-    app.use(categoria);
-    
-    app.use(avaliacao);
+  app.use(example);
 
-    app.use(itemDoacao);
-    app.use(interesse);
-    app.use(denuncia);
-    app.use(administracao);
+  app.use(usuario);
+
+  app.use(categoria);
+
+  app.use(avaliacao);
+
+  app.use(itemDoacao);
+  app.use(interesse);
+  app.use(denuncia);
+  app.use(administracao);
+  //app.use(notificacoes);
 };
 
 export default routes;

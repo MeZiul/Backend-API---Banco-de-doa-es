@@ -19,6 +19,9 @@ router
     .post("/itemdoacao", AuthMiddleware, validate(itemDoacaoSchema, 'body'),
         asyncWrapper(ItemDoacaoController.criar))
 
+    .put("/itemdoacao/:id/confirmar-entrega",     AuthMiddleware, asyncWrapper(ItemDoacaoController.confirmarEntrega))
+    .put("/itemdoacao/:id/confirmar-recebimento", AuthMiddleware, asyncWrapper(ItemDoacaoController.confirmarRecebimento))
+
     .put("/itemdoacao/:id", AuthMiddleware, validate(itemDoacaoSchema.partial(), 'body'),
         asyncWrapper(ItemDoacaoController.atualizar))
 
@@ -28,5 +31,4 @@ router
         asyncWrapper(ImagemItemController.upload))
 
     .delete("/itemdoacao/:id/fotos/:fotoId", AuthMiddleware, asyncWrapper(ImagemItemController.deletar));
-
 export default router;
