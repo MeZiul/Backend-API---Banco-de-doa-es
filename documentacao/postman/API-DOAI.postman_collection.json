@@ -1,0 +1,312 @@
+{
+	"info": {
+		"_postman_id": "91ad59b6-209a-4fde-8e64-383d4c67602b",
+		"name": "API-DOAI",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "54518239"
+	},
+	"item": [
+		{
+			"name": "Apresentação",
+			"item": [
+				{
+					"name": "1 - Login como João (doador)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"joao@email.com\",\r\n  \"senha\": \"Senha@123\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:7340/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2 - João cria item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"titulo\": \"Bicicleta infantil aro 16\",\r\n  \"descricao\": \"Bicicleta com rodinhas em otimo estado.\",\r\n  \"categoria_id\": \"69fe7cdbe573d1259e2deb6f\",\r\n  \"condicao_item\": \"USADO_BOM\",\r\n  \"cidade\": \"Rio Branco\",\r\n  \"uf\": \"AC\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:7340/itemdoacao",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"itemdoacao"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4 - Login como Ana (interessada)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"ana@email.com\",\r\n  \"senha\": \"Senha@123\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:7340/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3 - Verificar item público",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"itemdoacao",
+								"6a012726031b04f436d1a72b"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5 - Ana manifesta interesse",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdkZCIsIm5vbWUiOiJBbmEgU291emEiLCJlbWFpbCI6ImFuYUBlbWFpbC5jb20iLCJwZXJmaWwiOiJVU1VBUklPIiwic2l0dWFjYW8iOiJBVElWTyIsImlhdCI6MTc3ODQ2MDUzMywiZXhwIjoxNzc4NDYxNDMzfQ.Olm0bjMRKA_IRUf6AzxYMmhJZEgB1F0zCkZOIizBIQc",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"item_id\": \"6a012726031b04f436d1a72b\",\r\n  \"mensagem_interessado\": \"Tenho muito interesse! Posso retirar quando quiser.\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:7340/interesses",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"interesses"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6 - João lista interesses recebidos",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:7340/interesses/recebidos",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"interesses",
+								"recebidos"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7 - João aceita o interesse",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNzYwLCJleHAiOjE3Nzg0NjE2NjB9.K3rTluuNjlVK_9X-2bpXHaY84Kozmmw9n_gNMJgtriw",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:7340/interesses/6a0127b0031b04f436d1a736/aceitar",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"interesses",
+								"6a0127b0031b04f436d1a736",
+								"aceitar"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8 - Verificar item reservado",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"itemdoacao",
+								"6a012726031b04f436d1a72b"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9 - João confirma entrega",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNzYwLCJleHAiOjE3Nzg0NjE2NjB9.K3rTluuNjlVK_9X-2bpXHaY84Kozmmw9n_gNMJgtriw",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b/confirmar-entrega",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"itemdoacao",
+								"6a012726031b04f436d1a72b",
+								"confirmar-entrega"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10 - Ana confirma recebimento",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdkZCIsIm5vbWUiOiJBbmEgU291emEiLCJlbWFpbCI6ImFuYUBlbWFpbC5jb20iLCJwZXJmaWwiOiJVU1VBUklPIiwic2l0dWFjYW8iOiJBVElWTyIsImlhdCI6MTc3ODQ2MTIzMywiZXhwIjoxNzc4NDYyMTMzfQ.KbKhQ7_JILMQLt9huySCbv_vVm7slGNKn25Haw7WbCg",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b/confirmar-recebimento",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7340",
+							"path": [
+								"itemdoacao",
+								"6a012726031b04f436d1a72b",
+								"confirmar-recebimento"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
