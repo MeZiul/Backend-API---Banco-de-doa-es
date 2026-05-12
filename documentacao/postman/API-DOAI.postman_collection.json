@@ -1,312 +1,421 @@
 {
-	"info": {
-		"_postman_id": "91ad59b6-209a-4fde-8e64-383d4c67602b",
-		"name": "API-DOAI",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "54518239"
-	},
-	"item": [
-		{
-			"name": "Apresentação",
-			"item": [
-				{
-					"name": "1 - Login como João (doador)",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"email\": \"joao@email.com\",\r\n  \"senha\": \"Senha@123\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:7340/auth/login",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "2 - João cria item",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"titulo\": \"Bicicleta infantil aro 16\",\r\n  \"descricao\": \"Bicicleta com rodinhas em otimo estado.\",\r\n  \"categoria_id\": \"69fe7cdbe573d1259e2deb6f\",\r\n  \"condicao_item\": \"USADO_BOM\",\r\n  \"cidade\": \"Rio Branco\",\r\n  \"uf\": \"AC\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:7340/itemdoacao",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"itemdoacao"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "4 - Login como Ana (interessada)",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"email\": \"ana@email.com\",\r\n  \"senha\": \"Senha@123\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:7340/auth/login",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "3 - Verificar item público",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"itemdoacao",
-								"6a012726031b04f436d1a72b"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "5 - Ana manifesta interesse",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdkZCIsIm5vbWUiOiJBbmEgU291emEiLCJlbWFpbCI6ImFuYUBlbWFpbC5jb20iLCJwZXJmaWwiOiJVU1VBUklPIiwic2l0dWFjYW8iOiJBVElWTyIsImlhdCI6MTc3ODQ2MDUzMywiZXhwIjoxNzc4NDYxNDMzfQ.Olm0bjMRKA_IRUf6AzxYMmhJZEgB1F0zCkZOIizBIQc",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"item_id\": \"6a012726031b04f436d1a72b\",\r\n  \"mensagem_interessado\": \"Tenho muito interesse! Posso retirar quando quiser.\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:7340/interesses",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"interesses"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "6 - João lista interesses recebidos",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNDQ0LCJleHAiOjE3Nzg0NjEzNDR9.0-oHsfp6H_hQWSNrD3zOGc5Qj2nPhHgq2hCENlAR3zU",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:7340/interesses/recebidos",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"interesses",
-								"recebidos"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "7 - João aceita o interesse",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNzYwLCJleHAiOjE3Nzg0NjE2NjB9.K3rTluuNjlVK_9X-2bpXHaY84Kozmmw9n_gNMJgtriw",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:7340/interesses/6a0127b0031b04f436d1a736/aceitar",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"interesses",
-								"6a0127b0031b04f436d1a736",
-								"aceitar"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "8 - Verificar item reservado",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"itemdoacao",
-								"6a012726031b04f436d1a72b"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "9 - João confirma entrega",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdlMCIsIm5vbWUiOiJKb2FvIE9saXZlaXJhIiwiZW1haWwiOiJqb2FvQGVtYWlsLmNvbSIsInBlcmZpbCI6IlVTVUFSSU8iLCJzaXR1YWNhbyI6IkFUSVZPIiwiaWF0IjoxNzc4NDYwNzYwLCJleHAiOjE3Nzg0NjE2NjB9.K3rTluuNjlVK_9X-2bpXHaY84Kozmmw9n_gNMJgtriw",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b/confirmar-entrega",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"itemdoacao",
-								"6a012726031b04f436d1a72b",
-								"confirmar-entrega"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "10 - Ana confirma recebimento",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDEyNmUzZjk1NWU4YWQ3NjZjMDdkZCIsIm5vbWUiOiJBbmEgU291emEiLCJlbWFpbCI6ImFuYUBlbWFpbC5jb20iLCJwZXJmaWwiOiJVU1VBUklPIiwic2l0dWFjYW8iOiJBVElWTyIsImlhdCI6MTc3ODQ2MTIzMywiZXhwIjoxNzc4NDYyMTMzfQ.KbKhQ7_JILMQLt9huySCbv_vVm7slGNKn25Haw7WbCg",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:7340/itemdoacao/6a012726031b04f436d1a72b/confirmar-recebimento",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "7340",
-							"path": [
-								"itemdoacao",
-								"6a012726031b04f436d1a72b",
-								"confirmar-recebimento"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		}
-	]
+  "info": {
+    "_postman_id": "91ad59b6-209a-4fde-8e64-383d4c67602b",
+    "name": "API-DOAI",
+    "description": "Fluxo automatizado para apresentacao. Rode as requests em ordem: tokens, itemId e interesseId sao salvos automaticamente em variaveis da collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "54518239"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7340",
+      "type": "string"
+    },
+    {
+      "key": "senhaPadrao",
+      "value": "Senha@123",
+      "type": "string"
+    },
+    {
+      "key": "joaoEmail",
+      "value": "joao@email.com",
+      "type": "string"
+    },
+    {
+      "key": "anaEmail",
+      "value": "ana@email.com",
+      "type": "string"
+    },
+    {
+      "key": "joaoToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "joaoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoriaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "interesseId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Apresentacao",
+      "description": "Execute em ordem. Os scripts em Tests preenchem categoriaId, joaoToken, anaToken, itemId e interesseId automaticamente.",
+      "item": [
+        {
+          "name": "0 - Preparar categoria para o item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json?.data;",
+                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const first = docs[0];",
+                  "if (first?._id) pm.collectionVariables.set('categoriaId', first._id);",
+                  "pm.test('categoriaId preenchido', function () { pm.expect(pm.collectionVariables.get('categoriaId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categorias?page=1&limite=10"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1 - Login como Joao (doador)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token;",
+                  "const usuario = json?.data?.usuario;",
+                  "if (token) pm.collectionVariables.set('joaoToken', token);",
+                  "if (usuario?._id) pm.collectionVariables.set('joaoId', usuario._id);",
+                  "pm.test(\"login retornou token\", function () { pm.expect(token).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{joaoEmail}}\",\n  \"senha\": \"{{senhaPadrao}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2 - Joao cria item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?._id;",
+                  "if (id) pm.collectionVariables.set('itemId', id);",
+                  "pm.test('itemId preenchido', function () { pm.expect(pm.collectionVariables.get('itemId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Bicicleta infantil aro 16\",\n  \"descricao\": \"Bicicleta com rodinhas em otimo estado.\",\n  \"categoria_id\": \"{{categoriaId}}\",\n  \"condicao_item\": \"USADO_BOM\",\n  \"cidade\": \"Rio Branco\",\n  \"uf\": \"AC\",\n  \"bairro\": \"Centro\",\n  \"condicoes_doacao\": \"Retirada combinada pelo chat.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/itemdoacao"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3 - Verificar item publico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/itemdoacao/{{itemId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4 - Login como Ana (interessada)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token;",
+                  "const usuario = json?.data?.usuario;",
+                  "if (token) pm.collectionVariables.set('anaToken', token);",
+                  "if (usuario?._id) pm.collectionVariables.set('anaId', usuario._id);",
+                  "pm.test(\"login retornou token\", function () { pm.expect(token).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{anaEmail}}\",\n  \"senha\": \"{{senhaPadrao}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5 - Ana manifesta interesse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const id = json?.data?._id;",
+                  "if (id) pm.collectionVariables.set('interesseId', id);",
+                  "pm.test('interesseId preenchido', function () { pm.expect(pm.collectionVariables.get('interesseId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{itemId}}\",\n  \"mensagem_interessado\": \"Tenho interesse nessa bicicleta e posso retirar ainda hoje.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/interesses"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6 - Joao lista interesses recebidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json?.data;",
+                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const currentItemId = pm.collectionVariables.get(\"itemId\");",
+                  "const match = docs.find((i) => {",
+                  "  const item = i.item_id?._id || i.item_id;",
+                  "  return String(item) === String(currentItemId);",
+                  "}) || docs[0];",
+                  "if (match?._id) pm.collectionVariables.set(\"interesseId\", match._id);",
+                  "pm.test(\"interesse recebido salvo\", function () { pm.expect(pm.collectionVariables.get(\"interesseId\")).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/interesses/recebidos?page=1&limite=10"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7 - Joao aceita o interesse",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagemResposta\": \"Pode retirar amanha no periodo da tarde.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/interesses/{{interesseId}}/aceitar"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8 - Verificar item reservado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/itemdoacao/{{itemId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9 - Joao confirma entrega",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/itemdoacao/{{itemId}}/confirmar-entrega"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Ana confirma recebimento",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/itemdoacao/{{itemId}}/confirmar-recebimento"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }

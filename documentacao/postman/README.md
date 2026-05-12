@@ -5,7 +5,7 @@ Esta pasta contem duas collections para testar e apresentar a API.
 ## Arquivos
 
 - `doai-todas-rotas.postman_collection.json`: collection tecnica com as rotas implementadas e exemplos de payload.
-- `doai-apresentacao-fluxo-principal.postman_collection.json`: collection curta para a apresentacao, focada no fluxo doador -> item -> beneficiado -> interesse.
+- `API-DOAI.postman_collection.json`: collection curta para a apresentacao, focada no fluxo doador -> item -> beneficiado -> interesse. Ela salva tokens e IDs automaticamente nas variaveis da collection.
 
 ## Antes de usar
 
@@ -34,7 +34,7 @@ Senha@123
 Usuarios uteis:
 
 - Administrador: `admin@doai.com`
-- Doador sugerido: `carlos@email.com`
+- Doador sugerido: `joao@email.com`
 - Beneficiado sugerido: `ana@email.com`
 
 ## Collection completa
@@ -59,34 +59,79 @@ Fluxo recomendado:
 Importe:
 
 ```text
-doai-apresentacao-fluxo-principal.postman_collection.json
+API-DOAI.postman_collection.json
 ```
 
-Antes de apresentar, preencha as variaveis da collection:
+Fluxo automatizado:
 
-- `doadorToken`
-- `beneficiadoToken`
+- `0 - Preparar categoria para o item` salva `categoriaId`
+- `1 - Login como Joao (doador)` salva `joaoToken` e `joaoId`
+- `2 - Joao cria item` salva `itemId`
+- `4 - Login como Ana (interessada)` salva `anaToken` e `anaId`
+- `5 - Ana manifesta interesse` salva `interesseId`
+- `6 - Joao lista interesses recebidos` reforca/salva `interesseId`
 
-Se quiser evitar mostrar login, obtenha esses tokens antes pela collection completa e cole os valores aqui.
+Depois disso, os headers protegidos usam Bearer Token automaticamente e as URLs usam `{{itemId}}` e `{{interesseId}}` sem copiar nada manualmente.
+
+### URLs diretas em localhost
+
+Use estes endpoints se precisar conferir ou recriar as requests manualmente no PC da apresentacao:
+
+```text
+0 - Preparar categoria para o item
+GET http://localhost:7340/categorias?page=1&limite=10
+
+1 - Login como Joao (doador)
+POST http://localhost:7340/auth/login
+
+2 - Joao cria item
+POST http://localhost:7340/itemdoacao
+
+3 - Verificar item publico
+GET http://localhost:7340/itemdoacao/{{itemId}}
+
+4 - Login como Ana (interessada)
+POST http://localhost:7340/auth/login
+
+5 - Ana manifesta interesse
+POST http://localhost:7340/interesses
+
+6 - Joao lista interesses recebidos
+GET http://localhost:7340/interesses/recebidos?page=1&limite=10
+
+7 - Joao aceita o interesse
+PUT http://localhost:7340/interesses/{{interesseId}}/aceitar
+
+8 - Verificar item reservado
+GET http://localhost:7340/itemdoacao/{{itemId}}
+
+9 - Joao confirma entrega
+PUT http://localhost:7340/itemdoacao/{{itemId}}/confirmar-entrega
+
+10 - Ana confirma recebimento
+PUT http://localhost:7340/itemdoacao/{{itemId}}/confirmar-recebimento
+```
 
 Fluxo para apresentar com Figma + Postman:
 
-1. Rode `Buscar categorias e salvar primeira categoriaId`.
+1. Rode `0 - Preparar categoria para o item`.
 2. Mostre no Figma a tela do doador criando item.
-3. Rode `Doador cria item de doacao`.
-4. Mostre no Figma a tela do beneficiado pesquisando.
-5. Rode `Beneficiado pesquisa produto`.
-6. Rode `Beneficiado abre detalhes do item`.
-7. Mostre no Figma o botao de demonstrar interesse.
-8. Rode `Beneficiado demonstra interesse`.
-9. Opcional: rode `Doador acompanha interesses recebidos`.
-10. Opcional: rode `Doador aceita interesse`.
+3. Rode `1 - Login como Joao (doador)`.
+4. Rode `2 - Joao cria item`.
+5. Mostre no Figma a tela do beneficiado pesquisando.
+6. Rode `3 - Verificar item publico`.
+7. Rode `4 - Login como Ana (interessada)`.
+8. Mostre no Figma o botao de demonstrar interesse.
+9. Rode `5 - Ana manifesta interesse`.
+10. Rode `6 - Joao lista interesses recebidos`.
+11. Opcional: rode `7 - Joao aceita o interesse`.
+12. Opcional: rode `8 - Verificar item reservado`.
 
 ## Fallback se criacao de item falhar
 
 Se a rota de item ainda nao estiver estavel na hora da apresentacao:
 
 1. Rode o seed.
-2. Na collection de apresentacao, rode `Fallback: buscar item existente e salvar itemId`.
-3. Pule `Doador cria item de doacao`.
-4. Continue a partir de `Beneficiado pesquisa produto` ou `Beneficiado abre detalhes do item`.
+2. Use a collection completa para listar itens e copiar um `itemId` para a variavel `itemId` da collection `API-DOAI`.
+3. Pule `2 - Joao cria item`.
+4. Continue a partir de `3 - Verificar item publico`.

@@ -31,7 +31,7 @@ Planos de teste:
 Collections Postman:
 
 - [Todas as rotas implementadas](./documentacao/postman/doai-todas-rotas.postman_collection.json)
-- [Apresentacao - fluxo principal](./documentacao/postman/doai-apresentacao-fluxo-principal.postman_collection.json)
+- [Apresentacao - fluxo principal automatizado](./documentacao/postman/API-DOAI.postman_collection.json)
 - [Guia de uso das collections](./documentacao/postman/README.md)
 
 Swagger em runtime:
