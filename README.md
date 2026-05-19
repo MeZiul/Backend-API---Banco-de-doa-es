@@ -1,73 +1,92 @@
 # Backend API - Banco de Doacoes
 
-API backend do projeto DoaI, desenvolvida em Node.js, Express e MongoDB, com organizacao em camadas para `routes`, `controllers`, `services`, `repositories`, `models`, `middlewares`, `validators`, `docs` e `tests`.
+API backend do projeto DoaI, desenvolvida em Node.js, Express e MongoDB. O projeto segue organizacao em camadas com `routes`, `controllers`, `services`, `repositories`, `models`, `middlewares`, `validators`, `docs` e `tests`.
 
 ## Documentacao
 
-Documentacao-base da API, usada como contrato funcional do projeto:
+Contrato funcional base da API:
 
-- [documentacao/Documentação_da_api_Banco_de_Doação.md](./documentacao/Documentação_da_api_Banco_de_Doação.md)
-- [documentacao/Especificacao_API_REST_DoaI.html](./documentacao/Especificacao_API_REST_DoaI.html)
+- [Documentacao da API Banco de Doacao](./documentacao/Documenta%C3%A7%C3%A3o_da_api_Banco_de_Doa%C3%A7%C3%A3o.md)
+- [Especificacao API REST DoaI](./documentacao/Especificacao_API_REST_DoaI.html)
 
-Documentacao de apoio da Milestone 2:
+Documentacao Markdown das rotas da Milestone 2:
 
-- [documentacao/rotas-autenticacao.md](./documentacao/rotas-autenticacao.md)
-- [documentacao/rotas-administracao.md](./documentacao/rotas-administracao.md)
-- [documentacao/rotas-interesse.md](./documentacao/rotas-interesse.md)
-- [documentacao/rotas-denuncia.md](./documentacao/rotas-denuncia.md)
-- [documentacao/rotas-avaliacao.md](./documentacao/rotas-avaliacao.md)
-- [documentacao/plano-teste-milestone-2.md](./documentacao/plano-teste-milestone-2.md)
+- [Autenticacao](./documentacao/rotas/rotas-autenticacao.md)
+- [Administracao](./documentacao/rotas/rotas-administracao.md)
+- [Interesse](./documentacao/rotas/rotas-interesse.md)
+- [Denuncia](./documentacao/rotas/rotas-denuncia.md)
+- [Avaliacao](./documentacao/rotas/rotas-avaliacao.md)
+- [Usuario](./documentacao/rotas/rotas-usuario.md)
 
-Documentacao Swagger em runtime:
+Planos de teste:
+
+- [Plano geral da Milestone 2](./documentacao/plano-teste-milestone-2.md)
+- [Autenticacao](./documentacao/doc-service/Autenticacao.md)
+- [UsuarioService](./documentacao/doc-service/Usuario.md)
+- [InteresseService](./documentacao/doc-service/Interesse.md)
+- [DenunciaService](./documentacao/doc-service/Denuncia.md)
+- [AdministracaoService](./documentacao/doc-service/Administracao.md)
+- [AvaliacaoService](./documentacao/doc-service/Avaliacao.md)
+
+Collections Postman:
+
+- [Todas as rotas implementadas](./documentacao/postman/doai-todas-rotas.postman_collection.json)
+- [Apresentacao - fluxo principal automatizado](./documentacao/postman/API-DOAI.postman_collection.json)
+- [Guia de uso das collections](./documentacao/postman/README.md)
+
+Swagger em runtime:
 
 - `GET /docs`
 - `GET /docs.json`
 
-Nesta milestone, o Swagger cobre os modulos de `autenticacao`, `administracao`, `interesse`, `denuncia` e `avaliacao`.
+No estado atual, o Swagger cobre `autenticacao`, `administracao`, `interesse`, `denuncia` e `avaliacao`. `usuario` e `categoria` ainda precisam de alinhamento documental completo no Swagger.
 
 ## Objetivo
 
-Centralizar as regras de negocio do sistema de doacoes, cobrindo autenticacao, usuarios, perfil, categorias, itens de doacao, interesses, avaliacoes, denuncias, administracao e upload de imagens.
+Centralizar as regras de negocio do sistema de banco de doacoes, cobrindo autenticacao, usuarios, categorias, itens de doacao, interesses, denuncias, administracao, avaliacoes e upload de imagens.
 
 ## Stack
 
-- Node.js
+- Node.js 20+
 - Express 5
 - MongoDB
 - Mongoose
-- JWT para autenticacao
-- Bcrypt para hash de senha
-- Zod para validacao
-- Jest e Supertest para testes
-- `mongodb-memory-server` para testes com banco em memoria
-- Swagger (`swagger-jsdoc` e `swagger-ui-express`)
-- Winston para logging
+- JWT
+- Bcrypt/BcryptJS
+- Zod
+- Jest
+- Supertest
+- `mongodb-memory-server`
+- Swagger
+- Winston
 
 ## Estrutura
 
 ```text
 .
-├── server.js
-├── src/
-│   ├── app.js
-│   ├── config/
-│   ├── containers/
-│   ├── controllers/
-│   ├── docs/
-│   ├── infra/
-│   ├── middlewares/
-│   ├── models/
-│   ├── repositories/
-│   │   ├── base/
-│   │   └── filters/
-│   ├── routes/
-│   ├── seeds/
-│   ├── services/
-│   ├── tests/
-│   └── utils/
-├── documentacao/
-├── .env EXAMPLE
-└── package.json
+|-- server.js
+|-- src/
+|   |-- app.js
+|   |-- config/
+|   |-- containers/
+|   |-- controllers/
+|   |-- docs/
+|   |-- infra/
+|   |-- middlewares/
+|   |-- models/
+|   |-- repositories/
+|   |   |-- base/
+|   |   `-- filters/
+|   |-- routes/
+|   |-- seeds/
+|   |-- services/
+|   |-- tests/
+|   `-- utils/
+|-- documentacao/
+|   |-- doc-service/
+|   `-- rotas/
+|-- .env EXAMPLE
+`-- package.json
 ```
 
 ## Arquitetura
@@ -89,32 +108,40 @@ O projeto segue organizacao em camadas, alinhada ao padrao usado no material do 
 
 Rotas registradas em `src/routes/index.js`:
 
-- autenticacao
-- usuarios
-- categorias
-- avaliacoes
-- itens de doacao
-- interesses
-- denuncias
-- administracao
-- exemplo estrutural
+- autenticacao;
+- usuario;
+- categorias;
+- avaliacoes;
+- itens de doacao;
+- interesses;
+- denuncias;
+- administracao;
+- exemplo estrutural.
 
-Para a Milestone 2, o foco de revisao e demonstracao esta em:
+Foco demonstravel da Milestone 2:
 
-- `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh-token`, `POST /auth/esqueci-senha`, `PUT /auth/redefinir-senha`
-- `POST /interesses`, `GET /interesses`, `GET /interesses/:id`, `PUT /interesses/:id/aceitar`, `PUT /interesses/:id/recusar`, `DELETE /interesses/:id`
-- `POST /denuncias`, `GET /denuncias`, `GET /denuncias/:id`, `PUT /denuncias/:id`, `DELETE /denuncias/:id`
-- `GET /admin/usuarios`, `GET /admin/usuarios/:id`, `PUT /admin/usuarios/:id/bloquear`, `PUT /admin/usuarios/:id/desbloquear`, `DELETE /admin/usuarios/:id`
-- `GET /admin/itens`, `DELETE /admin/itens/:id`
-- `GET /admin/denuncias`, `PUT /admin/denuncias/:id/resolver`
-- `POST /avaliacoes`, `GET /avaliacoes`, `GET /avaliacoes/:id`, `PUT /avaliacoes/:id`, `DELETE /avaliacoes/:id`
-- rotas auxiliares de auditoria administrativa em `/admin/administracoes`
+- `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh-token`, `POST /auth/esqueci-senha`, `PUT /auth/redefinir-senha`;
+- `POST /interesses`, `GET /interesses`, `GET /interesses/:id`, `PUT /interesses/:id/aceitar`, `PUT /interesses/:id/recusar`, `DELETE /interesses/:id`;
+- `POST /denuncias`, `GET /denuncias`, `GET /denuncias/:id`, `PUT /denuncias/:id`, `DELETE /denuncias/:id`;
+- `GET /admin/usuarios`, `GET /admin/usuarios/:id`, `PUT /admin/usuarios/:id/bloquear`, `PUT /admin/usuarios/:id/desbloquear`, `DELETE /admin/usuarios/:id`;
+- `GET /admin/itens`, `DELETE /admin/itens/:id`;
+- `GET /admin/denuncias`, `PUT /admin/denuncias/:id/resolver`;
+- `GET /admin/administracoes` e consultas auxiliares de auditoria administrativa;
+- `POST /avaliacoes`, `GET /avaliacoes`, `GET /avaliacoes/:id`, `PUT /avaliacoes/:id`, `DELETE /avaliacoes/:id`.
+
+Pontos pendentes conhecidos:
+
+- `usuario` possui implementacao e testes, mas ainda usa `/usuario` no singular enquanto o contrato base define `/usuarios` no plural.
+- `usuario` ainda precisa de Swagger alinhado e ajustes finais de contrato.
+- `categoria` esta registrada, mas ainda nao tem o mesmo nivel de testes, Swagger e documentacao de milestone dos modulos principais.
 
 ## Pre-requisitos
 
 - Node.js 20+
 - npm
-- MongoDB acessivel por URI ou `USE_IN_MEMORY_DB=true` para ambiente local/teste
+- MongoDB acessivel por URI para execucao manual com banco real
+
+Para testes automatizados, nao e necessario seed nem MongoDB local, porque os scripts usam `USE_IN_MEMORY_DB=true`.
 
 ## Configuracao
 
@@ -147,7 +174,7 @@ Variaveis principais:
 - `SWAGGER_DEV_URL`
 - `SWAGGER_PROD_URL`
 
-Para rodar sem MongoDB local, use:
+Para rodar a API sem MongoDB local persistente:
 
 ```env
 USE_IN_MEMORY_DB=true
@@ -177,7 +204,7 @@ Ambiente de desenvolvimento:
 npm run dev
 ```
 
-Alternativa no PowerShell quando `npm.ps1` estiver bloqueado:
+Fallback no PowerShell:
 
 ```powershell
 npm.cmd run dev
@@ -189,61 +216,97 @@ Execucao normal:
 npm start
 ```
 
-URL local padrao:
+URLs locais padrao:
 
 - `http://localhost:7340`
 - `http://localhost:7340/docs`
 - `http://localhost:7340/docs.json`
 
+## Seed
+
+O seed local esta disponivel em:
+
+```powershell
+npm run seed
+```
+
+Fallback no PowerShell:
+
+```powershell
+npm.cmd run seed
+```
+
+O seed e recomendado para demonstracao manual no Postman/Swagger, pois cria massa local de usuarios, itens e estados de dominio. Para executar o seed com `DB_URL` local, o MongoDB precisa estar ativo.
+
 ## Testes
 
 Os scripts de teste ja configuram `NODE_ENV=test` e `USE_IN_MEMORY_DB=true`.
 
-Executar a suite:
+Executar suite:
 
 ```powershell
 npm test
 ```
 
-Executar com cobertura:
+Fallback recomendado no PowerShell:
+
+```powershell
+npm.cmd test -- --runInBand
+```
+
+Executar cobertura:
 
 ```powershell
 npm run test:coverage
 ```
 
-No PowerShell, se houver bloqueio de `npm.ps1` ou instabilidade por concorrencia de suites:
+Fallback de cobertura:
 
 ```powershell
-npm.cmd test -- --runInBand
 npm.cmd run test:coverage -- --runInBand
 ```
 
+Ultima validacao registrada:
+
+- `11` suites aprovadas;
+- `67` testes aprovados;
+- cobertura global: `62.95%` statements, `48.09%` branches, `67.66%` functions e `62.66%` lines.
+
+Os `warn` exibidos durante os testes sao esperados em cenarios negativos, como validacao invalida, permissao negada, senha incorreta e estado de negocio invalido.
+
 ## Validacao Manual das Rotas
 
-As rotas protegidas exigem `Authorization: Bearer <token>`.
+As rotas protegidas exigem:
+
+```http
+Authorization: Bearer <token>
+```
 
 Para rotas administrativas, o token precisa representar usuario com `perfil: ADMINISTRADOR`.
 
 Fluxo minimo recomendado para Postman:
 
-1. Criar/autenticar usuario comum.
-2. Criar/autenticar usuario administrador.
-3. Criar ou usar um item disponivel.
-4. Testar interesse com usuario comum.
-5. Testar denuncia com usuario comum.
-6. Resolver denuncia e moderar usuario/item com administrador.
-7. Conferir respostas no Swagger e na documentacao Markdown da milestone.
+1. Rodar o seed, se for usar banco local com dados prontos.
+2. Iniciar a API com `npm run dev`.
+3. Fazer login com usuario comum.
+4. Fazer login com usuario administrador.
+5. Testar criacao/listagem de interesse com usuario comum.
+6. Testar criacao/listagem de denuncia com usuario comum.
+7. Resolver denuncia e moderar usuario/item com administrador.
+8. Conferir Swagger e documentacao Markdown.
 
 ## Scripts
 
 - `npm run dev`: sobe a API com `nodemon`.
 - `npm start`: sobe a API com `node server.js`.
+- `npm run seed`: executa a massa local de demonstracao.
 - `npm test`: executa Jest com banco em memoria.
 - `npm run test:coverage`: executa Jest com relatorio de cobertura.
 
 ## Observacoes
 
-- A documentacao-base em `documentacao/Documentação_da_api_Banco_de_Doação.md` e `documentacao/Especificacao_API_REST_DoaI.html` deve ser tratada como contrato da API.
+- A documentacao-base em [Documentacao da API Banco de Doacao](./documentacao/Documenta%C3%A7%C3%A3o_da_api_Banco_de_Doa%C3%A7%C3%A3o.md) e [Especificacao API REST DoaI](./documentacao/Especificacao_API_REST_DoaI.html) deve ser tratada como contrato da API.
 - As documentacoes Markdown por rota explicam o recorte implementado para a Milestone 2.
+- O plano geral de teste fica em `documentacao/plano-teste-milestone-2.md`.
+- Os planos unitarios por service ficam em `documentacao/doc-service/`.
 - O Swagger atual e gerado em memoria no boot da aplicacao e pode ser acessado em `/docs`.
-- O seed local existe em `src/seeds/seedDoaI.js`, mas nao ha script dedicado no `package.json` para executa-lo automaticamente.

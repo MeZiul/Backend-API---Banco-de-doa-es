@@ -74,6 +74,7 @@ class UsuarioService {
         nome:   usuario.nome,
         email:  usuario.email,
         perfil: usuario.perfil,
+        situacao: usuario.situacao //mudança realizada
       },
       process.env.JWT_SECRET_ACCESS_TOKEN,
       { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "24h" }
@@ -134,8 +135,16 @@ class UsuarioService {
   }
 
 
-  async atualizar(id, dados) {
-    await this.ensureExists(id);
+  async atualizar(id, dados, actor = null) {
+    await this.ensureExists(id); 
+
+    if (actor && actor.perfil !== "ADMINISTRADOR" && actor.id !== id) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Você não tem permissão para atualizar este usuário.",
+    
+      });
+    }
 
     delete dados.cpf;
     delete dados.perfil;
@@ -268,10 +277,13 @@ class UsuarioService {
   }
 
   async listarAvaliacoes(id, actor = null) {
-    await this.ensureExists(id);
-    return [];
-  }
-
+  await this.ensureExists(id);
+  return this.avaliacaoRepository.listar({
+    filtros: { avaliado_id: id },
+    page: 1,
+    limit: 20,
+  });
+}
   async ensureExists(id) {
     const usuario = await this.repository.buscarPorId(id);
     if (!usuario) {

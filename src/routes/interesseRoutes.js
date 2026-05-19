@@ -8,6 +8,7 @@ const router = express.Router();
 router
     .post("/interesses", AuthMiddleware, asyncWrapper(InteresseController.criar))
     .get("/interesses", AuthMiddleware, asyncWrapper(InteresseController.listar))
+    .get("/interesses/recebidos", AuthMiddleware, asyncWrapper(InteresseController.listarRecebidos))
     .get("/interesses/:id", AuthMiddleware, asyncWrapper(InteresseController.buscarPorId))
     .put("/interesses/:id/aceitar", AuthMiddleware, asyncWrapper(InteresseController.aceitar))
     .put("/interesses/:id/recusar", AuthMiddleware, asyncWrapper(InteresseController.recusar))

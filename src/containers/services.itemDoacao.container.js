@@ -7,9 +7,9 @@ import {
   //notificacaoRepository,
 } from "./repositories.all.container.js";
 
-export const itemDoacaoService = new ItemDoacaoService({
+export const itemDoacaoService = new ItemDoacaoService(
   itemDoacaoRepository,
   categoriaRepository,
   interesseRepository,
   //notificacaoRepository,
-});
+);

@@ -59,6 +59,7 @@ class AuthMiddleware {
         perfil: decoded.perfil || null,
         papeis: decoded.papeis || (decoded.perfil ? [decoded.perfil] : []),
         instituicaoId: decoded.instituicaoId || null,
+        situacao: decoded.situacao || null
       };
       next();
     } catch (err) {

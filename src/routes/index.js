@@ -34,44 +34,47 @@ import notificacao from './notificacaoRoutes.js';
 dotenv.config();
 
 const buildSwaggerDocsForRequest = (swaggerDocs, req) => {
-    const seenUrls = new Set();
-    const servers = [
-        { url: "/", description: "Mesmo host da documentação" },
-        ...(swaggerDocs.servers || []),
-    ].filter(({ url }) => {
-        if (!url || seenUrls.has(url)) return false;
-        seenUrls.add(url);
-        return true;
-    });
+  const seenUrls = new Set();
+  const servers = [
+    { url: "/", description: "Mesmo host da documentação" },
+    ...(swaggerDocs.servers || []),
+  ].filter(({ url }) => {
+    if (!url || seenUrls.has(url)) return false;
+    seenUrls.add(url);
+    return true;
+  });
 
-    return {
-        ...swaggerDocs,
-        servers,
-    };
+  return {
+    ...swaggerDocs,
+    servers,
+  };
 };
 
 const routes = (app) => {
-    if (process.env.DEBUGLOG) {
-        app.use(logRoutes);
-    }
-    // rota para encaminhar da raiz para /docs
-    app.get("/", (req, res) => {
-        res.redirect("/docs");
-    });
+  if (process.env.DEBUGLOG) {
+    app.use(logRoutes);
+  }
+  // rota para encaminhar da raiz para /docs
+  app.get("/", (req, res) => {
+    res.redirect("/docs");
+  });
 
-    const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
+  const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
 
-    app.get('/docs.json', (req, res) => {
-        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
+  app.get("/docs.json", (req, res) => {
+    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', 'attachment; filename="doai-api-docs.json"');
-        res.json(docs);
-    });
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="doai-api-docs.json"',
+    );
+    res.json(docs);
+  });
 
-    app.get('/docs', (req, res) => {
-        const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
-        const html = `
+  app.get("/docs", (req, res) => {
+    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
+    const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
