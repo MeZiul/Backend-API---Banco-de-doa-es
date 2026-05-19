@@ -3,29 +3,26 @@ import { CustomError } from "../utils/helpers/index.js";
 
 class NotificacaoService {
     constructor(repository) {
-        this.respository = repository
+        // CORRIGIDO: removido o 's' extra
+        this.repository = repository;
     }
 
-    //Método será chamado pelo outros serviços
-    async criarNotificacao(dados) {
-        //confiar nos dados passados pelos outros sitemas
-        return await this.respository.criar(dados)
+    // Usando Arrow Functions para garantir que o 'this.repository' seja sempre alcançável
+    criarNotificacao = async (dados) => {
+        return await this.repository.criar(dados);
     }
 
-    //listar notificações do usuário logado
-    async listar(usuarioId, page = 1, limit = 20) {
-        return await this.respository.listarDoUsuario(usuarioId, {page, limit});
+    listar = async (usuarioId, page = 1, limit = 20) => {
+        return await this.repository.listarDoUsuario(usuarioId, { page, limit });
     }
 
-    //Retorna o total de notificações não lidas
-    async contarNaoLidas(usuarioId) {
-        const total = await this.respository.contarNaoLidas(usuarioId);
+    contarNaoLidas = async (usuarioId) => {
+        const total = await this.repository.contarNaoLidas(usuarioId);
         return { nao_lidas: total };
     }
 
-    //Marca notificação específica lida
-    async marcarComoLida(notificacaoId, usuarioId) {
-        const notificacao = await this.respository.marcarComoLida(notificacaoId, usuarioId);
+    marcarComoLida = async (notificacaoId, usuarioId) => {
+        const notificacao = await this.repository.marcarComoLida(notificacaoId, usuarioId);
 
         if(!notificacao) {
             throw new CustomError({
@@ -36,9 +33,8 @@ class NotificacaoService {
         return notificacao;
     }
 
-    //utilitário para o botão "Marcar todas como lida"
-    async marcarTodasComoLidas(usuarioId) {
-        await this.respository.marcarTodasComoLidas(usuarioId);
+    marcarTodasComoLidas = async (usuarioId) => {
+        await this.repository.marcarTodasComoLidas(usuarioId);
         return { mensagem: "Marcado como Lidas" };
     }
 }

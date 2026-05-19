@@ -20,16 +20,17 @@ import auditorias from './auditoriaRoutes.js';
 import perfil from './perfilRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
-import example from "./exampleRoutes.js";
-import usuario from "./usuarioRoutes.js";
-import categoria from "./categoriaRoutes.js";
-import avaliacao from "./avaliacaoRotas.js";
-import auth from "./authRoutes.js";
-import itemDoacao from "./itemDoacaoRoutes.js";
-import interesse from "./interesseRoutes.js";
-import denuncia from "./denunciaRoutes.js";
-import administracao from "./administracaoRoutes.js";
-//import notificacoes from "./notificacaoRoutes.js";
+import example from './exampleRoutes.js';
+import usuario from './usuarioRoutes.js';
+import categoria from './categoriaRoutes.js';
+import avaliacao from './avaliacaoRotas.js';
+import auth from './authRoutes.js';
+import itemDoacao from './itemDoacaoRoutes.js';
+import interesse from './interesseRoutes.js';
+import denuncia from './denunciaRoutes.js';
+import administracao from './administracaoRoutes.js';
+import notificacao from './notificacaoRoutes.js';
+
 dotenv.config();
 
 const buildSwaggerDocsForRequest = (swaggerDocs, req) => {
@@ -128,27 +129,27 @@ const routes = (app) => {
     </script>
 </body>
 </html>`;
-    res.setHeader("Content-Type", "text/html");
-    res.send(html);
-  });
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+    });
 
-  // ── Registro das rotas da API ──────────────────────
-  app.use(express.json());
-  app.use(auth);
+    // ── Registro das rotas da API ──────────────────────
+    app.use(express.json());
+    app.use(auth);
 
-  app.use(example);
+    app.use(example);
 
-  app.use(usuario);
+    app.use(usuario);
 
-  app.use(categoria);
+    app.use(categoria);
 
-  app.use(avaliacao);
+    app.use(avaliacao);
 
-  app.use(itemDoacao);
-  app.use(interesse);
-  app.use(denuncia);
-  app.use(administracao);
-  //app.use(notificacoes);
+    app.use(itemDoacao);
+    app.use(interesse);
+    app.use(denuncia);
+    app.use(administracao);
+    app.use(notificacao);
 };
 
 export default routes;

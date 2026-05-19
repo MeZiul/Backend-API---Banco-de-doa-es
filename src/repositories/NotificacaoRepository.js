@@ -1,5 +1,5 @@
-import Notificacao from '../model/Notificacao.js';
-import BaseRepository from '../repositories/BaseRepository.js';
+import Notificacao from '../models/Notificacao.js';
+import BaseRepository from './base/BaseRepository.js';
 
 class NotificacaoRepository extends BaseRepository {
     constructor() {
@@ -7,7 +7,7 @@ class NotificacaoRepository extends BaseRepository {
     }
 
     //Lista as notificações de um usuário e ordena sempre da mais recente
-    listarDoUsuarios(usuarioId, options = { page: 1, limit: 20 }) {
+    listarDoUsuario(usuarioId, options = { page: 1, limit: 20 }) {
         const query = { usuario_id: usuarioId };
 
         return this.listarComPaginacao(query, {
