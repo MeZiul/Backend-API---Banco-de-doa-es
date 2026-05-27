@@ -263,8 +263,22 @@ class UsuarioService {
     });
   }
 
-  async listar({ filtros, page, limit }) {
-    return this.repository.listar({ filtros, page, limit });
+  async listar({ filtros, page, limit, actor }) {
+    const resultado= await this.repository.listar({ filtros, page, limit });
+    if (actor?.perfil !== "ADMINISTRADOR") {
+
+      resultado.docs = resultado.docs.map(usuario => ({
+        id: usuario._id,
+        nome: usuario.nome,
+        foto: usuario.foto,
+        cidade: usuario.cidade,
+        uf: usuario.uf,
+      }));
+  
+  
+    }
+
+    return resultado;
   }
 
   async buscarPorId(id) {

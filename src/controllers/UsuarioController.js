@@ -23,7 +23,7 @@ class UsuarioController {
   listar = async (req, res, next) => {
     try {
       const { limite, page, ...filtros } = UsuarioQuerySchema.parse(req.query ?? {});
-      const data = await usuarioService.listar({ filtros, page, limit: limite });
+      const data = await usuarioService.listar({ filtros, page, limit: limite, actor: req.user});
       return CommonResponse.success(res, data);
     } catch (e) { next(e); }
   };
@@ -40,7 +40,7 @@ class UsuarioController {
     try {
       UsuarioIdSchema.parse(req.params.id);
       const dados = UsuarioUpdateSchema.parse(req.body);
-      const data  = await usuarioService.atualizar(req.params.id, dados);
+      const data  = await usuarioService.atualizar(req.params.id, dados, req.user);
       const usuarioLimpo = data.toObject();
       delete usuarioLimpo.senha;
       return CommonResponse.success(res, usuarioLimpo);
@@ -51,7 +51,7 @@ class UsuarioController {
     try {
       UsuarioIdSchema.parse(req.params.id);
       const dados = UsuarioUpdateSchema.partial().parse(req.body);
-      const data  = await usuarioService.atualizar(req.params.id, dados);
+      const data  = await usuarioService.atualizar(req.params.id, dados, req.user);
       const usuarioLimpo = data.toObject();
       delete usuarioLimpo.senha;
       return CommonResponse.success(res, usuarioLimpo);

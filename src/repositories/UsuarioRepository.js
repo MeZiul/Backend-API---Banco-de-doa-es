@@ -36,12 +36,10 @@ class UsuarioRepository extends BaseRepository {
     listar({filtros = {}, page = 1, limit = 15 }) {
         const builder = new UsuarioFilterBuilder()
             .comNome(filtros.nome)
-            .comEmail(filtros.email)
-            .comCpf(filtros.cpf)
             .comCidade(filtros.cidade)
             .comUf(filtros.uf)
             .comSituacao(filtros.situacao)
-            .comPerfil(filtros.perfil);
+
 
         return this.listarComPaginacao(builder.build(), { 
             page, 
