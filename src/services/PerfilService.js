@@ -9,7 +9,7 @@ class PerfilService {
 
     alterarAcessoUsuario = async (usuarioId, dadosControle) => {
         if (!dadosControle.perfil && !dadosControle.situacao) {
-            thow new CustomError({
+            throw new CustomError({
                 statusCode: 400,
                 customMessage: "É necessário informar o novo 'perfil' ou a nova 'situação' para atualização."
             });
