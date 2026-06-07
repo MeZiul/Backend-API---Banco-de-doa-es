@@ -1,0 +1,23 @@
+services:
+  meu-mongodb:
+    image: mongo:8
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - vol-mongodb:/data/db
+
+  minha-api:
+    build:
+      context: .
+      args:
+        NODE_ENV: production
+    env_file:
+      - .env
+    ports:
+      - 7340:7340
+    depends_on:
+      - meu-mongodb
+
+volumes:
+  vol-mongodb:
