@@ -3,47 +3,47 @@ import BaseRepository from "./base/BaseRepository.js";
 import AvaliacaoFilterBuilder from "./filters/AvaliacaoFilterBuilder.js";
 
 class AvaliacaoRepository extends BaseRepository {
-    constructor() {
-        super(AvaliacaoModel);
-    }
+  constructor() {
+    super(AvaliacaoModel);
+  }
 
-    buscarPorAvaliador(avaliador_id) {
-        return this.model.findOne({ avaliador_id });
+  buscarPorAvaliador(avaliador_id) {
+    return this.model.findOne({ avaliador_id });
+  }
 
-    }
+  buscarPorAvaliado(avaliado_id) {
+    return this.model.findOne({ avaliado_id });
+  }
 
-    buscarPorAvaliado(avaliado_id) {
-        return this.model.findOne({ avaliado_id });
-    }
+  buscarPorItem(item_id) {
+    return this.model.findOne({ item_id });
+  }
+  buscarPorTipo(tipo) {
+    return this.model.findOne({ tipo });
+  }
 
-    buscarPorItem(item_id) {
-        return this.model.findOne({ item_id });
-    }
-    buscarPorTipo(tipo) {
-        return this.model.findOne({ tipo });
-    }
-    
-    buscarPorAvaliadorItemTipo(avaliador_id, item_id, tipo) {
-        return this.model.findOne({ avaliador_id, item_id, tipo });
-    }
+  buscarPorAvaliadorItemTipo(avaliador_id, item_id, tipo) {
+    return this.model.findOne({ avaliador_id, item_id, tipo });
+  }
 
-    listar({ filtros = {}, page = 1, limit = 15 }) {
-        const builder = new AvaliacaoFilterBuilder()
-            .comAvaliador(filtros.avaliador_id)
-            .comAvaliado(filtros.avaliado_id)
-            .comItem(filtros.item_id)
-            .comTipo(filtros.tipo);
-            
-        return this.listarComPaginacao(builder.build(), {
-            page,
-            limit,
-            sort: { data_avaliacao: -1 }
-        });
-    }
+  listar({ filtros = {}, page = 1, limit = 15 }) {
+    const builder = new AvaliacaoFilterBuilder()
+      .comAvaliador(filtros.avaliador_id)
+      .comAvaliado(filtros.avaliado_id)
+      .comItem(filtros.item_id)
+      .comTipo(filtros.tipo);
 
-
-
+    return this.listarComPaginacao(builder.build(), {
+      page,
+      limit,
+      sort: { data_avaliacao: -1 },
+      populate: [
+        { path: "avaliador_id", select: "nome " },
+        { path: "avaliado_id", select: "nome " },
+        { path: "item_id", select: "titulo" },
+      ],
+    });
+  }
 }
-
 
 export default AvaliacaoRepository;
