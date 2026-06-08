@@ -17,7 +17,6 @@ import filas from './filaRoutes.js';
 import senhas from './senhaRoutes.js';
 import qrCodes from './qrCodeRoutes.js';
 import auditorias from './auditoriaRoutes.js';
-import perfil from './perfilRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
 import example from './exampleRoutes.js';
@@ -30,6 +29,7 @@ import interesse from './interesseRoutes.js';
 import denuncia from './denunciaRoutes.js';
 import administracao from './administracaoRoutes.js';
 import notificacao from './notificacaoRoutes.js';
+import perfil from './perfilRoutes.js';
 
 dotenv.config();
 
@@ -150,6 +150,7 @@ const routes = (app) => {
     app.use(denuncia);
     app.use(administracao);
     app.use(notificacao);
+    app.use(perfil);
 };
 
 export default routes;
