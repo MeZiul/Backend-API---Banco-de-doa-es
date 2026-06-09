@@ -198,6 +198,62 @@ class ItemDoacaoService {
       data_doacao: new Date(), // Registra o momento exato do sucesso
     });
   }
+
+  async cancelarItem(idItem, motivo, usuarioAutenticado) {
+    const item = await this.repository.buscarPorId(idItem);
+    if (!item) {
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
+    }
+
+    // Trava de Segurança: Só o dono do item ou um ADMINISTRADOR pode cancelar
+    if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Você não tem permissão para cancelar este item.",
+      });
+    }
+
+    // Se o item já foi cancelado ou já foi doado, bloqueia
+    if (item.status === "CANCELADO" || item.status === "DOADO") {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: `Não é possível cancelar um item com status ${item.status}.`,
+      });
+    }
+
+    // Atualiza o status do item para CANCELADO e salva o motivo
+    return await this.repository.atualizar(idItem, {
+      status: "CANCELADO",
+      motivo_cancelamento: motivo
+    });
+  }
+
+  async listarInteresses(idItem, usuarioAutenticado) {
+    const item = await this.repository.buscarPorId(idItem);
+    if (!item) {
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
+    }
+
+    // Trava de Segurança: Apenas o doador do item ou um ADMIN pode ver a lista de interessados
+    if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Apenas o doador do item pode listar os interessados.",
+      });
+    }
+
+    // Usamos o repositório de interesses que já está mapeado no seu construtor
+    // Ele vai buscar na tabela/coleção de interações filtrando pelo id do item
+    const interessados = await this.interesseRepository.listarPorItem(idItem);
+
+    return interessados;
+  }
 }
 
 export default ItemDoacaoService;

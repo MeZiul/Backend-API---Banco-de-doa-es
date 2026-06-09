@@ -19,8 +19,10 @@ router
     .post("/itemdoacao", AuthMiddleware, validate(itemDoacaoSchema, 'body'),
         asyncWrapper(ItemDoacaoController.criar))
 
-    .put("/itemdoacao/:id/confirmar-entrega",     AuthMiddleware, asyncWrapper(ItemDoacaoController.confirmarEntrega))
-    .put("/itemdoacao/:id/confirmar-recebimento", AuthMiddleware, asyncWrapper(ItemDoacaoController.confirmarRecebimento))
+    .put("/itemdoacao/:id/confirmar-entrega",     AuthMiddleware,
+        asyncWrapper(ItemDoacaoController.confirmarEntrega))
+    .put("/itemdoacao/:id/confirmar-recebimento", AuthMiddleware,
+        asyncWrapper(ItemDoacaoController.confirmarRecebimento))
 
     .put("/itemdoacao/:id", AuthMiddleware, validate(itemDoacaoSchema.partial(), 'body'),
         asyncWrapper(ItemDoacaoController.atualizar))
@@ -30,5 +32,10 @@ router
     .post("/itemdoacao/:id/fotos", AuthMiddleware, uploadFotos.array("fotos", 5),
         asyncWrapper(ImagemItemController.upload))
 
-    .delete("/itemdoacao/:id/fotos/:fotoId", AuthMiddleware, asyncWrapper(ImagemItemController.deletar));
+    .delete("/itemdoacao/:id/fotos/:fotoId", AuthMiddleware, asyncWrapper(ImagemItemController.deletar))
+
+    .patch("/itens/:id/cancelar", AuthMiddleware, asyncWrapper(ItemDoacaoController.cancelarItem))
+
+    .get("/itens/:id/interesses", AuthMiddleware, asyncWrapper(ItemDoacaoController.listarInteresses));
+
 export default router;
