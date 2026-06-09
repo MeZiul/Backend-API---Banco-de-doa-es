@@ -6,7 +6,6 @@ import CommonResponse from "../utils/helpers/CommonResponse.js";
 class ItemDoacaoController {
   criar = async (req, res) => {
     try {
-      // O req.body já passou pela validação do Zod no middleware
       const itemCriado = await itemDoacaoService.criar(req.body, req.user);
 
       return CommonResponse.created(
@@ -21,7 +20,6 @@ class ItemDoacaoController {
 
   listar = async (req, res) => {
     try {
-      // req.query já convertido e validado pelo Zod (ItemDoacaoQuerySchema)
       const {
         busca,
         categoria_id,
@@ -44,7 +42,6 @@ class ItemDoacaoController {
 
       return CommonResponse.success(res, resultado);
     } catch (error) {
-      // Agora o 'this' estará disponível aqui dentro!
       return this._handleError(res, error, "Erro interno ao listar itens.");
     }
   };
@@ -133,13 +130,10 @@ class ItemDoacaoController {
     try {
       const { id } = req.params;
 
-      // Importamos o validador dinamicamente para não poluir o topo do arquivo
       const { cancelarItemSchema } = await import("../utils/validators/schemas/zod/CancelarItemSchema.js");
 
-      // Valida o corpo da requisição (motivo)
       const dadosValidados = cancelarItemSchema.parse(req.body);
 
-      // Envia para o service tratar a lógica de negócio, passando o id do item, o motivo e o usuário completo logado
       const itemCancelado = await itemDoacaoService.cancelarItem(id, dadosValidados.motivo, req.user);
 
       return CommonResponse.success(res, itemCancelado);
@@ -163,7 +157,6 @@ class ItemDoacaoController {
     try {
       const { id } = req.params;
 
-      // Chama o service para buscar quem está interessado no item
       const interessados = await itemDoacaoService.listarInteresses(id, req.user);
 
       return CommonResponse.success(res, interessados);
@@ -173,7 +166,6 @@ class ItemDoacaoController {
   };
 
   _handleError(res, error, defaultServerMessage) {
-    // Verifica se é um erro operacional disparado propositalmente (ex: validação de negócio)
     if (error.isOperational || error.statusCode) {
       return CommonResponse.error(
         res,
@@ -185,10 +177,8 @@ class ItemDoacaoController {
       );
     }
 
-    // Log do erro real no console para depuração do desenvolvedor
     console.error(`[CONTROLLER ERROR]: ${defaultServerMessage}`, error);
 
-    // Resposta genérica 500 para o cliente
     return CommonResponse.serverError(res, defaultServerMessage);
   }
 }

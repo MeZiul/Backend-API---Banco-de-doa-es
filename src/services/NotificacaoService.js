@@ -3,11 +3,10 @@ import { CustomError } from "../utils/helpers/index.js";
 
 class NotificacaoService {
     constructor(repository) {
-        // CORRIGIDO: removido o 's' extra
+
         this.repository = repository;
     }
 
-    // Usando Arrow Functions para garantir que o 'this.repository' seja sempre alcançável
     criarNotificacao = async (dados) => {
         return await this.repository.criar(dados);
     }

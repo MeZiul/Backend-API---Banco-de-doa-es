@@ -69,7 +69,6 @@ class ItemDoacaoRepository extends BaseRepository {
       });
   }
 
-  // Adiciona novas fotos ao array existente
   async adicionarFotos(idItem, novasFotos) {
     return this.model.findByIdAndUpdate(
       idItem,
@@ -78,7 +77,6 @@ class ItemDoacaoRepository extends BaseRepository {
     );
   }
 
-  // Remove uma foto específica do array
   async removerFoto(idItem, idFoto) {
     return this.model.findByIdAndUpdate(
       idItem,
@@ -87,7 +85,6 @@ class ItemDoacaoRepository extends BaseRepository {
     );
   }
 
-  // Traz apenas as fotos e os dados base de validação de um item
   async buscarFotosDoItem(idItem) {
     return this.model.findById(idItem).select("fotos usuario_id status");
   }

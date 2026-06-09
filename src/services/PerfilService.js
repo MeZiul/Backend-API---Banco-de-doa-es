@@ -15,8 +15,7 @@ class PerfilService {
             });
         }
 
-        // CORREÇÃO AQUI: Mudamos de 'atualizarControleAcesso' para 'atualizar'
-        // que é o método padrão herdado do seu BaseRepository
+
         const usuarioAtualizado = await this.repository.atualizar(usuarioId, dadosControle);
 
         if (!usuarioAtualizado) {

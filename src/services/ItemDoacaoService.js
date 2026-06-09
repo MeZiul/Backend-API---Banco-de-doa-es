@@ -208,7 +208,6 @@ class ItemDoacaoService {
       });
     }
 
-    // Trava de Segurança: Só o dono do item ou um ADMINISTRADOR pode cancelar
     if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
       throw new CustomError({
         statusCode: 403,
@@ -248,8 +247,7 @@ class ItemDoacaoService {
       });
     }
 
-    // Usamos o repositório de interesses que já está mapeado no seu construtor
-    // Ele vai buscar na tabela/coleção de interações filtrando pelo id do item
+
     const interessados = await this.interesseRepository.listarPorItem(idItem);
 
     return interessados;

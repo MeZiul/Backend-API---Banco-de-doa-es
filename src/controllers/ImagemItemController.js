@@ -2,7 +2,7 @@ import ImagemItemService from "../services/ImagemItemService.js";
 import { CustomError } from "../utils/helpers/index.js";
 
 class ImagemItemController {
-  // Método para adicionar fotos (você já tem)
+
   upload = async (req, res) => {
     try {
       const { id } = req.params;
