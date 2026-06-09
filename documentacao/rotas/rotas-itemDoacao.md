@@ -51,7 +51,7 @@ Validar que as rotas de interacao de itens respondem corretamente a cada cenario
 
 ### 4.2 Arquivo de Teste
 
-`src/tests/routes/itemDoacaoRoutes.spec.js`
+`src/tests/routes/itemDoacao.spec.js`
 
 ### 4.3 Comandos
 
@@ -89,7 +89,7 @@ Validar que as rotas de interacao de itens respondem corretamente a cada cenario
 
 | Suite | Arquivo | Testes | Aprovados | Reprovados | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: |
-| Rotas ItemDoacao | routes/itemDoacaoRoutes.spec.js | **5** | **5** | **0** | **PASSOU** |
+| Rotas ItemDoacao | routes/itemDoacao.spec.js | **5** | **5** | **0** | **PASSOU** |
 
 ### 6.1 Cobertura — ItemDoacaoController (Novos Métodos)
 

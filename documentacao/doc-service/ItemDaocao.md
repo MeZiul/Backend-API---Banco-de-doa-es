@@ -49,7 +49,7 @@ Validar que as rotas de interacao do item de doacao aplicam corretamente as regr
 
 ### 4.1 Arquivos Envolvidos
 
-- **Arquivo de Teste:** `src/tests/routes/itemDoacaoRoutes.spec.js`
+- **Arquivo de Teste:** `src/tests/routes/itemDoacao.spec.js`
 - **Controlador Alvo:** `src/controllers/ItemDoacaoController.js`
 
 ### 4.2 Comandos de Execucao
