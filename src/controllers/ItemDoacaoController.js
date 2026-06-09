@@ -129,6 +129,49 @@ class ItemDoacaoController {
     }
   };
 
+  cancelarItem = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Importamos o validador dinamicamente para não poluir o topo do arquivo
+      const { cancelarItemSchema } = await import("../utils/validators/schemas/zod/CancelarItemSchema.js");
+
+      // Valida o corpo da requisição (motivo)
+      const dadosValidados = cancelarItemSchema.parse(req.body);
+
+      // Envia para o service tratar a lógica de negócio, passando o id do item, o motivo e o usuário completo logado
+      const itemCancelado = await itemDoacaoService.cancelarItem(id, dadosValidados.motivo, req.user);
+
+      return CommonResponse.success(res, itemCancelado);
+    } catch (error) {
+      // Se o Zod falhar, capturamos e tratamos aqui
+      if (error.name === "ZodError") {
+        return CommonResponse.error(
+            res,
+            400,
+            "validationError",
+            null,
+            error.errors.map(e => ({ campo: e.path[0], mensagem: e.message })),
+            "Erro de validação nos dados enviados."
+        );
+      }
+      return this._handleError(res, error, "Erro interno ao cancelar o item.");
+    }
+  };
+
+  listarInteresses = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Chama o service para buscar quem está interessado no item
+      const interessados = await itemDoacaoService.listarInteresses(id, req.user);
+
+      return CommonResponse.success(res, interessados);
+    } catch (error) {
+      return this._handleError(res, error, "Erro interno ao listar interesses.");
+    }
+  };
+
   _handleError(res, error, defaultServerMessage) {
     // Verifica se é um erro operacional disparado propositalmente (ex: validação de negócio)
     if (error.isOperational || error.statusCode) {
