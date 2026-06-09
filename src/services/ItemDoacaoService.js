@@ -115,7 +115,6 @@ class ItemDoacaoService {
       });
     }
 
-
     const interessados = await this.interesseRepository.listarPorItem(idItem);
 
     return interessados;
