@@ -8,14 +8,11 @@ class PerfilController {
         try {
             const { id } = req.params;
 
-            // 1. Valida os dados com o Zod
             const dadosValidados = gerenciarPerfilSchema.parse(req.body);
 
-            // 2. Atualiza o banco através do Service
             const usuarioAtualizado = await PerfilService.alterarAcessoUsuario(id, dadosValidados);
 
-            // CORREÇÃO FINAL: Passamos apenas o 'res' e o 'usuarioAtualizado'
-            // O seu helper já se encarrega de injetar o status 200 e envelopar a resposta
+
             return CommonResponse.success(res, usuarioAtualizado);
 
         } catch (error) {

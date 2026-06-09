@@ -63,7 +63,7 @@ class ImagemItemService {
             mime_type: file.mimetype
         }));
 
-        // Usar o método atualizar com $push para o MongoDB
+
         return await this.repository.atualizar(idItem, {
             $push: { fotos: { $each: novasFotos } }
         });

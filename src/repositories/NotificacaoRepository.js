@@ -6,7 +6,6 @@ class NotificacaoRepository extends BaseRepository {
         super(Notificacao);
     }
 
-    //Lista as notificações de um usuário e ordena sempre da mais recente
     listarDoUsuario(usuarioId, options = { page: 1, limit: 20 }) {
         const query = { usuario_id: usuarioId };
 
@@ -16,7 +15,6 @@ class NotificacaoRepository extends BaseRepository {
         });
     }
 
-    //Retorna a quantidade de notificações que ainda não foram lidas
     contarNaoLidas(usuarioId) {
         return this.model.countDocuments({
             usuario_id: usuarioId,
@@ -24,7 +22,6 @@ class NotificacaoRepository extends BaseRepository {
         });
     }
 
-    //Marca uma notificação especifica como lida
     marcarComoLida(notificacaoId, usuarioId) {
         return this.model.findOneAndUpdate(
             { _id: notificacaoId, usuario_id: usuarioId },
@@ -33,7 +30,6 @@ class NotificacaoRepository extends BaseRepository {
         );
     }
 
-    //Utilitário extra: marca todas as notificações
     marcarTodasComoLidas(usuarioId) {
         return this.model.updateMany(
             { usuario_id: usuarioId, lida: false },

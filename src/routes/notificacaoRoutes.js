@@ -7,10 +7,8 @@ import { notificacaoQuerySchema } from "../utils/validators/schemas/zod/querys/N
 
 const router = express.Router();
 
-//Todas as rotas de notificação o usuário deve está logado
 router.use(AuthMiddleware);
 
-//Lista com paginação
 router.get("/notificacoes",
     validate(notificacaoQuerySchema, 'query'),
     asyncWrapper(NotificacaoController.listar)

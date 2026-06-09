@@ -2,7 +2,6 @@ import { CustomError } from "../utils/helpers/index.js";
 import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
 
 class ItemDoacaoService {
-  // 1. Adicione o interesseRepository aqui nos parâmetros
   constructor(itemDoacaoRepository, categoriaRepository, interesseRepository) {
     this.repository = itemDoacaoRepository;
     this.categoriaRepository = categoriaRepository;
@@ -48,7 +47,6 @@ class ItemDoacaoService {
       total_interesses: 0,
     };
 
-    // 2. Corrigido para usar this.repository
     return await this.repository.criar(novoItem);
   }
 
@@ -110,7 +108,6 @@ class ItemDoacaoService {
       });
     }
 
-    // Trava de Segurança: Apenas o doador do item ou um ADMIN pode ver a lista de interessados
     if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
       throw new CustomError({
         statusCode: 403,
@@ -118,8 +115,7 @@ class ItemDoacaoService {
       });
     }
 
-    // CHAMADA REAL: Como o interesseRepository já está injetado no seu construtor,
-    // basta chamar o método correto dele (ajuste o nome do método se for diferente no seu repositório)
+
     const interessados = await this.interesseRepository.listarPorItem(idItem);
 
     return interessados;
@@ -213,7 +209,6 @@ class ItemDoacaoService {
       });
     }
 
-    // Trava de Segurança: Só o dono do item ou um ADMINISTRADOR pode cancelar
     if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
       throw new CustomError({
         statusCode: 403,
@@ -253,14 +248,11 @@ class ItemDoacaoService {
       });
     }
 
-    // Usamos o repositório de interesses que já está mapeado no seu construtor
-    // Ele vai buscar na tabela/coleção de interações filtrando pelo id do item
+
     const interessados = await this.interesseRepository.listarPorItem(idItem);
 
     return interessados;
   }
 }
 
-
-// Volte para isto:
 export default ItemDoacaoService;
