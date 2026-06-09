@@ -101,6 +101,30 @@ class ItemDoacaoService {
     return await this.repository.atualizar(id, dadosAtualizacao);
   }
 
+  async listarInteresses(idItem, usuarioAutenticado) {
+    const item = await this.repository.buscarPorId(idItem);
+    if (!item) {
+      throw new CustomError({
+        statusCode: 404,
+        customMessage: "Item não encontrado.",
+      });
+    }
+
+    // Trava de Segurança: Apenas o doador do item ou um ADMIN pode ver a lista de interessados
+    if (item.usuario_id.toString() !== usuarioAutenticado.id && usuarioAutenticado.perfil !== "ADMINISTRADOR") {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage: "Apenas o doador do item pode listar os interessados.",
+      });
+    }
+
+    // CHAMADA REAL: Como o interesseRepository já está injetado no seu construtor,
+    // basta chamar o método correto dele (ajuste o nome do método se for diferente no seu repositório)
+    const interessados = await this.interesseRepository.listarPorItem(idItem);
+
+    return interessados;
+  }
+
   async deletar(id, usuarioAutenticadoId) {
     const item = await this.repository.buscarPorId(id);
     if (!item)
