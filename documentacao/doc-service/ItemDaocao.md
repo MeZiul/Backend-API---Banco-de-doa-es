@@ -1,4 +1,4 @@
-# Plano de Teste — ItemDoacaoInteracao
+# Plano de Teste — ItemDoacao
 
 ## API DoaI — Banco de Doacoes | Fabrica de Software 2026.1
 
