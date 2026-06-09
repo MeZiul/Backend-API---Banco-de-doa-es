@@ -1,19 +1,29 @@
 import PerfilService from "../services/PerfilService.js";
-import {CommonResponse} from "../utils/helpers/index.js";
-import { gerenciarPerfilSchema} from "../utils/validators/schemas/zod/PerfilUpdateSchema.js";
+import CommonResponse from "../utils/helpers/CommonResponse.js";
+import { gerenciarPerfilSchema } from "../utils/validators/schemas/zod/GerenciarPerfilSchema.js";
 
+class PerfilController {
 
-class PerfilController{
-    geenciarAcesso = async (req, res, next) => {
+    gerenciarAcesso = async (req, res) => {
         try {
             const { id } = req.params;
+
+            // 1. Valida os dados com o Zod
             const dadosValidados = gerenciarPerfilSchema.parse(req.body);
-            const resultado = await PerfilService.alterarAcessoUsuario(id, dadosValidados);
-            return CommonResponse.success(res, resultado);
-        }catch (error) {
-            return this._handleError(res, error, "Erro ao atualizar controle de acesso")
+
+            // 2. Atualiza o banco através do Service
+            const usuarioAtualizado = await PerfilService.alterarAcessoUsuario(id, dadosValidados);
+
+            // CORREÇÃO FINAL: Passamos apenas o 'res' e o 'usuarioAtualizado'
+            // O seu helper já se encarrega de injetar o status 200 e envelopar a resposta
+            return CommonResponse.success(res, usuarioAtualizado);
+
+        } catch (error) {
+            console.error("❌ ERRO REAL NO PERFIL:", error);
+            return this._handleError(res, error, "Erro ao atualizar controle de acesso.");
         }
     }
+
     _handleError(res, error, defaultMessage) {
         if (error.name === "ZodError") {
             return CommonResponse.error(
@@ -21,7 +31,7 @@ class PerfilController{
                 400,
                 'validationError',
                 null,
-                error.errors.map(e => ({ campo: e.path[0], mensagem: e.message})),
+                error.errors.map(e => ({ campo: e.path[0], mensagem: e.message })),
                 "Erro de validação nos dados enviados."
             );
         }

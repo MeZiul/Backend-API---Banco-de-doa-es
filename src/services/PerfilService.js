@@ -1,4 +1,4 @@
-import PerfilRepository from "../repositories/PerfilRepository";
+import PerfilRepository from "../repositories/PerfilRepository.js";
 import { CustomError } from "../utils/helpers/index.js";
 import usuario from "../models/Usuario.js";
 
@@ -11,18 +11,21 @@ class PerfilService {
         if (!dadosControle.perfil && !dadosControle.situacao) {
             throw new CustomError({
                 statusCode: 400,
-                customMessage: "É necessário informar o novo 'perfil' ou a nova 'situação' para atualização."
+                customMessage: "É necessário informar o novo 'perfil' ou a nova 'situacao' para atualização."
             });
-
         }
-        const usuarioAtualizado = await this.repository.atualizarControleAcesso(usuarioId, dadosControle);
 
-        if (!usuarioAtualizdo) {
+        // CORREÇÃO AQUI: Mudamos de 'atualizarControleAcesso' para 'atualizar'
+        // que é o método padrão herdado do seu BaseRepository
+        const usuarioAtualizado = await this.repository.atualizar(usuarioId, dadosControle);
+
+        if (!usuarioAtualizado) {
             throw new CustomError({
                 statusCode: 404,
-                customMessage: "Usuário alvo não encontrado"
+                customMessage: "Usuário alvo não encontrado."
             });
         }
+
         return usuarioAtualizado;
     }
 
