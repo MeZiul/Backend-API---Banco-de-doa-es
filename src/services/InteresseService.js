@@ -9,6 +9,7 @@ class InteresseService {
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
 
         if (!this.isAdmin(usuario)) {
@@ -24,6 +25,7 @@ class InteresseService {
     }
 
     async listarRecebidos({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         filtros.usuario_doador_id = this.getActorId(usuario);
         delete filtros.usuarioDoadorId;
 
@@ -35,6 +37,7 @@ class InteresseService {
     }
 
     async listarPorItem(itemId, usuario) {
+        this.ensureActorAtivo(usuario);
         const item = await this.ensureItemExists(itemId);
         this.ensureDoadorOuAdmin(item, usuario);
 
@@ -42,6 +45,7 @@ class InteresseService {
     }
 
     async buscarPorId(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
 
         if (!this.canAccessInteresse(interesse, usuario)) {
@@ -55,6 +59,7 @@ class InteresseService {
     }
 
     async criar(dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
         const usuarioAtual = await this.ensureUsuarioAtivo(usuarioId);
         const item = await this.ensureItemExists(dados.item_id || dados.itemId);
@@ -102,6 +107,7 @@ class InteresseService {
     }
 
     async aceitar(id, dados = {}, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const item = await this.ensureItemExists(interesse.item_id._id || interesse.item_id);
 
@@ -142,6 +148,7 @@ class InteresseService {
     }
 
     async recusar(id, dados = {}, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const item = await this.ensureItemExists(interesse.item_id._id || interesse.item_id);
 
@@ -164,6 +171,7 @@ class InteresseService {
     }
 
     async cancelar(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -277,6 +285,15 @@ class InteresseService {
     isAdmin(usuario) {
         const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
         return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
+    }
+
+    ensureActorAtivo(usuario) {
+        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
+            throw new CustomError({
+                statusCode: 403,
+                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+            });
+        }
     }
 
     getActorId(usuario) {

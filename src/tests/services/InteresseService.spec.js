@@ -131,4 +131,18 @@ describe("InteresseService", () => {
     });
     expect(resultado).toMatchObject({ status: "CANCELADO" });
   });
+
+  test("Deve bloquear operação protegida de usuário suspenso", async () => {
+    await expect(
+      service.listar(
+        { filtros: {}, page: 1, limit: 15 },
+        createRegularUser({ situacao: "SUSPENSO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(interesseRepository.listar).not.toHaveBeenCalled();
+  });
 });

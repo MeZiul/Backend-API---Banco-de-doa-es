@@ -147,4 +147,69 @@ describe("DenunciaService", () => {
     );
     expect(resultado).toEqual(resultadoDetalhado);
   });
+
+  test("Deve impedir que o usuário denuncie a própria conta", async () => {
+    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      });
+
+    await expect(
+      service.criar(
+        {
+          tipo_alvo: "USUARIO",
+          alvo_usuario_id: testIds.usuario,
+          motivo: "SPAM",
+        },
+        createRegularUser({ id: testIds.usuario, situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O usuário não pode denunciar a própria conta.",
+    });
+
+    expect(denunciaRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve bloquear operação protegida de usuário inativo", async () => {
+    await expect(
+      service.listar(
+        { filtros: {}, page: 1, limit: 15 },
+        createRegularUser({ situacao: "INATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(denunciaRepository.listar).not.toHaveBeenCalled();
+  });
+
+  test("Deve impedir auto-suspensão ao resolver denúncia contra o próprio administrador", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+      tipo_alvo: "USUARIO",
+      alvo_usuario_id: testIds.admin,
+    });
+
+    await expect(
+      service.resolver(
+        testIds.denuncia,
+        { status: "PROCEDENTE" },
+        createAdminUser({ situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O administrador não pode suspender a própria conta.",
+    });
+
+    expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
+    expect(denunciaRepository.atualizar).not.toHaveBeenCalled();
+  });
 });

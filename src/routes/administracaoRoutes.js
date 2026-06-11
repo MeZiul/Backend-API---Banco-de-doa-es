@@ -1,11 +1,12 @@
 import express from "express";
 import AdministracaoController from "../controllers/AdministracaoController.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
+import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import EnsureAdminMiddleware from "../middlewares/EnsureAdminMiddleware.js";
 import { asyncWrapper } from "../utils/helpers/index.js";
 
 const router = express.Router();
-const adminOnly = [AuthMiddleware, EnsureAdminMiddleware];
+const adminOnly = [AuthMiddleware, EnsureActiveUserMiddleware, EnsureAdminMiddleware];
 
 router
     .get("/admin/administracoes", ...adminOnly, asyncWrapper(AdministracaoController.listar))
