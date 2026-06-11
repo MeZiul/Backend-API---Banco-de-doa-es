@@ -4,6 +4,7 @@ import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("DenunciaService", () => {
   let denunciaRepository;
+  let itemDoacaoRepository;
   let usuarioRepository;
   let service;
 
@@ -24,8 +25,14 @@ describe("DenunciaService", () => {
       atualizar: jest.fn(),
     };
 
+    itemDoacaoRepository = {
+      buscarPorId: jest.fn(),
+      atualizar: jest.fn(),
+    };
+
     service = new DenunciaService({
       denunciaRepository,
+      itemDoacaoRepository,
       usuarioRepository,
     });
   });
@@ -60,7 +67,7 @@ describe("DenunciaService", () => {
       _id: testIds.usuario,
       situacao: "ATIVO",
     });
-    const itemFindSpy = jest.spyOn(service.itemModel, "findById").mockResolvedValue({
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
     });
@@ -81,7 +88,7 @@ describe("DenunciaService", () => {
       createRegularUser({ id: testIds.usuario })
     );
 
-    expect(itemFindSpy).toHaveBeenCalledWith(testIds.item);
+    expect(itemDoacaoRepository.buscarPorId).toHaveBeenCalledWith(testIds.item);
     expect(denunciaRepository.criar).toHaveBeenCalledWith(
       expect.objectContaining({
         denunciante_id: testIds.usuario,
