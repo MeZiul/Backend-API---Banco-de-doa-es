@@ -33,6 +33,18 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
+    atualizarSeStatus(id, statusEsperado, dadosAtualizacao) {
+        const status = Array.isArray(statusEsperado)
+            ? { $in: statusEsperado }
+            : statusEsperado;
+
+        return this.model.findOneAndUpdate(
+            { _id: id, status },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
     recusarPendentesDoItem(itemId, interesseAceitoId, dadosAtualizacao = {}) {
         return this.model.updateMany(
             {
@@ -41,8 +53,27 @@ class InteresseRepository extends BaseRepository {
                 _id: { $ne: interesseAceitoId }
             },
             {
-                ...dadosAtualizacao,
-                status: "RECUSADO"
+                $set: {
+                    ...dadosAtualizacao,
+                    status: "RECUSADO"
+                }
+            }
+        );
+    }
+
+    restaurarRecusadosDoAceite(itemId, interesseAceitoId, dataResposta) {
+        return this.model.updateMany(
+            {
+                item_id: itemId,
+                status: "RECUSADO",
+                data_resposta: dataResposta,
+                _id: { $ne: interesseAceitoId }
+            },
+            {
+                $set: {
+                    status: "PENDENTE",
+                    data_resposta: null
+                }
             }
         );
     }
