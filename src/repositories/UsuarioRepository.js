@@ -33,6 +33,22 @@ class UsuarioRepository extends BaseRepository {
         });
     }
 
+    atualizarSeSituacao(id, situacaoEsperada, dadosAtualizacao, filtrosAdicionais = {}) {
+        const situacao = Array.isArray(situacaoEsperada)
+            ? { $in: situacaoEsperada }
+            : situacaoEsperada;
+
+        return this.model.findOneAndUpdate(
+            {
+                _id: id,
+                situacao,
+                ...filtrosAdicionais,
+            },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
     listar({filtros = {}, page = 1, limit = 15 }) {
         const builder = new UsuarioFilterBuilder()
             .comNome(filtros.nome)

@@ -30,6 +30,30 @@ class DenunciaRepository extends BaseRepository {
             .populate("admin_id", "nome email");
     }
 
+    atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+        const status = Array.isArray(statusEsperado)
+            ? { $in: statusEsperado }
+            : statusEsperado;
+
+        return this.model.findOneAndUpdate(
+            {
+                _id: id,
+                status,
+                ...filtrosAdicionais,
+            },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
+    deletarSeEmAnalise(id, denuncianteId) {
+        return this.model.findOneAndDelete({
+            _id: id,
+            denunciante_id: denuncianteId,
+            status: "EM_ANALISE",
+        });
+    }
+
     listarEmAnalise({ page = 1, limit = 15 } = {}) {
         return this.listar({
             filtros: { status: "EM_ANALISE" },

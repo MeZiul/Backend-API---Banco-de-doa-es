@@ -103,6 +103,31 @@ class ItemDoacaoRepository extends BaseRepository {
     });
   }
 
+  async listarDisponiveisPorUsuario(usuarioId) {
+    return this.model
+      .find({
+        usuario_id: usuarioId,
+        status: "DISPONIVEL",
+      })
+      .select("_id status");
+  }
+
+  atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+    const status = Array.isArray(statusEsperado)
+      ? { $in: statusEsperado }
+      : statusEsperado;
+
+    return this.model.findOneAndUpdate(
+      {
+        _id: id,
+        status,
+        ...filtrosAdicionais,
+      },
+      { $set: dadosAtualizacao },
+      { new: true, runValidators: true },
+    );
+  }
+
   async cancelarItensPorUsuario(usuarioId) {
     return this.model.updateMany(
       {
