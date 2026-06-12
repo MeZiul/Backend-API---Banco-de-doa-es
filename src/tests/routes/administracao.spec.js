@@ -19,7 +19,7 @@ const mockAdministracaoService = {
   resolverDenuncia: jest.fn(),
 };
 
-jest.mock("../../containers/services.administracao.container.js", () => ({
+jest.mock("../../containers/services.index.js", () => ({
   administracaoService: mockAdministracaoService,
 }));
 

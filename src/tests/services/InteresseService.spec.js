@@ -28,6 +28,7 @@ describe("InteresseService", () => {
       reservarSeDisponivel: jest.fn(),
       liberarReservaDoInteresse: jest.fn(),
       restaurarReservaSeDisponivel: jest.fn(),
+      atualizar: jest.fn(),
     };
 
     usuarioRepository = {
@@ -82,6 +83,7 @@ describe("InteresseService", () => {
       _id: testIds.administracao,
       status: "PENDENTE",
     });
+
     itemDoacaoRepository.incrementarInteressesSeDisponivel.mockResolvedValue({
       _id: testIds.item,
       total_interesses: 1,
@@ -104,6 +106,7 @@ describe("InteresseService", () => {
         status: "PENDENTE",
       })
     );
+
     expect(itemDoacaoRepository.incrementarInteressesSeDisponivel).toHaveBeenCalledWith(testIds.item);
     expect(resultado).toMatchObject({ status: "PENDENTE" });
   });
@@ -124,6 +127,7 @@ describe("InteresseService", () => {
       _id: testIds.administracao,
       status: "CANCELADO",
     });
+    
     itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
@@ -390,5 +394,19 @@ describe("InteresseService", () => {
     ).rejects.toBe(falha);
 
     expect(itemDoacaoRepository.restaurarReservaSeDisponivel).not.toHaveBeenCalled();
+  });
+
+  test("Deve bloquear operação protegida de usuário suspenso", async () => {
+    await expect(
+      service.listar(
+        { filtros: {}, page: 1, limit: 15 },
+        createRegularUser({ situacao: "SUSPENSO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(interesseRepository.listar).not.toHaveBeenCalled();
   });
 });
