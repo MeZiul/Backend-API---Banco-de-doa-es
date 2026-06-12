@@ -7,8 +7,8 @@ import {
     AdministracaoResolverDenunciaSchema,
 } from "../utils/validators/schemas/zod/AdministracaoSchema.js";
 import { DenunciaQuerySchema } from "../utils/validators/schemas/zod/DenunciaSchema.js";
-import { itemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/ItemDoacaoQuerySchema.js";
-import { UsuarioQuerySchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
+import { administracaoItemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/ItemDoacaoQuerySchema.js";
+import { AdministracaoUsuarioQuerySchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
 import CommonResponse from "../utils/helpers/CommonResponse.js";
 
 class AdministracaoController {
@@ -81,7 +81,7 @@ class AdministracaoController {
 
     listarUsuarios = async (req, res, next) => {
         try {
-            const { page, limit, limite, ...filtros } = UsuarioQuerySchema.parse(req.query ?? {});
+            const { page, limit, limite, ...filtros } = AdministracaoUsuarioQuerySchema.parse(req.query ?? {});
             const resultado = await administracaoService.listarUsuarios(
                 {
                     filtros,
@@ -110,7 +110,7 @@ class AdministracaoController {
 
     listarItens = async (req, res, next) => {
         try {
-            const { page, limit, ordenacao, ...filtros } = itemDoacaoQuerySchema.parse(req.query ?? {});
+            const { page, limit, ordenacao, ...filtros } = administracaoItemDoacaoQuerySchema.parse(req.query ?? {});
             const resultado = await administracaoService.listarItens(
                 {
                     filtros,

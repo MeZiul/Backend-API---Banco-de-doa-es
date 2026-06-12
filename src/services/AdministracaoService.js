@@ -44,7 +44,7 @@ class AdministracaoService {
     async listarUsuarios({ filtros = {}, page = 1, limit = 15 }, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
 
-        return this.usuarioRepository.listar({
+        return this.usuarioRepository.listarParaAdministracao({
             filtros,
             page: Number(page),
             limit: Number(limit),
@@ -53,7 +53,16 @@ class AdministracaoService {
 
     async buscarUsuarioPorId(usuarioId, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
-        return this.ensureUsuarioExists(usuarioId);
+        const usuario = await this.usuarioRepository.buscarPorIdParaAdministracao(usuarioId);
+
+        if (!usuario) {
+            throw new CustomError({
+                statusCode: 404,
+                customMessage: messages.error.resourceNotFound("Usuário"),
+            });
+        }
+
+        return usuario;
     }
 
     async listarItens({ filtros = {}, page = 1, limit = 15, ordenacao = "recentes" }, usuarioAdmin) {

@@ -1,3 +1,5 @@
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 class ItemDoacaoFilterBuilder {
     constructor() {
         this.query = {};
@@ -12,7 +14,7 @@ class ItemDoacaoFilterBuilder {
 
     comBuscaTextual(texto) {
         if (texto) {
-            const regex = new RegExp(texto, 'i'); // 'i' torna case-insensitive
+            const regex = new RegExp(escapeRegex(texto), 'i'); // 'i' torna case-insensitive
             this.query.$or = [
                 { titulo: regex },
                 { descricao: regex }
@@ -30,7 +32,7 @@ class ItemDoacaoFilterBuilder {
 
     comCidade(cidade) {
         if (cidade) {
-            this.query.cidade = new RegExp(cidade, 'i');
+            this.query.cidade = new RegExp(escapeRegex(cidade), 'i');
         }
         return this;
     }
@@ -53,6 +55,22 @@ class ItemDoacaoFilterBuilder {
         if (usuarioId) {
             this.query.usuario_id = usuarioId;
         }
+        return this;
+    }
+
+    comPeriodo(dataInicio, dataFim) {
+        if (dataInicio || dataFim) {
+            this.query.data_cadastro = {};
+
+            if (dataInicio) this.query.data_cadastro.$gte = new Date(dataInicio);
+
+            if (dataFim) {
+                const fim = new Date(dataFim);
+                fim.setHours(23, 59, 59, 999);
+                this.query.data_cadastro.$lte = fim;
+            }
+        }
+
         return this;
     }
 

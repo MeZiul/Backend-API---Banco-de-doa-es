@@ -20,8 +20,10 @@ describe("AdministracaoService", () => {
 
     usuarioRepository = {
       buscarPorId: jest.fn(),
+      buscarPorIdParaAdministracao: jest.fn(),
       atualizar: jest.fn(),
       listar: jest.fn(),
+      listarParaAdministracao: jest.fn(),
     };
 
     itemDoacaoRepository = {
@@ -88,6 +90,48 @@ describe("AdministracaoService", () => {
       statusCode: 403,
       customMessage: "Apenas administradores podem realizar esta operação.",
     });
+  });
+
+  test("Deve usar listagem administrativa com filtros e projeção segura", async () => {
+    usuarioRepository.listarParaAdministracao.mockResolvedValue({ docs: [] });
+
+    await service.listarUsuarios(
+      {
+        filtros: {
+          perfil: "USUARIO",
+          situacao: "SUSPENSO",
+          dataInicio: "2026-01-01",
+          dataFim: "2026-01-31",
+        },
+        page: 2,
+        limit: 5,
+      },
+      createAdminUser()
+    );
+
+    expect(usuarioRepository.listarParaAdministracao).toHaveBeenCalledWith({
+      filtros: {
+        perfil: "USUARIO",
+        situacao: "SUSPENSO",
+        dataInicio: "2026-01-01",
+        dataFim: "2026-01-31",
+      },
+      page: 2,
+      limit: 5,
+    });
+    expect(usuarioRepository.listar).not.toHaveBeenCalled();
+  });
+
+  test("Deve buscar detalhe administrativo com projeção segura", async () => {
+    usuarioRepository.buscarPorIdParaAdministracao.mockResolvedValue({
+      _id: testIds.usuario,
+      nome: "Usuário moderado",
+    });
+
+    const resultado = await service.buscarUsuarioPorId(testIds.usuario, createAdminUser());
+
+    expect(usuarioRepository.buscarPorIdParaAdministracao).toHaveBeenCalledWith(testIds.usuario);
+    expect(resultado).toMatchObject({ _id: testIds.usuario });
   });
 
   test("Deve resolver denúncia procedente contra item e cancelar o item", async () => {
