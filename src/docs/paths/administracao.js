@@ -106,7 +106,8 @@ Regras de negócio:
 
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
-- Permite filtros por nome, e-mail, CPF, cidade, UF, perfil e situação.
+- O perfil e a situação atuais são consultados antes da operação.
+- Permite filtros por nome, e-mail, CPF, cidade, UF, perfil, situação e período.
 - A resposta não deve expor senha nem dados sensíveis de autenticação.`,
             security: [{ bearerAuth: [] }],
             parameters: [
@@ -117,6 +118,8 @@ Regras de negócio:
                 { name: "uf", in: "query", schema: { type: "string", minLength: 2, maxLength: 2 } },
                 { name: "perfil", in: "query", schema: { type: "string", enum: ["USUARIO", "ADMINISTRADOR"] } },
                 { name: "situacao", in: "query", schema: { type: "string", enum: ["ATIVO", "SUSPENSO", "INATIVO"] } },
+                { name: "dataInicio", in: "query", schema: { type: "string", format: "date" } },
+                { name: "dataFim", in: "query", schema: { type: "string", format: "date" } },
                 { name: "page", in: "query", schema: { type: "integer", default: 1 } },
                 { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
             ],
@@ -158,7 +161,8 @@ Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O usuário alvo passa para situação INATIVO.
 - Itens ativos vinculados ao usuário podem ser alterados para CANCELADO.
-- A ação deve gerar registro administrativo.`,
+- O administrador não pode inativar a si mesmo.
+- A ação usa atualização condicional e deve gerar registro administrativo.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -174,6 +178,7 @@ Regras de negócio:
                 200: commonResponses[200]("#/components/schemas/AdministracaoUsuarioResultado"),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -189,7 +194,8 @@ Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - A justificativa é obrigatória.
 - O usuário alvo passa para situação SUSPENSO.
-- A ação deve gerar registro administrativo.`,
+- O administrador não pode bloquear a si mesmo.
+- A ação usa atualização condicional e deve gerar registro administrativo.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -207,6 +213,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -221,6 +228,7 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - Permite consulta de itens em qualquer status.
+- Permite filtros por categoria, usuário, localização, condição e período.
 - A resposta traz dados suficientes para moderação.`,
             security: [{ bearerAuth: [] }],
             parameters: [
@@ -230,6 +238,8 @@ Regras de negócio:
                 { name: "cidade", in: "query", schema: { type: "string" } },
                 { name: "uf", in: "query", schema: { type: "string", minLength: 2, maxLength: 2 } },
                 { name: "condicaoItem", in: "query", schema: { type: "string", enum: ["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"] } },
+                { name: "dataInicio", in: "query", schema: { type: "string", format: "date" } },
+                { name: "dataFim", in: "query", schema: { type: "string", format: "date" } },
                 { name: "page", in: "query", schema: { type: "integer", default: 1 } },
                 { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
             ],
@@ -250,7 +260,8 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O item alvo passa para status CANCELADO.
-- A ação deve ser registrada administrativamente.`,
+- A ação usa atualização condicional e deve ser registrada administrativamente.
+- Usuários afetados são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -266,6 +277,7 @@ Regras de negócio:
                 200: commonResponses[200]("#/components/schemas/AdministracaoItemResultado"),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -309,7 +321,7 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - Apenas usuários atualmente suspensos podem ser desbloqueados.
-- A ação deve gerar registro administrativo.`,
+- A ação usa atualização condicional e deve gerar registro administrativo.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -326,6 +338,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -341,7 +354,8 @@ Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O usuário alvo passa para situação INATIVO.
 - Itens ativos vinculados ao usuário podem ser alterados para CANCELADO.
-- A ação deve gerar registro administrativo.`,
+- O administrador não pode inativar a si mesmo.
+- A ação usa atualização condicional e deve gerar registro administrativo.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -357,6 +371,7 @@ Regras de negócio:
                 200: commonResponses[200]("#/components/schemas/AdministracaoUsuarioResultado"),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -371,7 +386,8 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O item alvo passa para status CANCELADO.
-- A ação deve ser registrada administrativamente.`,
+- A ação usa atualização condicional e deve ser registrada administrativamente.
+- Usuários afetados são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -387,6 +403,7 @@ Regras de negócio:
                 200: commonResponses[200]("#/components/schemas/AdministracaoItemResultado"),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -403,7 +420,10 @@ Regras de negócio:
 - Apenas denúncias EM_ANALISE podem ser resolvidas.
 - O resultado deve ser PROCEDENTE ou IMPROCEDENTE.
 - Em caso de denúncia procedente, pode haver cancelamento de item ou suspensão de usuário.
-- A análise registra o administrador responsável, a resposta, a ação tomada e a data.`,
+- A resolução é condicional: somente uma operação concorrente pode vencer.
+- O administrador não pode aplicar auto-suspensão por meio da resolução.
+- A análise registra o administrador responsável, a resposta, a ação tomada e a data.
+- Denunciante e alvo afetado são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -421,6 +441,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },

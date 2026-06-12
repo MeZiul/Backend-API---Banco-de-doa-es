@@ -1,9 +1,9 @@
 # Rotas de Denúncia
 
-Este documento descreve o contrato funcional das rotas de `denúncia` previstas para a Milestone 2.
+Este documento descreve o contrato funcional das rotas de `denuncia` revisadas para a Milestone 3.
 
 Escopo considerado:
-- branches de rota de `denúncia` mergeadas na `dev`
+- estado atual da `dev` e endurecimentos preparados nas branches funcionais `130` a `137`
 - autenticação via Bearer Token JWT
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
 
@@ -163,3 +163,34 @@ Erros comuns:
 - `400 Bad Request` para estado não removível
 - `403 Forbidden` para autor diferente
 - `404 Not Found` para denúncia inexistente
+
+## Atualizacao da Milestone 3
+
+Endurecimentos implementados:
+
+- usuario nao pode denunciar a si mesmo;
+- indices unicos parciais impedem denuncia duplicada `EM_ANALISE` do mesmo denunciante contra o mesmo item ou usuario;
+- atualizacao e remocao usam operacoes condicionais que exigem status `EM_ANALISE`;
+- resolucao administrativa foi centralizada no modulo de Administracao para sempre gerar auditoria;
+- somente uma resolucao concorrente pode vencer;
+- denuncia procedente aplica moderacao condicional e compensacao em caso de falha de auditoria;
+- denunciante e alvo afetado recebem notificacoes de resultado;
+- respostas usam projecoes explicitas para limitar dados do denunciante, alvo, item e administrador.
+
+Respostas adicionais:
+
+- `409 Conflict` pode ocorrer em duplicidade em analise ou perda de corrida de atualizacao/remocao/resolucao;
+- `403 Forbidden` ocorre para usuario inativo, autodenuncia ou operacao por pessoa sem permissao;
+- `498` ocorre quando o Bearer Token nao foi informado ou nao e valido no middleware atual.
+
+Riscos de deploy:
+
+- antes de criar os indices unicos, devem ser auditadas denuncias duplicadas `EM_ANALISE`;
+- sem transacoes MongoDB, uma queda entre moderacao e auditoria pode exigir reconciliacao manual.
+
+Evidencia automatizada:
+
+- validacao real confirmou indice unico e somente uma resolucao concorrente;
+- testes unitarios conjuntos dos tres Services: **56 testes aprovados**;
+- testes de endpoint conjuntos dos tres modulos: **47 testes aprovados**;
+- Controller e router de Denuncia: **100% das linhas** na cobertura focada da branch de endpoints.

@@ -12,7 +12,8 @@ Regras de negócio:
 - O item deve existir e estar com status DISPONIVEL.
 - O usuário não pode manifestar interesse em item próprio.
 - O mesmo usuário não pode registrar mais de um interesse ativo para o mesmo item.
-- O interesse é criado com status PENDENTE e incrementa o total_interesses do item.`,
+- O interesse é criado com status PENDENTE e incrementa o total_interesses do item.
+- O doador é notificado sobre a nova manifestação.`,
             security: [{ bearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -60,6 +61,33 @@ Regras de negócio:
             },
         },
     },
+    "/interesses/recebidos": {
+        get: {
+            tags: ["Interesses"],
+            summary: "Listar interesses recebidos pelo doador",
+            description: `Lista os interesses recebidos nos itens do doador autenticado.
+
+Regras de negócio:
+- A rota exige autenticação e usuário ativo.
+- O filtro de doador é sempre restringido ao usuário autenticado.
+- Pode ser filtrada por status, item e período.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "itemId", in: "query", schema: { type: "string" }, description: "Filtrar por item" },
+                { name: "status", in: "query", schema: { type: "string", enum: ["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"] } },
+                { name: "dataInicio", in: "query", schema: { type: "string", format: "date" } },
+                { name: "dataFim", in: "query", schema: { type: "string", format: "date" } },
+                { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/InteressePaginado"),
+                403: commonResponses[403](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
     "/interesses/{id}": {
         get: {
             tags: ["Interesses"],
@@ -91,7 +119,8 @@ Regras de negócio:
 - A rota exige autenticação.
 - Apenas o próprio usuário interessado pode cancelar.
 - Interesses PENDENTE e ACEITO podem ser cancelados.
-- Se o interesse cancelado estiver ACEITO, o item volta para DISPONIVEL e a reserva é desfeita.`,
+- Se o interesse cancelado estiver ACEITO, o item volta para DISPONIVEL e a reserva é desfeita.
+- O cancelamento é condicional e pode falhar se o estado mudar concorrentemente.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -101,6 +130,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -116,7 +146,8 @@ Regras de negócio:
 - Apenas o doador responsável pelo item pode aceitar.
 - O interesse deve estar PENDENTE.
 - O item precisa estar DISPONIVEL.
-- Ao aceitar, o interesse vira ACEITO, o item vira RESERVADO e os demais interesses pendentes do item são recusados automaticamente.`,
+- Ao aceitar, o interesse vira ACEITO, o item vira RESERVADO e os demais interesses pendentes do item são recusados automaticamente.
+- A reserva é condicional: somente uma tentativa concorrente pode vencer.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -133,6 +164,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -147,7 +179,8 @@ Regras de negócio:
 Regras de negócio:
 - Apenas o doador responsável pode recusar.
 - O interesse deve estar PENDENTE.
-- Ao recusar, o interesse passa para RECUSADO e o item permanece DISPONIVEL se nenhum outro interesse tiver sido aceito.`,
+- Ao recusar, o interesse passa para RECUSADO e o item permanece DISPONIVEL se nenhum outro interesse tiver sido aceito.
+- A recusa é condicional e pode falhar se o estado mudar concorrentemente.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -164,6 +197,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
