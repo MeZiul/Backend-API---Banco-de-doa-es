@@ -33,6 +33,21 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
+    listarPendentesDoItemExceto(itemId, interesseId) {
+        return this.model.find({
+            item_id: itemId,
+            status: "PENDENTE",
+            _id: { $ne: interesseId }
+        });
+    }
+
+    listarAtivosPorItem(itemId) {
+        return this.model.find({
+            item_id: itemId,
+            status: { $in: ["PENDENTE", "ACEITO"] }
+        });
+    }
+
     recusarPendentesDoItem(itemId, interesseAceitoId, dadosAtualizacao = {}) {
         return this.model.updateMany(
             {

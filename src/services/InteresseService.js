@@ -1,10 +1,12 @@
 import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
+import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class InteresseService {
-    constructor({ interesseRepository, usuarioRepository }) {
+    constructor({ interesseRepository, usuarioRepository, notificacaoService }) {
         this.repository = interesseRepository;
         this.usuarioRepository = usuarioRepository;
+        this.notificacaoService = notificacaoService;
         this.itemModel = ItemDoacaoModel;
     }
 
@@ -98,6 +100,17 @@ class InteresseService {
             $inc: { total_interesses: 1 },
         });
 
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: item.usuario_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECEBIDO,
+                titulo: "Novo interesse recebido",
+                mensagem: `Um usuário demonstrou interesse no item "${item.titulo}".`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesse._id,
+            }),
+        ]);
+
         return this.repository.buscarPorIdDetalhado(interesse._id);
     }
 
@@ -122,6 +135,7 @@ class InteresseService {
         }
 
         const dataResposta = new Date();
+        const outrosPendentes = await this.listarPendentesParaNotificacao(item._id, interesse._id);
 
         const interesseAceito = await this.repository.atualizar(id, {
             status: "ACEITO",
@@ -137,6 +151,25 @@ class InteresseService {
         await this.repository.recusarPendentesDoItem(item._id, interesseAceito._id, {
             data_resposta: dataResposta,
         });
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: interesse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_ACEITO,
+                titulo: "Interesse aceito",
+                mensagem: `Seu interesse no item "${item.titulo}" foi aceito.`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesseAceito._id,
+            }),
+            ...outrosPendentes.map((outroInteresse) => this.criarNotificacao({
+                usuarioId: outroInteresse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECUSADO,
+                titulo: "Interesse recusado",
+                mensagem: `Outro interessado foi selecionado para o item "${item.titulo}".`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: outroInteresse._id,
+            })),
+        ]);
 
         return this.repository.buscarPorIdDetalhado(interesseAceito._id);
     }
@@ -159,6 +192,17 @@ class InteresseService {
             data_resposta: new Date(),
             resposta_doador: dados.resposta_doador ?? dados.respostaDoador ?? null,
         });
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: interesse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECUSADO,
+                titulo: "Interesse recusado",
+                mensagem: `Seu interesse no item "${item.titulo}" foi recusado.`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesseRecusado._id,
+            }),
+        ]);
 
         return this.repository.buscarPorIdDetalhado(interesseRecusado._id);
     }
@@ -191,6 +235,17 @@ class InteresseService {
                 status: "DISPONIVEL",
                 interesse_aceito_id: null,
             });
+
+            await this.notificar([
+                this.criarNotificacao({
+                    usuarioId: interesse.usuario_doador_id,
+                    tipo: TIPOS_NOTIFICACAO.INTERESSE_CANCELADO,
+                    titulo: "Interesse aceito cancelado",
+                    mensagem: "O interessado selecionado cancelou o interesse. O item voltou a ficar disponível.",
+                    referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                    referenciaId: interesseCancelado._id,
+                }),
+            ]);
         }
 
         return this.repository.buscarPorIdDetalhado(interesseCancelado._id);
@@ -295,6 +350,33 @@ class InteresseService {
     getEntityId(entidade) {
         const entityId = entidade?._id ?? entidade;
         return entityId?.toString?.() ?? entityId;
+    }
+
+    criarNotificacao({ usuarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId }) {
+        return {
+            usuario_id: this.getEntityId(usuarioId),
+            tipo,
+            titulo,
+            mensagem,
+            referencia_tipo: referenciaTipo,
+            referencia_id: this.getEntityId(referenciaId),
+        };
+    }
+
+    async listarPendentesParaNotificacao(itemId, interesseId) {
+        try {
+            return await this.repository.listarPendentesDoItemExceto(itemId, interesseId);
+        } catch {
+            return [];
+        }
+    }
+
+    async notificar(notificacoes) {
+        try {
+            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(notificacoes);
+        } catch {
+            return [];
+        }
     }
 }
 

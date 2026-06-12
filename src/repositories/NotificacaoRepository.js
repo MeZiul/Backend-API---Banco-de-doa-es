@@ -6,6 +6,10 @@ class NotificacaoRepository extends BaseRepository {
         super(Notificacao);
     }
 
+    criarMuitas(notificacoes) {
+        return this.model.insertMany(notificacoes, { ordered: false });
+    }
+
     listarDoUsuario(usuarioId, options = { page: 1, limit: 20 }) {
         const query = { usuario_id: usuarioId };
 

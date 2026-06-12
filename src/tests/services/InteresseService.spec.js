@@ -6,6 +6,7 @@ import { createRegularUser, testIds } from "../test.js";
 describe("InteresseService", () => {
   let interesseRepository;
   let usuarioRepository;
+  let notificacaoService;
   let service;
 
   beforeEach(() => {
@@ -16,6 +17,7 @@ describe("InteresseService", () => {
       buscarPorIdDetalhado: jest.fn(),
       atualizar: jest.fn(),
       recusarPendentesDoItem: jest.fn(),
+      listarPendentesDoItemExceto: jest.fn(),
       listarPorItem: jest.fn(),
     };
 
@@ -23,9 +25,14 @@ describe("InteresseService", () => {
       buscarPorId: jest.fn(),
     };
 
+    notificacaoService = {
+      criarNotificacoesComSeguranca: jest.fn().mockResolvedValue([]),
+    };
+
     service = new InteresseService({
       interesseRepository,
       usuarioRepository,
+      notificacaoService,
     });
   });
 
@@ -63,6 +70,7 @@ describe("InteresseService", () => {
       _id: testIds.item,
       status: "DISPONIVEL",
       usuario_id: testIds.doador,
+      titulo: "Cadeira",
     });
     interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue(null);
     interesseRepository.criar.mockResolvedValue({ _id: testIds.administracao });
@@ -92,7 +100,175 @@ describe("InteresseService", () => {
     expect(itemUpdateSpy).toHaveBeenCalledWith(testIds.item, {
       $inc: { total_interesses: 1 },
     });
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.doador,
+        tipo: "INTERESSE_RECEBIDO",
+        referencia_id: testIds.administracao,
+      }),
+    ]);
     expect(resultado).toMatchObject({ status: "PENDENTE" });
+  });
+
+  test("Deve notificar interessado aceito e demais recusados automaticamente", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: { _id: testIds.item },
+        usuario_interessado_id: { _id: testIds.interessado },
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "ACEITO",
+      });
+    interesseRepository.listarPendentesDoItemExceto.mockResolvedValue([
+      {
+        _id: testIds.denuncia,
+        usuario_interessado_id: testIds.usuario,
+      },
+    ]);
+    interesseRepository.atualizar.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO",
+    });
+    interesseRepository.recusarPendentesDoItem.mockResolvedValue({ modifiedCount: 1 });
+    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+    });
+    jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({
+      _id: testIds.item,
+      status: "RESERVADO",
+    });
+
+    await service.aceitar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    );
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          usuario_id: testIds.interessado,
+          tipo: "INTERESSE_ACEITO",
+        }),
+        expect.objectContaining({
+          usuario_id: testIds.usuario,
+          tipo: "INTERESSE_RECUSADO",
+        }),
+      ])
+    );
+  });
+
+  test("Falha ao consultar destinatários não deve impedir aceite", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: { _id: testIds.item },
+        usuario_interessado_id: { _id: testIds.interessado },
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "ACEITO",
+      });
+    interesseRepository.listarPendentesDoItemExceto.mockRejectedValue(
+      new Error("consulta indisponível")
+    );
+    interesseRepository.atualizar.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO",
+    });
+    interesseRepository.recusarPendentesDoItem.mockResolvedValue({ modifiedCount: 0 });
+    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+    });
+    jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({
+      _id: testIds.item,
+      status: "RESERVADO",
+    });
+
+    await expect(
+      service.aceitar(
+        testIds.administracao,
+        {},
+        createRegularUser({ id: testIds.doador })
+      )
+    ).resolves.toMatchObject({ status: "ACEITO" });
+  });
+
+  test("Deve notificar o interessado após recusa manual", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: { _id: testIds.item },
+        usuario_interessado_id: { _id: testIds.interessado },
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "RECUSADO",
+      });
+    interesseRepository.atualizar.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "RECUSADO",
+    });
+    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+    });
+
+    await service.recusar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    );
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.interessado,
+        tipo: "INTERESSE_RECUSADO",
+      }),
+    ]);
+  });
+
+  test("Falha de notificação não deve invalidar interesse criado", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.interessado,
+      situacao: "ATIVO",
+    });
+    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+      _id: testIds.item,
+      status: "DISPONIVEL",
+      usuario_id: testIds.doador,
+      titulo: "Cadeira",
+    });
+    jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({});
+    interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue(null);
+    interesseRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "PENDENTE",
+    });
+    notificacaoService.criarNotificacoesComSeguranca.mockRejectedValue(
+      new Error("notificação indisponível")
+    );
+
+    await expect(
+      service.criar(
+        { item_id: testIds.item },
+        createRegularUser({ id: testIds.interessado })
+      )
+    ).resolves.toMatchObject({ status: "PENDENTE" });
   });
 
   test("Deve cancelar interesse aceito e reabrir o item", async () => {
@@ -102,6 +278,7 @@ describe("InteresseService", () => {
         status: "ACEITO",
         item_id: { _id: testIds.item },
         usuario_interessado_id: { _id: testIds.interessado },
+        usuario_doador_id: { _id: testIds.doador },
       })
       .mockResolvedValueOnce({
         _id: testIds.administracao,
@@ -129,6 +306,12 @@ describe("InteresseService", () => {
       status: "DISPONIVEL",
       interesse_aceito_id: null,
     });
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.doador,
+        tipo: "INTERESSE_CANCELADO",
+      }),
+    ]);
     expect(resultado).toMatchObject({ status: "CANCELADO" });
   });
 });
