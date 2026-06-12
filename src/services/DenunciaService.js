@@ -1,11 +1,10 @@
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
 
 class DenunciaService {
-    constructor({ denunciaRepository, usuarioRepository }) {
+    constructor({ denunciaRepository, usuarioRepository, itemDoacaoRepository }) {
         this.repository = denunciaRepository;
         this.usuarioRepository = usuarioRepository;
-        this.itemModel = ItemDoacaoModel;
+        this.itemDoacaoRepository = itemDoacaoRepository;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -227,7 +226,7 @@ class DenunciaService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemModel.findById(id);
+        const item = await this.itemDoacaoRepository.buscarPorId(id);
 
         if (!item) {
             throw new CustomError({
@@ -244,7 +243,7 @@ class DenunciaService {
             const itemId = denuncia.alvo_item_id?._id || denuncia.alvo_item_id;
             await this.ensureItemExists(itemId);
 
-            await this.itemModel.findByIdAndUpdate(itemId, {
+            await this.itemDoacaoRepository.atualizar(itemId, {
                 status: "CANCELADO",
             });
 

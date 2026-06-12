@@ -1,11 +1,10 @@
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
 
 class InteresseService {
-    constructor({ interesseRepository, usuarioRepository }) {
+    constructor({ interesseRepository, usuarioRepository, itemDoacaoRepository }) {
         this.repository = interesseRepository;
         this.usuarioRepository = usuarioRepository;
-        this.itemModel = ItemDoacaoModel;
+        this.itemDoacaoRepository = itemDoacaoRepository;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -94,7 +93,7 @@ class InteresseService {
             data_interesse: new Date(),
         });
 
-        await this.itemModel.findByIdAndUpdate(item._id, {
+        await this.itemDoacaoRepository.atualizar(item._id, {
             $inc: { total_interesses: 1 },
         });
 
@@ -129,7 +128,7 @@ class InteresseService {
             resposta_doador: dados.resposta_doador ?? dados.respostaDoador ?? null,
         });
 
-        await this.itemModel.findByIdAndUpdate(item._id, {
+        await this.itemDoacaoRepository.atualizar(item._id, {
             status: "RESERVADO",
             interesse_aceito_id: interesseAceito._id,
         });
@@ -187,7 +186,7 @@ class InteresseService {
         });
 
         if (interesse.status === "ACEITO") {
-            await this.itemModel.findByIdAndUpdate(interesse.item_id._id || interesse.item_id, {
+            await this.itemDoacaoRepository.atualizar(interesse.item_id._id || interesse.item_id, {
                 status: "DISPONIVEL",
                 interesse_aceito_id: null,
             });
@@ -210,7 +209,7 @@ class InteresseService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemModel.findById(id);
+        const item = await this.itemDoacaoRepository.buscarPorId(id);
 
         if (!item) {
             throw new CustomError({

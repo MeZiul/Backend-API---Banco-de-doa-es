@@ -12,7 +12,7 @@ const mockInteresseService = {
   cancelar: jest.fn(),
 };
 
-jest.mock("../../containers/services.interesse.container.js", () => ({
+jest.mock("../../containers/services.index.js", () => ({
   interesseService: mockInteresseService,
 }));
 

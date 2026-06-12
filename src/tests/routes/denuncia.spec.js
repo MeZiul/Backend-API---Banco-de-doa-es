@@ -11,7 +11,7 @@ const mockDenunciaService = {
   deletar: jest.fn(),
 };
 
-jest.mock("../../containers/services.denuncia.container.js", () => ({
+jest.mock("../../containers/services.index.js", () => ({
   denunciaService: mockDenunciaService,
 }));
 

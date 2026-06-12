@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import ItemDoacaoModel from "../../models/ItemDoacao.js";
 import InteresseService from "../../services/InteresseService.js";
 import { createRegularUser, testIds } from "../test.js";
 
 describe("InteresseService", () => {
   let interesseRepository;
+  let itemDoacaoRepository;
   let usuarioRepository;
   let service;
 
@@ -23,8 +23,14 @@ describe("InteresseService", () => {
       buscarPorId: jest.fn(),
     };
 
+    itemDoacaoRepository = {
+      buscarPorId: jest.fn(),
+      atualizar: jest.fn(),
+    };
+
     service = new InteresseService({
       interesseRepository,
+      itemDoacaoRepository,
       usuarioRepository,
     });
   });
@@ -59,7 +65,7 @@ describe("InteresseService", () => {
       _id: testIds.interessado,
       situacao: "ATIVO",
     });
-    jest.spyOn(ItemDoacaoModel, "findById").mockResolvedValue({
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
       usuario_id: testIds.doador,
@@ -70,7 +76,7 @@ describe("InteresseService", () => {
       _id: testIds.administracao,
       status: "PENDENTE",
     });
-    const itemUpdateSpy = jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({});
+    itemDoacaoRepository.atualizar.mockResolvedValue({});
 
     const resultado = await service.criar(
       {
@@ -89,7 +95,7 @@ describe("InteresseService", () => {
         status: "PENDENTE",
       })
     );
-    expect(itemUpdateSpy).toHaveBeenCalledWith(testIds.item, {
+    expect(itemDoacaoRepository.atualizar).toHaveBeenCalledWith(testIds.item, {
       $inc: { total_interesses: 1 },
     });
     expect(resultado).toMatchObject({ status: "PENDENTE" });
@@ -111,7 +117,7 @@ describe("InteresseService", () => {
       _id: testIds.administracao,
       status: "CANCELADO",
     });
-    const itemUpdateSpy = jest.spyOn(ItemDoacaoModel, "findByIdAndUpdate").mockResolvedValue({
+    itemDoacaoRepository.atualizar.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
     });
@@ -125,7 +131,7 @@ describe("InteresseService", () => {
       testIds.administracao,
       expect.objectContaining({ status: "CANCELADO" })
     );
-    expect(itemUpdateSpy).toHaveBeenCalledWith(testIds.item, {
+    expect(itemDoacaoRepository.atualizar).toHaveBeenCalledWith(testIds.item, {
       status: "DISPONIVEL",
       interesse_aceito_id: null,
     });
