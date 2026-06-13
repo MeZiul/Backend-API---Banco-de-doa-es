@@ -1,5 +1,5 @@
 # Variante alpine para deixar mais leve.
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Argumento de build
 # NODE_ENV afeta se as dependências de desenvolvimento serão instaladas ou não.
