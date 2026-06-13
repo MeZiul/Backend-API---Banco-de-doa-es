@@ -39,6 +39,22 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
+    listarRecusadosDoAceite(itemId, interesseId, dataResposta) {
+        return this.model.find({
+            item_id: itemId,
+            status: "RECUSADO",
+            data_resposta: dataResposta,
+            _id: { $ne: interesseId }
+        });
+    }
+
+    listarAtivosPorItem(itemId) {
+        return this.model.find({
+            item_id: itemId,
+            status: { $in: ["PENDENTE", "ACEITO"] }
+        });
+    }
+
     atualizarSeStatus(id, statusEsperado, dadosAtualizacao) {
         const status = Array.isArray(statusEsperado)
             ? { $in: statusEsperado }

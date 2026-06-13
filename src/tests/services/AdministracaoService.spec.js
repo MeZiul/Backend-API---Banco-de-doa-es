@@ -7,6 +7,8 @@ describe("AdministracaoService", () => {
   let usuarioRepository;
   let itemDoacaoRepository;
   let denunciaRepository;
+  let interesseRepository;
+  let notificacaoService;
   let service;
 
   beforeEach(() => {
@@ -30,6 +32,8 @@ describe("AdministracaoService", () => {
       buscarPorId: jest.fn(),
       atualizarSeStatus: jest.fn(),
       listarTodos: jest.fn(),
+      listarPorUsuario: jest.fn().mockResolvedValue([]),
+      cancelarItensPorUsuario: jest.fn(),
       buscarEmAndamentoPorUsuario: jest.fn(),
       listarDisponiveisPorUsuario: jest.fn(),
     };
@@ -40,11 +44,21 @@ describe("AdministracaoService", () => {
       listar: jest.fn(),
     };
 
+    interesseRepository = {
+      listarAtivosPorItem: jest.fn().mockResolvedValue([]),
+    };
+
+    notificacaoService = {
+      criarNotificacoesComSeguranca: jest.fn().mockResolvedValue([]),
+    };
+
     service = new AdministracaoService({
       administracaoRepository,
       usuarioRepository,
       itemDoacaoRepository,
       denunciaRepository,
+      interesseRepository,
+      notificacaoService,
     });
   });
 
@@ -82,6 +96,12 @@ describe("AdministracaoService", () => {
         justificativa: "Violação das regras",
       })
     );
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.usuario,
+        tipo: "USUARIO_SUSPENSO",
+      }),
+    ]);
     expect(resultado).toMatchObject({ situacao: "SUSPENSO" });
   });
 
@@ -178,7 +198,12 @@ describe("AdministracaoService", () => {
       _id: testIds.denuncia,
       status: "EM_ANALISE",
       tipo_alvo: "ITEM",
-      alvo_item_id: testIds.item,
+      denunciante_id: { _id: testIds.usuario },
+      alvo_item_id: {
+        _id: testIds.item,
+        usuario_id: testIds.doador,
+        titulo: "Cadeira",
+      },
     };
 
     denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
@@ -195,6 +220,12 @@ describe("AdministracaoService", () => {
       status: "CANCELADO",
     });
     administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+    interesseRepository.listarAtivosPorItem.mockResolvedValue([
+      {
+        _id: testIds.administracao,
+        usuario_interessado_id: testIds.interessado,
+      },
+    ]);
 
     const resultado = await service.resolverDenuncia(
       testIds.denuncia,
@@ -221,7 +252,46 @@ describe("AdministracaoService", () => {
         resultado_denuncia: "PROCEDENTE",
       })
     );
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          usuario_id: testIds.usuario,
+          tipo: "DENUNCIA_RESULTADO",
+        }),
+        expect.objectContaining({
+          usuario_id: testIds.doador,
+          tipo: "DENUNCIA_RESULTADO",
+        }),
+      ])
+    );
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.interessado,
+        tipo: "ITEM_CANCELADO",
+      }),
+    ]);
     expect(resultado).toMatchObject({ status: "PROCEDENTE" });
+  });
+
+  test("Deve notificar usuário após desbloqueio", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "SUSPENSO",
+    });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await service.desbloquearUsuario(testIds.usuario, {}, createAdminUser());
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.usuario,
+        tipo: "USUARIO_REATIVADO",
+      }),
+    ]);
   });
 
   test("Deve permitir somente uma resolução concorrente da denúncia", async () => {
@@ -454,6 +524,152 @@ describe("AdministracaoService", () => {
     expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
     expect(itemDoacaoRepository.buscarEmAndamentoPorUsuario).not.toHaveBeenCalled();
     expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve notificar resultado e suspensão ao resolver denúncia procedente contra usuário", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+      tipo_alvo: "USUARIO",
+      denunciante_id: { _id: testIds.usuario },
+      alvo_usuario_id: { _id: testIds.doador },
+    });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "PROCEDENTE",
+    });
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.doador,
+      situacao: "ATIVO",
+    });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({
+      _id: testIds.doador,
+      situacao: "SUSPENSO",
+    });
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await service.resolverDenuncia(
+      testIds.denuncia,
+      { resultado: "PROCEDENTE", acao_tomada: "Conta suspensa" },
+      createAdminUser()
+    );
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          usuario_id: testIds.usuario,
+          tipo: "DENUNCIA_RESULTADO",
+        }),
+        expect.objectContaining({
+          usuario_id: testIds.doador,
+          tipo: "DENUNCIA_RESULTADO",
+        }),
+        expect.objectContaining({
+          usuario_id: testIds.doador,
+          tipo: "USUARIO_SUSPENSO",
+        }),
+      ])
+    );
+  });
+
+  test("Deve notificar interesses ativos após cancelamento administrativo do item", async () => {
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+    });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    interesseRepository.listarAtivosPorItem.mockResolvedValue([
+      {
+        _id: testIds.administracao,
+        usuario_interessado_id: testIds.interessado,
+      },
+    ]);
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await service.cancelarItem(testIds.item, {}, createAdminUser());
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.interessado,
+        tipo: "ITEM_CANCELADO",
+        referencia_id: testIds.item,
+      }),
+    ]);
+  });
+
+  test("Falha ao consultar destinatários não deve impedir cancelamento administrativo", async () => {
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+    });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    interesseRepository.listarAtivosPorItem.mockRejectedValue(
+      new Error("consulta indisponível")
+    );
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await expect(
+      service.cancelarItem(testIds.item, {}, createAdminUser())
+    ).resolves.toMatchObject({ status: "CANCELADO" });
+  });
+
+  test("Deve notificar interessados dos itens cancelados ao inativar usuário", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "INATIVO",
+    });
+    itemDoacaoRepository.listarPorUsuario.mockResolvedValue([
+      {
+        _id: testIds.item,
+        titulo: "Cadeira",
+        status: "DISPONIVEL",
+      },
+    ]);
+    itemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
+    itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([
+      {
+        _id: testIds.item,
+        status: "DISPONIVEL",
+      },
+    ]);
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    interesseRepository.listarAtivosPorItem.mockResolvedValue([
+      {
+        _id: testIds.administracao,
+        usuario_interessado_id: testIds.interessado,
+      },
+    ]);
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await service.inativarUsuario(testIds.usuario, {}, createAdminUser());
+
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenCalledWith(
+      testIds.item,
+      "DISPONIVEL",
+      { status: "CANCELADO" }
+    );
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.interessado,
+        tipo: "ITEM_CANCELADO",
+        referencia_id: testIds.item,
+      }),
+    ]);
   });
 
   test("Deve impedir auto-suspensão ao resolver denúncia contra o próprio administrador", async () => {

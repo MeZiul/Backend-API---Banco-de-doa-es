@@ -1,11 +1,21 @@
 import { CustomError, messages } from "../utils/helpers/index.js";
+import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class AdministracaoService {
-    constructor({ administracaoRepository, usuarioRepository, itemDoacaoRepository, denunciaRepository }) {
+    constructor({
+        administracaoRepository,
+        usuarioRepository,
+        itemDoacaoRepository,
+        denunciaRepository,
+        interesseRepository,
+        notificacaoService,
+    }) {
         this.repository = administracaoRepository;
         this.usuarioRepository = usuarioRepository;
         this.itemDoacaoRepository = itemDoacaoRepository;
         this.denunciaRepository = denunciaRepository;
+        this.interesseRepository = interesseRepository;
+        this.notificacaoService = notificacaoService;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -106,7 +116,7 @@ class AdministracaoService {
 
         const suspensaoAte = dados.suspensao_ate ?? dados.suspensaoAte ?? null;
 
-        return this.executarAcaoAuditavel({
+        const usuarioAtualizado = await this.executarAcaoAuditavel({
             executar: () => this.usuarioRepository.atualizarSeSituacao(usuarioId, "ATIVO", {
                 situacao: "SUSPENSO",
                 motivo_suspensao: justificativa,
@@ -138,6 +148,19 @@ class AdministracaoService {
             mensagemConflito: "A situação do usuário foi alterada por outra operação.",
             mensagemCompensacao: "Falha ao compensar bloqueio sem registro de auditoria.",
         });
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId,
+                tipo: TIPOS_NOTIFICACAO.USUARIO_SUSPENSO,
+                titulo: "Conta suspensa",
+                mensagem: `Sua conta foi suspensa. Motivo: ${justificativa}`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.USUARIO,
+                referenciaId: usuarioId,
+            }),
+        ]);
+
+        return usuarioAtualizado;
     }
 
     async desbloquearUsuario(usuarioId, dados = {}, usuarioAdmin) {
@@ -152,7 +175,7 @@ class AdministracaoService {
             });
         }
 
-        return this.executarAcaoAuditavel({
+        const usuarioAtualizado = await this.executarAcaoAuditavel({
             executar: () => this.usuarioRepository.atualizarSeSituacao(usuarioId, "SUSPENSO", {
                 situacao: "ATIVO",
                 motivo_suspensao: null,
@@ -182,6 +205,19 @@ class AdministracaoService {
             mensagemConflito: "A situação do usuário foi alterada por outra operação.",
             mensagemCompensacao: "Falha ao compensar desbloqueio sem registro de auditoria.",
         });
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId,
+                tipo: TIPOS_NOTIFICACAO.USUARIO_REATIVADO,
+                titulo: "Conta reativada",
+                mensagem: "Sua conta foi reativada pela administração.",
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.USUARIO,
+                referenciaId: usuarioId,
+            }),
+        ]);
+
+        return usuarioAtualizado;
     }
 
     async inativarUsuario(usuarioId, dados = {}, usuarioAdmin) {
@@ -203,6 +239,7 @@ class AdministracaoService {
             );
         }
 
+        const itensParaNotificar = await this.listarItensCancelaveisComInteresses(usuarioIdNormalizado);
         const itensCancelados = await this.cancelarItensDisponiveisDoUsuario(usuarioIdNormalizado);
         let usuarioAtualizado;
 
@@ -255,6 +292,10 @@ class AdministracaoService {
             throw error;
         }
 
+        for (const { item, interessesAtivos } of itensParaNotificar) {
+            await this.notificarCancelamentoItem(item, interessesAtivos);
+        }
+
         return usuarioAtualizado;
     }
 
@@ -262,12 +303,13 @@ class AdministracaoService {
         this.ensureAdmin(usuarioAdmin);
 
         const item = await this.ensureItemExists(itemId);
+        const interessesAtivos = await this.listarInteressesAtivosDoItem(itemId);
 
         if (item.status === "CANCELADO") {
             throw this.createConflictError("O item já está cancelado.");
         }
 
-        return this.executarAcaoAuditavel({
+        const itemAtualizado = await this.executarAcaoAuditavel({
             executar: () => this.itemDoacaoRepository.atualizarSeStatus(itemId, item.status, {
                 status: "CANCELADO",
             }),
@@ -285,6 +327,10 @@ class AdministracaoService {
             mensagemConflito: "O status do item foi alterado por outra operação.",
             mensagemCompensacao: "Falha ao compensar cancelamento sem registro de auditoria.",
         });
+
+        await this.notificarCancelamentoItem(item, interessesAtivos);
+
+        return itemAtualizado;
     }
 
     async resolverDenuncia(denunciaId, dados = {}, usuarioAdmin) {
@@ -306,6 +352,10 @@ class AdministracaoService {
                 customMessage: "O resultado da denúncia deve ser PROCEDENTE ou IMPROCEDENTE.",
             });
         }
+
+        const interessesAtivos = resultado === "PROCEDENTE" && denuncia.tipo_alvo === "ITEM"
+            ? await this.listarInteressesAtivosDoItem(this.getEntityId(denuncia.alvo_item_id))
+            : [];
 
         if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "USUARIO") {
             this.ensureAlvoDiferenteDoAtor(
@@ -375,6 +425,12 @@ class AdministracaoService {
                 "Falha ao compensar resolução de denúncia."
             );
             throw error;
+        }
+
+        await this.notificarResultadoDenuncia(denuncia, resultado);
+
+        if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "ITEM") {
+            await this.notificarCancelamentoItem(denuncia.alvo_item_id, interessesAtivos);
         }
 
         return denunciaAtualizada;
@@ -640,6 +696,126 @@ class AdministracaoService {
     getEntityId(entidade) {
         const entityId = entidade?._id ?? entidade;
         return entityId?.toString?.() ?? entityId;
+    }
+
+    async listarInteressesAtivosDoItem(itemId) {
+        if (!this.interesseRepository?.listarAtivosPorItem) {
+            return [];
+        }
+
+        try {
+            return await this.interesseRepository.listarAtivosPorItem(itemId);
+        } catch {
+            return [];
+        }
+    }
+
+    async listarItensCancelaveisComInteresses(usuarioId) {
+        if (!this.itemDoacaoRepository?.listarPorUsuario) {
+            return [];
+        }
+
+        const statusCancelaveis = new Set([
+            "DISPONIVEL",
+            "RESERVADO",
+            "AGUARDANDO_CONFIRMACAO",
+        ]);
+        let itens;
+
+        try {
+            itens = await this.itemDoacaoRepository.listarPorUsuario(usuarioId);
+        } catch {
+            return [];
+        }
+        const itensCancelaveis = itens.filter((item) => statusCancelaveis.has(item.status));
+
+        return Promise.all(
+            itensCancelaveis.map(async (item) => ({
+                item,
+                interessesAtivos: await this.listarInteressesAtivosDoItem(this.getEntityId(item)),
+            }))
+        );
+    }
+
+    async notificarCancelamentoItem(item, interessesAtivos) {
+        const itemId = this.getEntityId(item);
+        const tituloItem = item?.titulo ? ` "${item.titulo}"` : "";
+
+        await this.notificar(
+            interessesAtivos.map((interesse) => this.criarNotificacao({
+                usuarioId: interesse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.ITEM_CANCELADO,
+                titulo: "Item cancelado",
+                mensagem: `O item${tituloItem} foi cancelado pela administração.`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.ITEM,
+                referenciaId: itemId,
+            }))
+        );
+    }
+
+    async notificarResultadoDenuncia(denuncia, resultado) {
+        const destinatarios = new Set([
+            this.getEntityId(denuncia.denunciante_id),
+            this.getDestinatarioDenunciado(denuncia),
+        ].filter(Boolean));
+        const notificacoes = [...destinatarios].map((usuarioId) => this.criarNotificacao({
+            usuarioId,
+            tipo: TIPOS_NOTIFICACAO.DENUNCIA_RESULTADO,
+            titulo: "Denúncia analisada",
+            mensagem: `A denúncia foi analisada e considerada ${resultado}.`,
+            referenciaTipo: REFERENCIAS_NOTIFICACAO.DENUNCIA,
+            referenciaId: denuncia,
+        }));
+
+        if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "USUARIO") {
+            notificacoes.push(
+                this.criarNotificacao({
+                    usuarioId: denuncia.alvo_usuario_id,
+                    tipo: TIPOS_NOTIFICACAO.USUARIO_SUSPENSO,
+                    titulo: "Conta suspensa",
+                    mensagem: "Sua conta foi suspensa após uma denúncia procedente.",
+                    referenciaTipo: REFERENCIAS_NOTIFICACAO.USUARIO,
+                    referenciaId: denuncia.alvo_usuario_id,
+                })
+            );
+        }
+
+        await this.notificar(notificacoes);
+    }
+
+    getDestinatarioDenunciado(denuncia) {
+        if (denuncia.tipo_alvo === "USUARIO") {
+            return this.getEntityId(denuncia.alvo_usuario_id);
+        }
+
+        if (denuncia.tipo_alvo === "ITEM") {
+            return this.getEntityId(denuncia.alvo_item_id?.usuario_id);
+        }
+
+        return null;
+    }
+
+    criarNotificacao({ usuarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId }) {
+        return {
+            usuario_id: this.getEntityId(usuarioId),
+            tipo,
+            titulo,
+            mensagem,
+            referencia_tipo: referenciaTipo,
+            referencia_id: this.getEntityId(referenciaId),
+        };
+    }
+
+    async notificar(notificacoes) {
+        if (notificacoes.length === 0) {
+            return [];
+        }
+
+        try {
+            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(notificacoes);
+        } catch {
+            return [];
+        }
     }
 
     getAlvoModel(tipoAlvo) {

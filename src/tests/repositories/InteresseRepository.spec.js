@@ -53,4 +53,24 @@ describe("InteresseRepository", () => {
       }
     );
   });
+
+  test("Deve listar somente recusas produzidas pelo aceite concluído", () => {
+    const query = { exec: jest.fn() };
+    const dataResposta = new Date();
+    const spy = jest.spyOn(repository.model, "find").mockReturnValue(query);
+
+    const resultado = repository.listarRecusadosDoAceite(
+      testIds.item,
+      testIds.administracao,
+      dataResposta
+    );
+
+    expect(spy).toHaveBeenCalledWith({
+      item_id: testIds.item,
+      status: "RECUSADO",
+      data_resposta: dataResposta,
+      _id: { $ne: testIds.administracao },
+    });
+    expect(resultado).toBe(query);
+  });
 });

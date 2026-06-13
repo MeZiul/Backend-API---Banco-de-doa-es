@@ -1,23 +1,16 @@
 import mongoose from 'mongoose';
 import mongoosePaginate from "mongoose-paginate-v2";
+import { TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 const notificacaoSchema = new mongoose.Schema({
     usuario_id: {
         type: mongoose.Schema.Types.ObjectId,
-        re: "Usuario",
+        ref: "Usuario",
         required: true
     },
     tipo: {
         type: String,
-        enum: [
-            "INTERESE_RECEBIDO",
-            "INTERESSE_ACEITO",
-            "INTERESSE_RECUSADO",
-            "DOACAO_CONFIRMADA",
-            "AVALIACAO_RECEBIDA",
-            "DENUNCIA_RESULTADO",
-            "SISTEMA"
-        ],
+        enum: Object.values(TIPOS_NOTIFICACAO),
         required: true
     },
     titulo: {
@@ -47,6 +40,8 @@ const notificacaoSchema = new mongoose.Schema({
 
 //suporte a paginação
 notificacaoSchema.plugin(mongoosePaginate);
+notificacaoSchema.index({ usuario_id: 1, data_criacao: -1 });
+notificacaoSchema.index({ usuario_id: 1, lida: 1 });
 
 //Mongoose ja retorna o constructor pronto
 const Notificacao = mongoose.model("Notificacao", notificacaoSchema);

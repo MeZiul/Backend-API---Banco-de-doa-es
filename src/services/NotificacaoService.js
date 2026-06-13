@@ -1,5 +1,6 @@
 import NotificacaoRepository from '../repositories/NotificacaoRepository.js';
 import { CustomError } from "../utils/helpers/index.js";
+import logger from "../utils/logger.js";
 
 class NotificacaoService {
     constructor(repository) {
@@ -9,6 +10,28 @@ class NotificacaoService {
 
     criarNotificacao = async (dados) => {
         return await this.repository.criar(dados);
+    }
+
+    criarNotificacoes = async (notificacoes) => {
+        const notificacoesValidas = notificacoes.filter((notificacao) => notificacao?.usuario_id);
+
+        if (notificacoesValidas.length === 0) {
+            return [];
+        }
+
+        return this.repository.criarMuitas(notificacoesValidas);
+    }
+
+    criarNotificacoesComSeguranca = async (notificacoes) => {
+        try {
+            return await this.criarNotificacoes(notificacoes);
+        } catch (error) {
+            logger.error("Falha ao criar notificações de domínio.", {
+                erro: error.message,
+                quantidade: notificacoes.length,
+            });
+            return [];
+        }
     }
 
     listar = async (usuarioId, page = 1, limit = 20) => {
