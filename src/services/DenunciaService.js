@@ -8,6 +8,7 @@ class DenunciaService {
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
 
         if (!this.isAdmin(usuario)) {
@@ -42,6 +43,7 @@ class DenunciaService {
     }
 
     async buscarPorId(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
 
         if (!this.canAccessDenuncia(denuncia, usuario)) {
@@ -55,6 +57,7 @@ class DenunciaService {
     }
 
     async criar(dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
         const denunciante = await this.ensureUsuarioAtivo(usuarioId);
         const tipoAlvo = dados.tipo_alvo || dados.tipoAlvo;
@@ -99,6 +102,13 @@ class DenunciaService {
             const alvoUsuarioId = dados.alvo_usuario_id || dados.alvoUsuarioId;
             const alvoUsuario = await this.ensureUsuarioExists(alvoUsuarioId);
 
+            if (this.getEntityId(alvoUsuario) === this.getEntityId(denunciante)) {
+                throw new CustomError({
+                    statusCode: 400,
+                    customMessage: "O usuário não pode denunciar a própria conta.",
+                });
+            }
+
             const denunciaEmAnalise = await this.repository.buscarEmAnalisePorUsuarioEDenunciante(
                 denunciante._id,
                 alvoUsuario._id
@@ -135,6 +145,7 @@ class DenunciaService {
     }
 
     async atualizar(id, dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -167,6 +178,7 @@ class DenunciaService {
     }
 
     async deletar(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -260,6 +272,8 @@ class DenunciaService {
     }
 
     ensureAdmin(usuario) {
+        this.ensureActorAtivo(usuario);
+
         if (!this.isAdmin(usuario)) {
             throw new CustomError({
                 statusCode: 403,
@@ -282,6 +296,15 @@ class DenunciaService {
             statusCode: 409,
             customMessage,
         });
+    }
+
+    ensureActorAtivo(usuario) {
+        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
+            throw new CustomError({
+                statusCode: 403,
+                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+            });
+        }
     }
 
     getActorId(usuario) {

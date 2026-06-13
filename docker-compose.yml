@@ -8,6 +8,7 @@ services:
       - vol-mongodb:/data/db
 
   minha-api:
+    restart: unless-stopped
     build:
       context: .
       args:
@@ -15,7 +16,7 @@ services:
     env_file:
       - .env
     ports:
-      - 7340:7340
+      - 80:7340
     depends_on:
       - meu-mongodb
 

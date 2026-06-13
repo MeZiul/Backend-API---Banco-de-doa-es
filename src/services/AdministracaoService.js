@@ -79,6 +79,7 @@ class AdministracaoService {
 
     async bloquearUsuario(usuarioId, dados = {}, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
+        this.ensureAlvoDiferenteDoAtor(usuarioId, usuarioAdmin, "bloquear");
 
         const usuario = await this.ensureUsuarioExists(usuarioId);
         const justificativa = dados.justificativa?.trim?.();
@@ -176,6 +177,7 @@ class AdministracaoService {
 
     async inativarUsuario(usuarioId, dados = {}, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
+        this.ensureAlvoDiferenteDoAtor(usuarioId, usuarioAdmin, "inativar");
 
         const usuario = await this.ensureUsuarioExists(usuarioId);
 
@@ -294,6 +296,14 @@ class AdministracaoService {
                 statusCode: 400,
                 customMessage: "O resultado da denúncia deve ser PROCEDENTE ou IMPROCEDENTE.",
             });
+        }
+
+        if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "USUARIO") {
+            this.ensureAlvoDiferenteDoAtor(
+                this.getEntityId(denuncia.alvo_usuario_id),
+                usuarioAdmin,
+                "suspender"
+            );
         }
 
         const actorId = this.getActorId(usuarioAdmin);
@@ -569,6 +579,7 @@ class AdministracaoService {
     }
 
     ensureAdmin(usuario) {
+        this.ensureActorAtivo(usuario);
         const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
 
         if (usuario?.perfil !== "ADMINISTRADOR" && !papeis.includes("ADMINISTRADOR")) {
@@ -584,6 +595,24 @@ class AdministracaoService {
             statusCode: 409,
             customMessage,
         });
+    }
+
+    ensureActorAtivo(usuario) {
+        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
+            throw new CustomError({
+                statusCode: 403,
+                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+            });
+        }
+    }
+
+    ensureAlvoDiferenteDoAtor(usuarioId, usuarioAdmin, acao) {
+        if (usuarioId.toString() === this.getActorId(usuarioAdmin)) {
+            throw new CustomError({
+                statusCode: 400,
+                customMessage: `O administrador não pode ${acao} a própria conta.`,
+            });
+        }
     }
 
     getActorId(usuario) {

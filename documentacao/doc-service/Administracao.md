@@ -1,77 +1,73 @@
 # Plano de Teste - AdministracaoService
 
-## API DoaI - Banco de Doacoes | Fabrica de Software 2026.1
+## API DoaI - Banco de Doacoes | Milestone 3
 
----
+## 1. Objetivo
 
-## 1. Apresentacao
+Validar as regras de moderacao administrativa, autorizacao, auditoria, consistencia e tratamento de estados invalidos do modulo de Administracao.
 
-Este plano documenta os testes unitarios do `AdministracaoService`, camada responsavel por moderacao administrativa, bloqueio de usuarios, resolucao de denuncias e registro de acoes administrativas.
+## 2. Estrategia
 
----
+- Testes unitarios do `AdministracaoService` com repositories mockados.
+- Testes de endpoint com o router real, JWT de teste, `AuthMiddleware`, `EnsureAdminMiddleware`, schemas Zod e Service mockado.
+- Testes de concorrencia e compensacao ficam nas branches funcionais correspondentes.
 
-## 2. Objetivo
-
-Validar que somente administradores executam operacoes administrativas e que a moderacao registra a acao aplicada no historico administrativo.
-
----
-
-## 3. Escopo
-
-### 3.1 Metodos Testados
-
-| Metodo | Descricao |
-| ------ | --------- |
-| `bloquearUsuario(id, dados, actor)` | Bloqueia usuario e registra acao administrativa |
-| `listar(params, actor)` | Impede listagem por usuario sem perfil administrativo |
-| `resolverDenuncia(id, dados, actor)` | Resolve denuncia procedente contra item e cancela item |
-
-### 3.2 Fora do Escopo
-
-- Testes de desbloqueio.
-- Testes de inativacao administrativa de usuario.
-- Testes de repository com banco real.
-
----
-
-## 4. Estrategia
-
-**Abordagem:** teste unitario com repositories mockados para usuarios, itens, denuncias e registros administrativos.
-
-### 4.1 Arquivo de Teste
+Arquivos:
 
 ```text
 src/tests/services/AdministracaoService.spec.js
+src/tests/routes/administracao.spec.js
 ```
 
-### 4.2 Comandos
+## 3. Regras Cobertas
+
+- Somente administradores podem executar operacoes administrativas.
+- Listagens e consultas administrativas normalizam paginacao e filtros.
+- Bloqueio exige justificativa e registra auditoria.
+- Somente usuario suspenso pode ser desbloqueado.
+- Inativacao e cancelamento de item geram registro administrativo.
+- Denuncia somente pode ser resolvida enquanto estiver `EM_ANALISE`.
+- Resultado da denuncia deve ser `PROCEDENTE` ou `IMPROCEDENTE`.
+- Denuncia procedente pode cancelar item ou suspender usuario.
+- Recursos inexistentes retornam `404`.
+- Operacoes concorrentes e falhas de auditoria devem ser tratadas sem deixar estado silenciosamente inconsistente.
+
+## 4. Cenarios Principais
+
+| Grupo | Cenarios validados |
+| --- | --- |
+| Autorizacao | usuario comum bloqueado; administrador por perfil ou papel permitido |
+| Consultas | acoes, alvo, administrador, usuarios, itens e denuncias |
+| Moderacao de usuario | bloquear, exigir justificativa, desbloquear, inativar |
+| Moderacao de item | cancelar item e registrar auditoria |
+| Resolucao de denuncia | procedente contra item, procedente contra usuario, improcedente e estados invalidos |
+| Erros | IDs invalidos, recursos inexistentes, conflitos e falhas operacionais |
+| Contrato HTTP | JWT, status HTTP, payload padronizado, aliases e validacao Zod |
+
+## 5. Evidencias
+
+Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+
+- suite conjunta dos tres Services: **56 testes aprovados**;
+- Administracao, Interesse e Denuncia: **100% de statements, funcoes e linhas**;
+- cobertura conjunta de branches: **80%**.
+
+Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
+
+- suite conjunta dos tres modulos: **47 testes aprovados**;
+- Controllers e routers dos tres modulos: **100% de linhas**;
+- cobertura focada: **96,56% de statements e linhas**.
+
+## 6. Comandos
 
 ```powershell
 npm.cmd test -- --runInBand src/tests/services/AdministracaoService.spec.js
+npm.cmd test -- --runInBand src/tests/routes/administracao.spec.js
 npm.cmd run test:coverage -- --runInBand
 ```
 
----
+## 7. Riscos e Pendencias
 
-## 5. Cenarios de Teste
-
-| ID | Descricao | Mock Configurado | Resultado Esperado | Status |
-| -- | --------- | ---------------- | ------------------ | ------ |
-| ADM-SV-01 | Bloqueia usuario e registra acao | usuario `ATIVO`, admin autenticado | usuario vira `SUSPENSO` e acao `BLOQUEIO_USUARIO` e registrada | PASSOU |
-| ADM-SV-02 | Usuario comum tenta listar administracao | actor com perfil `USUARIO` | erro `403` por falta de permissao | PASSOU |
-| ADM-SV-03 | Resolve denuncia procedente contra item | denuncia `EM_ANALISE`, item disponivel, admin autenticado | item vira `CANCELADO`, denuncia vira `PROCEDENTE` e acao e registrada | PASSOU |
-
----
-
-## 6. Resultado de Execucao
-
-| Suite | Arquivo | Testes | Aprovados | Reprovados | Status |
-| ----- | ------- | ------ | --------- | ---------- | ------ |
-| AdministracaoService | `services/AdministracaoService.spec.js` | **3** | **3** | **0** | PASSOU |
-
----
-
-## 7. Observacoes
-
-- A cobertura atual valida o fluxo central de moderacao, mas ainda pode ser expandida para desbloqueio, exclusao logica e filtros de auditoria.
-- As rotas HTTP correspondentes sao cobertas em `src/tests/routes/administracao.spec.js`.
+- O detalhe administrativo de usuario ainda nao agrega todo o historico resumido previsto no contrato oficial.
+- Compensacoes reduzem inconsistencias, mas uma queda do processo entre mutacao e auditoria ainda exige reconciliacao enquanto nao houver transacoes com replica set.
+- Ao integrar as branches `130` a `137`, preservar autorizacao por situacao atual, compare-and-set, compensacoes, notificacoes, filtros seguros e todos os cenarios de teste.

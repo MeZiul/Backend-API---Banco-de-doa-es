@@ -4,8 +4,8 @@ import { createRegularUser, testIds } from "../test.js";
 
 describe("DenunciaService", () => {
   let denunciaRepository;
-  let usuarioRepository;
   let itemDoacaoRepository;
+  let usuarioRepository;
   let service;
 
   beforeEach(() => {
@@ -30,8 +30,8 @@ describe("DenunciaService", () => {
 
     service = new DenunciaService({
       denunciaRepository,
-      usuarioRepository,
       itemDoacaoRepository,
+      usuarioRepository,
     });
   });
 
@@ -240,5 +240,47 @@ describe("DenunciaService", () => {
 
   test("Não deve expor resolução administrativa sem registro de auditoria", () => {
     expect(service.resolver).toBeUndefined();
+  });
+
+  test("Deve impedir que o usuário denuncie a própria conta", async () => {
+    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      });
+
+    await expect(
+      service.criar(
+        {
+          tipo_alvo: "USUARIO",
+          alvo_usuario_id: testIds.usuario,
+          motivo: "SPAM",
+        },
+        createRegularUser({ id: testIds.usuario, situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O usuário não pode denunciar a própria conta.",
+    });
+
+    expect(denunciaRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve bloquear operação protegida de usuário inativo", async () => {
+    await expect(
+      service.listar(
+        { filtros: {}, page: 1, limit: 15 },
+        createRegularUser({ situacao: "INATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(denunciaRepository.listar).not.toHaveBeenCalled();
   });
 });

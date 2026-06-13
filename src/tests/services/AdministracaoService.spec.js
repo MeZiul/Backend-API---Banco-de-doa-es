@@ -367,4 +367,72 @@ describe("AdministracaoService", () => {
       }
     );
   });
+
+  test("Deve bloquear operação administrativa de administrador suspenso", async () => {
+    await expect(
+      service.listar({}, createAdminUser({ situacao: "SUSPENSO" }))
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(administracaoRepository.listar).not.toHaveBeenCalled();
+  });
+
+  test("Deve impedir que administrador bloqueie a própria conta", async () => {
+    await expect(
+      service.bloquearUsuario(
+        testIds.admin,
+        { justificativa: "Teste de autoproteção" },
+        createAdminUser({ situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O administrador não pode bloquear a própria conta.",
+    });
+
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve impedir que administrador inative a própria conta", async () => {
+    await expect(
+      service.inativarUsuario(
+        testIds.admin,
+        {},
+        createAdminUser({ situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O administrador não pode inativar a própria conta.",
+    });
+
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(itemDoacaoRepository.buscarEmAndamentoPorUsuario).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve impedir auto-suspensão ao resolver denúncia contra o próprio administrador", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+      tipo_alvo: "USUARIO",
+      alvo_usuario_id: testIds.admin,
+    });
+
+    await expect(
+      service.resolverDenuncia(
+        testIds.denuncia,
+        { resultado: "PROCEDENTE" },
+        createAdminUser({ situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O administrador não pode suspender a própria conta.",
+    });
+
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(denunciaRepository.atualizarSeStatus).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
 });

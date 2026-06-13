@@ -1,4 +1,4 @@
-import { administracaoService } from "../containers/services.administracao.container.js";
+import { administracaoService } from "../containers/services.index.js";
 import {
     AdministracaoAcaoSchema,
     AdministracaoBloquearUsuarioSchema,
