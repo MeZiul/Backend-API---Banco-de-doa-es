@@ -1,7 +1,11 @@
 
 import { z } from "zod";
 import objectIdSchema from "./ObjectIdSchema.js";
-export { UsuarioIdSchema, UsuarioQuerySchema } from "./querys/UsuarioQuerySchema.js";
+export {
+  AdministracaoUsuarioQuerySchema,
+  UsuarioIdSchema,
+  UsuarioQuerySchema,
+} from "./querys/UsuarioQuerySchema.js";
 
 const senhaRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 

@@ -9,7 +9,7 @@ Contrato funcional base da API:
 - [Documentacao da API Banco de Doacao](./documentacao/Documenta%C3%A7%C3%A3o_da_api_Banco_de_Doa%C3%A7%C3%A3o.md)
 - [Especificacao API REST DoaI](./documentacao/Especificacao_API_REST_DoaI.html)
 
-Documentacao Markdown das rotas da Milestone 2:
+Documentacao Markdown das rotas:
 
 - [Autenticacao](./documentacao/rotas/rotas-autenticacao.md)
 - [Administracao](./documentacao/rotas/rotas-administracao.md)
@@ -21,6 +21,7 @@ Documentacao Markdown das rotas da Milestone 2:
 Planos de teste:
 
 - [Plano geral da Milestone 2](./documentacao/plano-teste-milestone-2.md)
+- [Plano geral da Milestone 3](./documentacao/plano-teste-milestone-3.md)
 - [Autenticacao](./documentacao/doc-service/Autenticacao.md)
 - [UsuarioService](./documentacao/doc-service/Usuario.md)
 - [InteresseService](./documentacao/doc-service/Interesse.md)
@@ -118,7 +119,7 @@ Rotas registradas em `src/routes/index.js`:
 - administracao;
 - exemplo estrutural.
 
-Foco demonstravel da Milestone 2:
+Foco demonstravel:
 
 - `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh-token`, `POST /auth/esqueci-senha`, `PUT /auth/redefinir-senha`;
 - `POST /interesses`, `GET /interesses`, `GET /interesses/:id`, `PUT /interesses/:id/aceitar`, `PUT /interesses/:id/recusar`, `DELETE /interesses/:id`;
@@ -266,11 +267,12 @@ Fallback de cobertura:
 npm.cmd run test:coverage -- --runInBand
 ```
 
-Ultima validacao registrada:
+Evidencias registradas para Administracao, Interesse e Denuncia na Milestone 3:
 
-- `11` suites aprovadas;
-- `67` testes aprovados;
-- cobertura global: `62.95%` statements, `48.09%` branches, `67.66%` functions e `62.66%` lines.
+- branch de testes unitarios: `56` testes focados aprovados e `100%` de linhas nos tres Services;
+- branch de testes de endpoint: `47` testes focados aprovados e `100%` de linhas nos Controllers e routers;
+- branch documental atual, antes dos merges funcionais: `18` suites e `102` testes aprovados;
+- os totais globais devem ser medidos novamente depois do merge de todas as branches da Milestone 3.
 
 Os `warn` exibidos durante os testes sao esperados em cenarios negativos, como validacao invalida, permissao negada, senha incorreta e estado de negocio invalido.
 
@@ -306,7 +308,8 @@ Fluxo minimo recomendado para Postman:
 ## Observacoes
 
 - A documentacao-base em [Documentacao da API Banco de Doacao](./documentacao/Documenta%C3%A7%C3%A3o_da_api_Banco_de_Doa%C3%A7%C3%A3o.md) e [Especificacao API REST DoaI](./documentacao/Especificacao_API_REST_DoaI.html) deve ser tratada como contrato da API.
-- As documentacoes Markdown por rota explicam o recorte implementado para a Milestone 2.
+- As documentacoes Markdown por rota explicam o recorte implementado e os endurecimentos da Milestone 3.
 - O plano geral de teste fica em `documentacao/plano-teste-milestone-2.md`.
+- O plano de teste da Milestone 3 fica em `documentacao/plano-teste-milestone-3.md`.
 - Os planos unitarios por service ficam em `documentacao/doc-service/`.
 - O Swagger atual e gerado em memoria no boot da aplicacao e pode ser acessado em `/docs`.

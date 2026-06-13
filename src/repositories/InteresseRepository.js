@@ -2,6 +2,9 @@ import InteresseModel from "../models/Interesse.js";
 import BaseRepository from "./base/BaseRepository.js";
 import InteresseFilterBuilder from "./filters/InteresseFilterBuilder.js";
 
+const INTERESSE_ITEM_SELECT = "titulo status cidade uf total_interesses";
+const INTERESSE_USUARIO_SELECT = "nome email cidade uf";
+
 class InteresseRepository extends BaseRepository {
     constructor() {
         super(InteresseModel);
@@ -17,13 +20,16 @@ class InteresseRepository extends BaseRepository {
 
     buscarPorIdDetalhado(id) {
         return this.model.findById(id)
-            .populate("item_id")
-            .populate("usuario_interessado_id", "nome email cidade uf")
-            .populate("usuario_doador_id", "nome email cidade uf");
+            .populate("item_id", INTERESSE_ITEM_SELECT)
+            .populate("usuario_interessado_id", INTERESSE_USUARIO_SELECT)
+            .populate("usuario_doador_id", INTERESSE_USUARIO_SELECT);
     }
 
     listarPorItem(itemId) {
-        return this.model.find({ item_id: itemId }).sort({ data_interesse: -1 });
+        return this.model.find({ item_id: itemId })
+            .populate("usuario_interessado_id", INTERESSE_USUARIO_SELECT)
+            .populate("usuario_doador_id", INTERESSE_USUARIO_SELECT)
+            .sort({ data_interesse: -1 });
     }
 
     buscarAceitoPorItem(itemId) {
@@ -33,10 +39,11 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
-    listarPendentesDoItemExceto(itemId, interesseId) {
+    listarRecusadosDoAceite(itemId, interesseId, dataResposta) {
         return this.model.find({
             item_id: itemId,
-            status: "PENDENTE",
+            status: "RECUSADO",
+            data_resposta: dataResposta,
             _id: { $ne: interesseId }
         });
     }
@@ -48,6 +55,18 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
+    atualizarSeStatus(id, statusEsperado, dadosAtualizacao) {
+        const status = Array.isArray(statusEsperado)
+            ? { $in: statusEsperado }
+            : statusEsperado;
+
+        return this.model.findOneAndUpdate(
+            { _id: id, status },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
     recusarPendentesDoItem(itemId, interesseAceitoId, dadosAtualizacao = {}) {
         return this.model.updateMany(
             {
@@ -56,8 +75,27 @@ class InteresseRepository extends BaseRepository {
                 _id: { $ne: interesseAceitoId }
             },
             {
-                ...dadosAtualizacao,
-                status: "RECUSADO"
+                $set: {
+                    ...dadosAtualizacao,
+                    status: "RECUSADO"
+                }
+            }
+        );
+    }
+
+    restaurarRecusadosDoAceite(itemId, interesseAceitoId, dataResposta) {
+        return this.model.updateMany(
+            {
+                item_id: itemId,
+                status: "RECUSADO",
+                data_resposta: dataResposta,
+                _id: { $ne: interesseAceitoId }
+            },
+            {
+                $set: {
+                    status: "PENDENTE",
+                    data_resposta: null
+                }
             }
         );
     }
@@ -75,9 +113,9 @@ class InteresseRepository extends BaseRepository {
             limit,
             sort: { data_interesse: -1 },
             populate: [
-                { path: "item_id" },
-                { path: "usuario_interessado_id", select: "nome email cidade uf" },
-                { path: "usuario_doador_id", select: "nome email cidade uf" }
+                { path: "item_id", select: INTERESSE_ITEM_SELECT },
+                { path: "usuario_interessado_id", select: INTERESSE_USUARIO_SELECT },
+                { path: "usuario_doador_id", select: INTERESSE_USUARIO_SELECT }
             ]
         });
     }

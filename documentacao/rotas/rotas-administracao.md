@@ -1,9 +1,9 @@
 # Rotas de Administração
 
-Este documento descreve o contrato funcional das rotas de `administração` previstas para a Milestone 2.
+Este documento descreve o contrato funcional das rotas de `administracao` revisadas para a Milestone 3.
 
 Escopo considerado:
-- branches de rota de `administração` mergeadas na `dev`
+- estado atual da `dev` e endurecimentos preparados nas branches funcionais `130` a `137`
 - autenticação via Bearer Token JWT
 - autorização restrita ao perfil `ADMINISTRADOR`
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md`
@@ -328,3 +328,40 @@ Resposta esperada:
 Erros comuns:
 - `400 Bad Request` para estado inválido
 - `404 Not Found` para denúncia inexistente
+
+## Atualizacao da Milestone 3
+
+Endurecimentos implementados:
+
+- usuarios suspensos ou inativos sao bloqueados antes de operacoes protegidas;
+- papeis e situacao atuais do usuario sao consultados para evitar privilegio antigo mantido em JWT;
+- administrador nao pode bloquear, inativar ou suspender a si mesmo;
+- moderacoes usam atualizacoes condicionais para impedir duas operacoes concorrentes de vencerem;
+- bloqueio, desbloqueio, inativacao, cancelamento de item e resolucao geram auditoria;
+- falha de auditoria executa compensacao para restaurar o estado anterior quando possivel;
+- inativacao e bloqueada quando existem doacoes em andamento;
+- usuarios afetados e interessados em itens cancelados recebem notificacoes best-effort;
+- listagens administrativas usam filtros dedicados e projecoes que nao expoem senha, tokens ou outros campos indevidos.
+
+Filtros adicionais da Milestone 3:
+
+- usuarios: `dataInicio` e `dataFim`;
+- itens: `dataInicio` e `dataFim`;
+- buscas textuais tratam caracteres especiais como texto literal;
+- IDs usados em filtros sao validados como ObjectId.
+
+Respostas adicionais:
+
+- `409 Conflict` pode ocorrer quando outra operacao concorrente altera o recurso antes da moderacao;
+- `403 Forbidden` ocorre para usuario nao administrador, usuario sem situacao ativa ou tentativa de auto-moderacao;
+- `498` ocorre quando o Bearer Token nao foi informado ou nao e valido no middleware atual.
+
+Limite conhecido:
+
+- `GET /admin/usuarios/:id` ainda nao agrega todo o historico resumido de itens, interesses, avaliacoes e denuncias previsto no contrato oficial.
+
+Evidencia automatizada:
+
+- testes unitarios conjuntos dos tres Services: **56 testes aprovados**;
+- testes de endpoint conjuntos dos tres modulos: **47 testes aprovados**;
+- Controller e router de Administracao: **100% das linhas** na cobertura focada da branch de endpoints.

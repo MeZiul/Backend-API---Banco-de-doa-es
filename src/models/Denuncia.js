@@ -93,6 +93,28 @@ class Denuncia {
 
     schema.index({ status: 1, data_denuncia: -1 });
     schema.index({ denunciante_id: 1 });
+    schema.index(
+      { denunciante_id: 1, alvo_item_id: 1 },
+      {
+        unique: true,
+        name: "denuncia_item_em_analise_unica_por_denunciante",
+        partialFilterExpression: {
+          tipo_alvo: "ITEM",
+          status: "EM_ANALISE"
+        }
+      }
+    );
+    schema.index(
+      { denunciante_id: 1, alvo_usuario_id: 1 },
+      {
+        unique: true,
+        name: "denuncia_usuario_em_analise_unica_por_denunciante",
+        partialFilterExpression: {
+          tipo_alvo: "USUARIO",
+          status: "EM_ANALISE"
+        }
+      }
+    );
 
     this.model = mongoose.model("Denuncia", schema, "denuncias");
   }
