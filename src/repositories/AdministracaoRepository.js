@@ -2,6 +2,9 @@ import AdministracaoModel from "../models/Administracao.js";
 import BaseRepository from "./base/BaseRepository.js";
 import AdministracaoFilterBuilder from "./filters/AdministracaoFilterBuilder.js";
 
+const ADMINISTRADOR_SELECT = "nome email perfil situacao";
+const ALVO_SELECT = "nome email perfil situacao titulo status tipo_alvo motivo";
+
 class AdministracaoRepository extends BaseRepository {
     constructor() {
         super(AdministracaoModel);
@@ -9,8 +12,8 @@ class AdministracaoRepository extends BaseRepository {
 
     buscarPorIdDetalhado(id) {
         return this.model.findById(id)
-            .populate("administrador_id", "nome email")
-            .populate("alvo_id");
+            .populate("administrador_id", ADMINISTRADOR_SELECT)
+            .populate("alvo_id", ALVO_SELECT);
     }
 
     buscarUltimaAcaoPorAlvo(alvoId) {
@@ -48,8 +51,8 @@ class AdministracaoRepository extends BaseRepository {
             limit,
             sort: { data_acao: -1 },
             populate: [
-                { path: "administrador_id", select: "nome email" },
-                { path: "alvo_id" }
+                { path: "administrador_id", select: ADMINISTRADOR_SELECT },
+                { path: "alvo_id", select: ALVO_SELECT }
             ]
         });
     }

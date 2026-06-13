@@ -3,6 +3,14 @@
 import { z } from "zod";
 import mongoose from "mongoose";
 
+const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
+const periodoAdministrativo = {
+  dataInicio: z.string().optional()
+    .refine(isValidDate, { message: "dataInicio inválida" }),
+  dataFim: z.string().optional()
+    .refine(isValidDate, { message: "dataFim inválida" }),
+};
+
 export const UsuarioIdSchema = z.string().refine(
   (id) => mongoose.Types.ObjectId.isValid(id),
   { message: "ID inválido" }
@@ -41,3 +49,5 @@ export const UsuarioQuerySchema = z.object({
     .transform((val) => (val ? parseInt(val, 10) : 20))
     .refine((val) => Number.isInteger(val) && val > 0 && val <= 100, { message: "Limite deve ser entre 1 e 100" }),
 });
+
+export const AdministracaoUsuarioQuerySchema = UsuarioQuerySchema.extend(periodoAdministrativo);

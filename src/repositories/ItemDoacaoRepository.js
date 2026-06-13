@@ -3,6 +3,25 @@ import ItemDoacaoModel from "../models/ItemDoacao.js";
 import BaseRepository from "./base/BaseRepository.js";
 import ItemDoacaoFilterBuilder from "./filters/ItemDoacaoFilterBuilder.js";
 
+const ADMIN_ITEM_SELECT = [
+  "usuario_id",
+  "categoria_id",
+  "titulo",
+  "descricao",
+  "condicao_item",
+  "cidade",
+  "uf",
+  "bairro",
+  "condicoes_doacao",
+  "status",
+  "fotos",
+  "data_doacao",
+  "visualizacoes",
+  "total_interesses",
+  "data_cadastro",
+  "data_atualizacao",
+].join(" ");
+
 class ItemDoacaoRepository extends BaseRepository {
   constructor() {
     super(ItemDoacaoModel);
@@ -46,11 +65,13 @@ class ItemDoacaoRepository extends BaseRepository {
       .comCidade(filtros.cidade)
       .comCondicao(filtros.condicao_item || filtros.condicaoItem)
       .comUf(filtros.uf)
-      .comUsuario(filtros.usuario_id || filtros.usuarioId);
+      .comUsuario(filtros.usuario_id || filtros.usuarioId)
+      .comPeriodo(filtros.dataInicio, filtros.dataFim);
 
     return this.listarComPaginacao(builder.build(), {
       page,
       limit,
+      select: ADMIN_ITEM_SELECT,
       sort: ItemDoacaoFilterBuilder.construirOrdenacao(ordenacao),
       populate: [
         { path: "categoria_id", select: "nome descricao" },
