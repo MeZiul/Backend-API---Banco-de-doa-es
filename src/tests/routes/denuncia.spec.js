@@ -14,8 +14,19 @@ const mockDenunciaService = {
   deletar: jest.fn(),
 };
 
+const mockUsuarioRepositoryBuscarPorId = jest.fn();
+
 jest.mock("../../containers/services.index.js", () => ({
   denunciaService: mockDenunciaService,
+}));
+
+jest.mock("../../repositories/UsuarioRepository.js", () => ({
+  __esModule: true,
+  default: class MockUsuarioRepository {
+    buscarPorId(...args) {
+      return mockUsuarioRepositoryBuscarPorId(...args);
+    }
+  },
 }));
 
 let app;
@@ -35,6 +46,12 @@ beforeAll(async () => {
 
 beforeEach(() => {
   Object.values(mockDenunciaService).forEach((mockFn) => mockFn.mockReset());
+  mockUsuarioRepositoryBuscarPorId.mockReset();
+  mockUsuarioRepositoryBuscarPorId.mockImplementation(async (id) => ({
+    _id: id,
+    perfil: "USUARIO",
+    situacao: "ATIVO",
+  }));
 });
 
 describe("Endpoints de Denuncia", () => {

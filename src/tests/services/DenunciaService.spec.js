@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import DenunciaService from "../../services/DenunciaService.js";
-import { createAdminUser, createRegularUser, testIds } from "../test.js";
+import { createRegularUser, testIds } from "../test.js";
 
 describe("DenunciaService", () => {
   let denunciaRepository;
@@ -16,18 +16,16 @@ describe("DenunciaService", () => {
       buscarEmAnalisePorItemEDenunciante: jest.fn(),
       buscarEmAnalisePorUsuarioEDenunciante: jest.fn(),
       criar: jest.fn(),
-      atualizar: jest.fn(),
-      deletar: jest.fn(),
+      atualizarSeStatus: jest.fn(),
+      deletarSeEmAnalise: jest.fn(),
     };
 
     usuarioRepository = {
       buscarPorId: jest.fn(),
-      atualizar: jest.fn(),
     };
 
     itemDoacaoRepository = {
       buscarPorId: jest.fn(),
-      atualizar: jest.fn(),
     };
 
     service = new DenunciaService({
@@ -62,7 +60,7 @@ describe("DenunciaService", () => {
     });
   });
 
-  test("Deve criar denúncia contra item quando não houver outra em análise", async () => {
+  test("Deve criar denúncia contra item usando repositories", async () => {
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
       situacao: "ATIVO",
@@ -101,58 +99,147 @@ describe("DenunciaService", () => {
     expect(resultado).toMatchObject({ status: "EM_ANALISE" });
   });
 
-  test("Deve resolver denúncia procedente contra usuário e suspender o alvo", async () => {
+  test("Deve converter corrida de denúncia duplicada em conflito", async () => {
     usuarioRepository.buscarPorId.mockResolvedValue({
-      _id: testIds.doador,
+      _id: testIds.usuario,
       situacao: "ATIVO",
     });
-    usuarioRepository.atualizar.mockResolvedValue({
-      _id: testIds.doador,
-      situacao: "SUSPENSO",
-    });
-    denunciaRepository.atualizar.mockResolvedValue({
-      _id: testIds.denuncia,
-      status: "PROCEDENTE",
-    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({ _id: testIds.item });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
+    denunciaRepository.criar.mockRejectedValue({ code: 11000 });
 
-    const resultadoDetalhado = {
-      _id: testIds.denuncia,
-      status: "PROCEDENTE",
-      admin_id: testIds.admin,
-    };
+    await expect(
+      service.criar(
+        {
+          tipo_alvo: "ITEM",
+          alvo_item_id: testIds.item,
+          motivo: "FRAUDE",
+        },
+        createRegularUser({ id: testIds.usuario })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "Já existe uma denúncia em análise para este item.",
+    });
+  });
+
+  test("Deve atualizar somente denúncia ainda em análise do próprio autor", async () => {
     denunciaRepository.buscarPorIdDetalhado
       .mockResolvedValueOnce({
         _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
         status: "EM_ANALISE",
-        tipo_alvo: "USUARIO",
-        alvo_usuario_id: testIds.doador,
-        denunciante_id: { _id: testIds.usuario },
+        motivo: "SPAM",
+        descricao: null,
       })
-      .mockResolvedValueOnce(resultadoDetalhado);
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        descricao: "Descrição corrigida",
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
 
-    const resultado = await service.resolver(
+    const resultado = await service.atualizar(
       testIds.denuncia,
+      { descricao: "Descrição corrigida" },
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledWith(
+      testIds.denuncia,
+      "EM_ANALISE",
       {
-        status: "PROCEDENTE",
-        acao_tomada: "Usuário suspenso por denúncia procedente.",
+        motivo: "SPAM",
+        descricao: "Descrição corrigida",
       },
-      createAdminUser()
+      { denunciante_id: testIds.usuario }
+    );
+    expect(resultado).toMatchObject({ descricao: "Descrição corrigida" });
+  });
+
+  test("Deve rejeitar atualização que perdeu corrida para resolução administrativa", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: testIds.usuario,
+      status: "EM_ANALISE",
+      motivo: "SPAM",
+    });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue(null);
+
+    await expect(
+      service.atualizar(
+        testIds.denuncia,
+        { descricao: "Nova descrição" },
+        createRegularUser({ id: testIds.usuario })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "A denúncia não está mais disponível para atualização.",
+    });
+  });
+
+  test("Deve permitir limpar a descrição opcional da denúncia", async () => {
+    denunciaRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+        motivo: "SPAM",
+        descricao: "Descrição anterior",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        descricao: null,
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
+
+    await service.atualizar(
+      testIds.denuncia,
+      { descricao: null },
+      createRegularUser({ id: testIds.usuario })
     );
 
-    expect(usuarioRepository.atualizar).toHaveBeenCalledWith(
-      testIds.doador,
-      expect.objectContaining({
-        situacao: "SUSPENSO",
-      })
-    );
-    expect(denunciaRepository.atualizar).toHaveBeenCalledWith(
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledWith(
       testIds.denuncia,
-      expect.objectContaining({
-        status: "PROCEDENTE",
-        admin_id: testIds.admin,
-      })
+      "EM_ANALISE",
+      {
+        motivo: "SPAM",
+        descricao: null,
+      },
+      { denunciante_id: testIds.usuario }
     );
-    expect(resultado).toEqual(resultadoDetalhado);
+  });
+
+  test("Deve remover somente denúncia ainda em análise do próprio autor", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: testIds.usuario,
+      status: "EM_ANALISE",
+    });
+    denunciaRepository.deletarSeEmAnalise.mockResolvedValue({
+      _id: testIds.denuncia,
+    });
+
+    await service.deletar(
+      testIds.denuncia,
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(denunciaRepository.deletarSeEmAnalise).toHaveBeenCalledWith(
+      testIds.denuncia,
+      testIds.usuario
+    );
+  });
+
+  test("Não deve expor resolução administrativa sem registro de auditoria", () => {
+    expect(service.resolver).toBeUndefined();
   });
 
   test("Deve impedir que o usuário denuncie a própria conta", async () => {
@@ -195,28 +282,5 @@ describe("DenunciaService", () => {
     });
 
     expect(denunciaRepository.listar).not.toHaveBeenCalled();
-  });
-
-  test("Deve impedir auto-suspensão ao resolver denúncia contra o próprio administrador", async () => {
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
-      _id: testIds.denuncia,
-      status: "EM_ANALISE",
-      tipo_alvo: "USUARIO",
-      alvo_usuario_id: testIds.admin,
-    });
-
-    await expect(
-      service.resolver(
-        testIds.denuncia,
-        { status: "PROCEDENTE" },
-        createAdminUser({ situacao: "ATIVO" })
-      )
-    ).rejects.toMatchObject({
-      statusCode: 400,
-      customMessage: "O administrador não pode suspender a própria conta.",
-    });
-
-    expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
-    expect(denunciaRepository.atualizar).not.toHaveBeenCalled();
   });
 });

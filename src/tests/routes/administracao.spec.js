@@ -22,8 +22,19 @@ const mockAdministracaoService = {
   resolverDenuncia: jest.fn(),
 };
 
+const mockUsuarioRepositoryBuscarPorId = jest.fn();
+
 jest.mock("../../containers/services.index.js", () => ({
   administracaoService: mockAdministracaoService,
+}));
+
+jest.mock("../../repositories/UsuarioRepository.js", () => ({
+  __esModule: true,
+  default: class MockUsuarioRepository {
+    buscarPorId(...args) {
+      return mockUsuarioRepositoryBuscarPorId(...args);
+    }
+  },
 }));
 
 let app;
@@ -41,6 +52,12 @@ beforeAll(async () => {
 
 beforeEach(() => {
   Object.values(mockAdministracaoService).forEach((mockFn) => mockFn.mockReset());
+  mockUsuarioRepositoryBuscarPorId.mockReset();
+  mockUsuarioRepositoryBuscarPorId.mockImplementation(async (id) => ({
+    _id: id,
+    perfil: id === testIds.admin ? "ADMINISTRADOR" : "USUARIO",
+    situacao: "ATIVO",
+  }));
 });
 
 describe("Endpoints de Administracao", () => {

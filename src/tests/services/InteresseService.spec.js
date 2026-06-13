@@ -127,7 +127,7 @@ describe("InteresseService", () => {
       _id: testIds.administracao,
       status: "CANCELADO",
     });
-    
+
     itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",

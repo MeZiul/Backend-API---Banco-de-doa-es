@@ -430,8 +430,9 @@ class InteresseService {
                 customMessage: "Somente usuários ativos podem realizar operações protegidas.",
             });
         }
-    
+
     }
+
     getActorId(usuario) {
         const actorId = usuario?.id || usuario?._id?.toString?.();
 
