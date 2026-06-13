@@ -1,77 +1,76 @@
 # Plano de Teste - DenunciaService
 
-## API DoaI - Banco de Doacoes | Fabrica de Software 2026.1
+## API DoaI - Banco de Doacoes | Milestone 3
 
----
+## 1. Objetivo
 
-## 1. Apresentacao
+Validar criacao, consulta, atualizacao, remocao e resolucao de denuncias com controle de acesso, consistencia e auditoria.
 
-Este plano documenta os testes unitarios do `DenunciaService`, camada responsavel por regras de criacao, listagem e resolucao de denuncias.
+## 2. Estrategia
 
----
+- Testes unitarios com repositories e dependencia de item mockados.
+- Testes de endpoint com router real, JWT, schemas Zod e Service mockado.
+- Validacao real descartavel dos indices unicos e da resolucao concorrente na branch funcional.
 
-## 2. Objetivo
-
-Validar que denuncias respeitam o usuario autenticado, o estado `EM_ANALISE` e as acoes administrativas quando uma denuncia e considerada procedente.
-
----
-
-## 3. Escopo
-
-### 3.1 Metodos Testados
-
-| Metodo | Descricao |
-| ------ | --------- |
-| `listar(params, actor)` | Restringe listagem para denunciante comum |
-| `criar(dados, actor)` | Cria denuncia contra item sem duplicidade em analise |
-| `resolver(id, dados, actor)` | Resolve denuncia procedente e aplica acao ao alvo |
-
-### 3.2 Fora do Escopo
-
-- Teste com alvo `USUARIO` na criacao.
-- Testes de exclusao de denuncia.
-- Testes de repository com banco real.
-
----
-
-## 4. Estrategia
-
-**Abordagem:** teste unitario com `denunciaRepository` e `usuarioRepository` mockados. A busca de item usa spy no model interno do service.
-
-### 4.1 Arquivo de Teste
+Arquivos:
 
 ```text
 src/tests/services/DenunciaService.spec.js
+src/tests/routes/denuncia.spec.js
 ```
 
-### 4.2 Comandos
+## 3. Regras Cobertas
+
+- Somente usuario ativo pode registrar denuncia.
+- Alvo deve ser item ou usuario existente.
+- Usuario nao pode denunciar a si mesmo.
+- Nao pode haver denuncia duplicada `EM_ANALISE` do mesmo denunciante para o mesmo alvo.
+- Usuario comum visualiza somente as proprias denuncias.
+- Somente o autor pode atualizar ou remover.
+- Atualizacao e remocao exigem status `EM_ANALISE`.
+- Resolucao administrativa ocorre uma unica vez e gera auditoria.
+- Denuncia procedente pode cancelar item ou suspender usuario.
+- Resultado e notificacoes sao enviados aos envolvidos.
+
+## 4. Cenarios Principais
+
+| Grupo | Cenarios validados |
+| --- | --- |
+| Listagens e consulta | isolamento por denunciante, consulta do autor/admin e terceiro bloqueado |
+| Criacao | item, usuario, alvo invalido/inexistente, usuario inativo e duplicidade |
+| Atualizacao | sucesso, preservacao de campos, terceiro bloqueado e estado final |
+| Remocao | sucesso, terceiro bloqueado e estado final |
+| Resolucao | procedente contra item, procedente contra usuario, improcedente, resultado invalido e concorrencia |
+| Contrato HTTP | autenticacao, query/body/ID invalidos, aliases, status e propagacao de erros |
+
+## 5. Evidencias
+
+Branch de consistencia `133-admin-denuncia-consistencia-auditoria`:
+
+- validacao real confirmou indice unico de denuncia em analise;
+- somente uma resolucao concorrente venceu;
+- mutacoes administrativas condicionais e compensacoes foram exercitadas.
+
+Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+
+- suite conjunta dos tres Services: **56 testes aprovados**;
+- Services alvo com **100% de statements, funcoes e linhas**.
+
+Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
+
+- suite conjunta dos tres modulos: **47 testes aprovados**;
+- Controllers e routers alvo com **100% de linhas**.
+
+## 6. Comandos
 
 ```powershell
 npm.cmd test -- --runInBand src/tests/services/DenunciaService.spec.js
+npm.cmd test -- --runInBand src/tests/routes/denuncia.spec.js
 npm.cmd run test:coverage -- --runInBand
 ```
 
----
+## 7. Riscos e Pendencias
 
-## 5. Cenarios de Teste
-
-| ID | Descricao | Mock Configurado | Resultado Esperado | Status |
-| -- | --------- | ---------------- | ------------------ | ------ |
-| DEN-SV-01 | Usuario comum lista apenas as proprias denuncias | `denunciaRepository.listar` | filtro usa `denunciante_id` do actor | PASSOU |
-| DEN-SV-02 | Cria denuncia contra item sem outra em analise | usuario ativo, item valido, sem duplicidade | denuncia criada com status `EM_ANALISE` | PASSOU |
-| DEN-SV-03 | Resolve denuncia procedente contra usuario | denuncia `EM_ANALISE`, alvo usuario ativo, admin autenticado | usuario alvo suspenso e denuncia marcada como `PROCEDENTE` | PASSOU |
-
----
-
-## 6. Resultado de Execucao
-
-| Suite | Arquivo | Testes | Aprovados | Reprovados | Status |
-| ----- | ------- | ------ | --------- | ---------- | ------ |
-| DenunciaService | `services/DenunciaService.spec.js` | **3** | **3** | **0** | PASSOU |
-
----
-
-## 7. Observacoes
-
-- O service tambem possui regras de atualizacao e delecao que podem receber testes adicionais.
-- As rotas HTTP correspondentes sao cobertas em `src/tests/routes/denuncia.spec.js`.
+- Antes de criar os indices unicos em banco existente, auditar denuncias duplicadas `EM_ANALISE`.
+- Sem transacoes MongoDB, queda do processo entre mutacao e auditoria pode exigir reconciliacao manual.
+- Ao integrar branches, manter a resolucao centralizada em Administracao para impedir moderacao sem historico.

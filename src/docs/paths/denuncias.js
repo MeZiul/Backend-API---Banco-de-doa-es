@@ -10,6 +10,7 @@ const denunciasPaths = {
 Regras de negócio:
 - Apenas usuários com situação ATIVO podem criar denúncias.
 - A denúncia deve ter alvo válido: ITEM ou USUARIO.
+- O usuário não pode denunciar a si mesmo.
 - O motivo é obrigatório e deve usar valores padronizados.
 - Não é permitido denunciar o mesmo alvo mais de uma vez enquanto houver denúncia EM_ANALISE para ele.`,
             security: [{ bearerAuth: [] }],
@@ -90,7 +91,8 @@ Regras de negócio:
 Regras de negócio:
 - Apenas o autor da denúncia pode atualizar.
 - A denúncia deve estar EM_ANALISE.
-- Só motivo e descrição podem ser alterados.`,
+- Só motivo e descrição podem ser alterados.
+- A atualização é condicional e pode falhar se outra operação concluir a denúncia primeiro.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -108,6 +110,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
@@ -120,7 +123,8 @@ Regras de negócio:
 Regras de negócio:
 - Apenas o autor da denúncia pode remover.
 - Apenas denúncias com status EM_ANALISE podem ser removidas.
-- Denúncias PROCEDENTE ou IMPROCEDENTE permanecem no histórico e não podem ser excluídas pelo usuário.`,
+- Denúncias PROCEDENTE ou IMPROCEDENTE permanecem no histórico e não podem ser excluídas pelo usuário.
+- A remoção é condicional e pode falhar se a denúncia for concluída concorrentemente.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -130,6 +134,7 @@ Regras de negócio:
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
+                409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },
