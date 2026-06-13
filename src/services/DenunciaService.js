@@ -1,14 +1,14 @@
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
 
 class DenunciaService {
-    constructor({ denunciaRepository, usuarioRepository }) {
+    constructor({ denunciaRepository, usuarioRepository, itemDoacaoRepository }) {
         this.repository = denunciaRepository;
         this.usuarioRepository = usuarioRepository;
-        this.itemModel = ItemDoacaoModel;
+        this.itemDoacaoRepository = itemDoacaoRepository;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
 
         if (!this.isAdmin(usuario)) {
@@ -43,6 +43,7 @@ class DenunciaService {
     }
 
     async buscarPorId(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
 
         if (!this.canAccessDenuncia(denuncia, usuario)) {
@@ -56,6 +57,7 @@ class DenunciaService {
     }
 
     async criar(dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
         const denunciante = await this.ensureUsuarioAtivo(usuarioId);
         const tipoAlvo = dados.tipo_alvo || dados.tipoAlvo;
@@ -100,6 +102,13 @@ class DenunciaService {
             const alvoUsuarioId = dados.alvo_usuario_id || dados.alvoUsuarioId;
             const alvoUsuario = await this.ensureUsuarioExists(alvoUsuarioId);
 
+            if (this.getEntityId(alvoUsuario) === this.getEntityId(denunciante)) {
+                throw new CustomError({
+                    statusCode: 400,
+                    customMessage: "O usuário não pode denunciar a própria conta.",
+                });
+            }
+
             const denunciaEmAnalise = await this.repository.buscarEmAnalisePorUsuarioEDenunciante(
                 denunciante._id,
                 alvoUsuario._id
@@ -116,11 +125,27 @@ class DenunciaService {
             payload.alvo_item_id = null;
         }
 
-        const denuncia = await this.repository.criar(payload);
+        let denuncia;
+
+        try {
+            denuncia = await this.repository.criar(payload);
+        } catch (error) {
+            if (this.isDuplicateKeyError(error)) {
+                throw this.createConflictError(
+                    tipoAlvo === "ITEM"
+                        ? "Já existe uma denúncia em análise para este item."
+                        : "Já existe uma denúncia em análise para este usuário."
+                );
+            }
+
+            throw error;
+        }
+
         return this.repository.buscarPorIdDetalhado(denuncia._id);
     }
 
     async atualizar(id, dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -133,15 +158,27 @@ class DenunciaService {
 
         this.ensureEmAnalise(denuncia, "Somente denúncias em análise podem ser atualizadas.");
 
-        const denunciaAtualizada = await this.repository.atualizar(id, {
-            motivo: dados.motivo ?? denuncia.motivo,
-            descricao: dados.descricao ?? denuncia.descricao,
-        });
+        const denunciaAtualizada = await this.repository.atualizarSeStatus(
+            id,
+            "EM_ANALISE",
+            {
+                motivo: dados.motivo ?? denuncia.motivo,
+                descricao: Object.hasOwn(dados, "descricao")
+                    ? dados.descricao
+                    : denuncia.descricao,
+            },
+            { denunciante_id: usuarioId }
+        );
+
+        if (!denunciaAtualizada) {
+            throw this.createConflictError("A denúncia não está mais disponível para atualização.");
+        }
 
         return this.repository.buscarPorIdDetalhado(denunciaAtualizada._id);
     }
 
     async deletar(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const denuncia = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -154,37 +191,11 @@ class DenunciaService {
 
         this.ensureEmAnalise(denuncia, "Somente denúncias em análise podem ser removidas.");
 
-        await this.repository.deletar(id);
-    }
+        const denunciaRemovida = await this.repository.deletarSeEmAnalise(id, usuarioId);
 
-    async resolver(id, dados, usuario) {
-        this.ensureAdmin(usuario);
-
-        const denuncia = await this.ensureExists(id);
-        this.ensureEmAnalise(denuncia, "Somente denúncias em análise podem ser resolvidas.");
-
-        const resultado = dados.status || dados.resultado;
-
-        if (!["PROCEDENTE", "IMPROCEDENTE"].includes(resultado)) {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "O resultado da análise deve ser PROCEDENTE ou IMPROCEDENTE.",
-            });
+        if (!denunciaRemovida) {
+            throw this.createConflictError("A denúncia não está mais disponível para remoção.");
         }
-
-        if (resultado === "PROCEDENTE") {
-            await this.aplicarAcaoProcedente(denuncia, dados);
-        }
-
-        const denunciaResolvida = await this.repository.atualizar(id, {
-            status: resultado,
-            admin_id: this.getActorId(usuario),
-            resposta_admin: dados.resposta_admin ?? dados.respostaAdmin ?? null,
-            acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? null,
-            data_analise: new Date(),
-        });
-
-        return this.repository.buscarPorIdDetalhado(denunciaResolvida._id);
     }
 
     async ensureExists(id) {
@@ -227,7 +238,7 @@ class DenunciaService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemModel.findById(id);
+        const item = await this.itemDoacaoRepository.buscarPorId(id);
 
         if (!item) {
             throw new CustomError({
@@ -237,30 +248,6 @@ class DenunciaService {
         }
 
         return item;
-    }
-
-    async aplicarAcaoProcedente(denuncia, dados) {
-        if (denuncia.tipo_alvo === "ITEM") {
-            const itemId = denuncia.alvo_item_id?._id || denuncia.alvo_item_id;
-            await this.ensureItemExists(itemId);
-
-            await this.itemModel.findByIdAndUpdate(itemId, {
-                status: "CANCELADO",
-            });
-
-            return;
-        }
-
-        if (denuncia.tipo_alvo === "USUARIO") {
-            const usuarioId = denuncia.alvo_usuario_id?._id || denuncia.alvo_usuario_id;
-            await this.ensureUsuarioExists(usuarioId);
-
-            await this.usuarioRepository.atualizar(usuarioId, {
-                situacao: "SUSPENSO",
-                motivo_suspensao: dados.acao_tomada ?? dados.acaoTomada ?? "Suspensão por denúncia procedente.",
-                suspensao_ate: dados.suspensao_ate ?? dados.suspensaoAte ?? null,
-            });
-        }
     }
 
     ensureEmAnalise(denuncia, mensagem) {
@@ -285,6 +272,8 @@ class DenunciaService {
     }
 
     ensureAdmin(usuario) {
+        this.ensureActorAtivo(usuario);
+
         if (!this.isAdmin(usuario)) {
             throw new CustomError({
                 statusCode: 403,
@@ -296,6 +285,26 @@ class DenunciaService {
     isAdmin(usuario) {
         const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
         return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
+    }
+
+    isDuplicateKeyError(error) {
+        return error?.code === 11000;
+    }
+
+    createConflictError(customMessage) {
+        return new CustomError({
+            statusCode: 409,
+            customMessage,
+        });
+    }
+
+    ensureActorAtivo(usuario) {
+        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
+            throw new CustomError({
+                statusCode: 403,
+                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+            });
+        }
     }
 
     getActorId(usuario) {

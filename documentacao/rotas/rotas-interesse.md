@@ -1,9 +1,9 @@
 # Rotas de Interesse
 
-Este documento descreve o contrato funcional das rotas de `interesse` previstas para a Milestone 2.
+Este documento descreve o contrato funcional das rotas de `interesse` revisadas para a Milestone 3.
 
 Escopo considerado:
-- branches de rota de `interesse` mergeadas na `dev`
+- estado atual da `dev` e endurecimentos preparados nas branches funcionais `130` a `137`
 - autenticação via Bearer Token JWT
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
 
@@ -18,6 +18,7 @@ Domínio responsável por:
 Rotas do módulo:
 - `POST /interesses`
 - `GET /interesses`
+- `GET /interesses/recebidos`
 - `GET /interesses/:id`
 - `PUT /interesses/:id/aceitar`
 - `PUT /interesses/:id/recusar`
@@ -195,3 +196,47 @@ Erros comuns:
 - `400 Bad Request` para status não cancelável
 - `403 Forbidden` para usuário diferente do interessado
 - `404 Not Found` para interesse inexistente
+
+## GET /interesses/recebidos
+
+Objetivo:
+Listar os interesses recebidos nos itens do doador autenticado.
+
+Regra de negocio:
+
+- exige autenticacao e usuario ativo;
+- a listagem e sempre restringida ao identificador do doador autenticado;
+- aceita os mesmos filtros e paginacao da listagem principal.
+
+Resposta esperada:
+
+- `200 OK` com lista paginada de interesses recebidos.
+
+## Atualizacao da Milestone 3
+
+Endurecimentos implementados:
+
+- criacao, aceite, recusa e cancelamento usam escritas condicionais atomicas;
+- somente uma tentativa concorrente pode reservar o item;
+- indice unico parcial garante no maximo um interesse `ACEITO` por item;
+- falhas apos escritas parciais executam compensacoes explicitas;
+- eventos de novo interesse, aceite, recusa e cancelamento aceito geram notificacoes best-effort;
+- usuarios suspensos ou inativos nao podem operar nas rotas protegidas;
+- respostas populadas usam projecoes explicitas para limitar os dados de item, interessado e doador.
+
+Respostas adicionais:
+
+- `409 Conflict` pode ocorrer em duplicidade ativa, perda de corrida de aceite ou alteracao concorrente;
+- `403 Forbidden` ocorre para usuario inativo ou operacao por pessoa sem permissao;
+- `498` ocorre quando o Bearer Token nao foi informado ou nao e valido no middleware atual.
+
+Risco de deploy:
+
+- antes de criar o indice unico parcial em banco existente, devem ser auditados itens com mais de um interesse `ACEITO`.
+
+Evidencia automatizada:
+
+- validacao real confirmou somente uma reserva concorrente;
+- testes unitarios conjuntos dos tres Services: **56 testes aprovados**;
+- testes de endpoint conjuntos dos tres modulos: **47 testes aprovados**;
+- Controller e router de Interesse: **100% das linhas** na cobertura focada da branch de endpoints.

@@ -35,6 +35,30 @@ class DenunciaRepository extends BaseRepository {
             .populate("admin_id", DENUNCIA_ADMIN_SELECT);
     }
 
+    atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+        const status = Array.isArray(statusEsperado)
+            ? { $in: statusEsperado }
+            : statusEsperado;
+
+        return this.model.findOneAndUpdate(
+            {
+                _id: id,
+                status,
+                ...filtrosAdicionais,
+            },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
+    deletarSeEmAnalise(id, denuncianteId) {
+        return this.model.findOneAndDelete({
+            _id: id,
+            denunciante_id: denuncianteId,
+            status: "EM_ANALISE",
+        });
+    }
+
     listarEmAnalise({ page = 1, limit = 15 } = {}) {
         return this.listar({
             filtros: { status: "EM_ANALISE" },
@@ -44,7 +68,7 @@ class DenunciaRepository extends BaseRepository {
     }
 
     listar({ filtros = {}, page = 1, limit = 15 }) {
-        const builder = new DenunciaFilterBuilder()
+        const query = new DenunciaFilterBuilder()
             .comDenunciante(filtros.denunciante_id || filtros.denuncianteId)
             .comTipoAlvo(filtros.tipo_alvo || filtros.tipoAlvo)
             .comAlvoItem(filtros.alvo_item_id || filtros.alvoItemId)
@@ -52,9 +76,10 @@ class DenunciaRepository extends BaseRepository {
             .comMotivo(filtros.motivo)
             .comStatus(filtros.status)
             .comAdmin(filtros.admin_id || filtros.adminId)
-            .comPeriodo(filtros.dataInicio, filtros.dataFim);
+            .comPeriodo(filtros.dataInicio, filtros.dataFim)
+            .build();
 
-        return this.listarComPaginacao(builder.build(), {
+        return this.listarComPaginacao(query, {
             page,
             limit,
             sort: { data_denuncia: -1 },

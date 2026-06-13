@@ -124,6 +124,31 @@ class ItemDoacaoRepository extends BaseRepository {
     });
   }
 
+  async listarDisponiveisPorUsuario(usuarioId) {
+    return this.model
+      .find({
+        usuario_id: usuarioId,
+        status: "DISPONIVEL",
+      })
+      .select("_id status");
+  }
+
+  atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+    const status = Array.isArray(statusEsperado)
+      ? { $in: statusEsperado }
+      : statusEsperado;
+
+    return this.model.findOneAndUpdate(
+      {
+        _id: id,
+        status,
+        ...filtrosAdicionais,
+      },
+      { $set: dadosAtualizacao },
+      { new: true, runValidators: true },
+    );
+  }
+
   async cancelarItensPorUsuario(usuarioId) {
     return this.model.updateMany(
       {
@@ -132,6 +157,55 @@ class ItemDoacaoRepository extends BaseRepository {
       },
       { status: "CANCELADO" },
     );
+  }
+
+  incrementarInteressesSeDisponivel(itemId) {
+    return this.model.findOneAndUpdate(
+      { _id: itemId, status: "DISPONIVEL" },
+      { $inc: { total_interesses: 1 } },
+      { new: true, runValidators: true },
+    );
+  }
+
+  reservarSeDisponivel(itemId, interesseId) {
+    return this.model.findOneAndUpdate(
+      {
+        _id: itemId,
+        status: "DISPONIVEL",
+        $or: [
+          { interesse_aceito_id: null },
+          { interesse_aceito_id: { $exists: false } },
+        ],
+      },
+      {
+        $set: {
+          status: "RESERVADO",
+          interesse_aceito_id: interesseId,
+        },
+      },
+      { new: true, runValidators: true },
+    );
+  }
+
+  liberarReservaDoInteresse(itemId, interesseId) {
+    return this.model.findOneAndUpdate(
+      {
+        _id: itemId,
+        status: "RESERVADO",
+        interesse_aceito_id: interesseId,
+      },
+      {
+        $set: {
+          status: "DISPONIVEL",
+          interesse_aceito_id: null,
+        },
+      },
+      { new: true, runValidators: true },
+    );
+  }
+
+  restaurarReservaSeDisponivel(itemId, interesseId) {
+    return this.reservarSeDisponivel(itemId, interesseId);
   }
 }
 

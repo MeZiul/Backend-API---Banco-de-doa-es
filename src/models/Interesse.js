@@ -68,6 +68,17 @@ class Interesse {
       }
     );
 
+    schema.index(
+      { item_id: 1 },
+      {
+        unique: true,
+        name: "interesse_aceito_unico_por_item",
+        partialFilterExpression: {
+          status: "ACEITO",
+        },
+      }
+    );
+
     this.model = mongoose.model("Interesse", schema, "interesses");
   }
 }

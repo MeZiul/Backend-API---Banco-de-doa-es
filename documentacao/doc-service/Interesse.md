@@ -1,77 +1,77 @@
 # Plano de Teste - InteresseService
 
-## API DoaI - Banco de Doacoes | Fabrica de Software 2026.1
+## API DoaI - Banco de Doacoes | Milestone 3
 
----
+## 1. Objetivo
 
-## 1. Apresentacao
+Validar o ciclo completo de manifestacao de interesse, incluindo autorizacao, estados, concorrencia, notificacoes e contrato HTTP.
 
-Este plano documenta os testes unitarios do `InteresseService`, camada responsavel pelas regras de manifestacao, listagem e cancelamento de interesses em itens de doacao.
+## 2. Estrategia
 
----
+- Testes unitarios do `InteresseService` com repositories e dependencias mockadas.
+- Testes de endpoint com router real, JWT, schemas Zod e Service mockado.
+- Validacao real descartavel para indice unico e corrida de aceite na branch funcional.
 
-## 2. Objetivo
-
-Validar que o service aplica as regras principais de interesse, incluindo restricao por usuario autenticado, criacao somente para item disponivel e cancelamento com reabertura do item quando necessario.
-
----
-
-## 3. Escopo
-
-### 3.1 Metodos Testados
-
-| Metodo | Descricao |
-| ------ | --------- |
-| `listar(params, actor)` | Restringe listagem para usuario comum |
-| `criar(dados, actor)` | Cria interesse para item disponivel |
-| `cancelar(id, actor)` | Cancela interesse e reabre item quando o interesse estava aceito |
-
-### 3.2 Fora do Escopo
-
-- Testes de repository com banco real.
-- Testes completos de aceitar e recusar interesse.
-- Testes E2E com frontend.
-
----
-
-## 4. Estrategia
-
-**Abordagem:** teste unitario com `interesseRepository` e `usuarioRepository` mockados. O model de item e mockado pontualmente com `jest.spyOn`.
-
-### 4.1 Arquivo de Teste
+Arquivos:
 
 ```text
 src/tests/services/InteresseService.spec.js
+src/tests/routes/interesse.spec.js
 ```
 
-### 4.2 Comandos
+## 3. Regras Cobertas
+
+- Somente usuario ativo pode manifestar interesse.
+- Item deve existir e estar `DISPONIVEL`.
+- Usuario nao pode manifestar interesse no proprio item.
+- Nao pode existir interesse ativo duplicado para o mesmo usuario e item.
+- Somente o doador pode aceitar ou recusar.
+- Somente interesse `PENDENTE` pode ser aceito ou recusado.
+- Somente um interesse pode vencer o aceite concorrente.
+- Aceite reserva o item e recusa os demais pendentes.
+- Somente o interessado pode cancelar.
+- Cancelamento de interesse aceito reabre o item.
+- Eventos relevantes geram notificacoes best-effort.
+
+## 4. Cenarios Principais
+
+| Grupo | Cenarios validados |
+| --- | --- |
+| Listagens | proprios interesses, recebidos pelo doador, filtros e consulta por item |
+| Consulta | interessado, doador e administrador permitidos; terceiro bloqueado |
+| Criacao | sucesso, usuario inexistente/inativo, item inexistente/indisponivel/proprio e duplicidade |
+| Aceite | sucesso, terceiro bloqueado, estado invalido, item indisponivel e corrida |
+| Recusa | sucesso e estado invalido |
+| Cancelamento | pendente, aceito, terceiro bloqueado e estado final |
+| Contrato HTTP | autenticacao, aliases, query/body/ID invalidos, status e erros operacionais |
+
+## 5. Evidencias
+
+Branch de consistencia `132-interesse-consistencia-concorrencia`:
+
+- validacao real confirmou somente uma reserva concorrente;
+- indice unico parcial rejeitou segundo interesse `ACEITO` para o mesmo item.
+
+Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+
+- suite conjunta dos tres Services: **56 testes aprovados**;
+- Services alvo com **100% de statements, funcoes e linhas**.
+
+Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
+
+- suite conjunta dos tres modulos: **47 testes aprovados**;
+- Controllers e routers alvo com **100% de linhas**.
+
+## 6. Comandos
 
 ```powershell
 npm.cmd test -- --runInBand src/tests/services/InteresseService.spec.js
+npm.cmd test -- --runInBand src/tests/routes/interesse.spec.js
 npm.cmd run test:coverage -- --runInBand
 ```
 
----
+## 7. Riscos e Pendencias
 
-## 5. Cenarios de Teste
-
-| ID | Descricao | Mock Configurado | Resultado Esperado | Status |
-| -- | --------- | ---------------- | ------------------ | ------ |
-| INT-SV-01 | Usuario comum lista apenas os proprios interesses | `interesseRepository.listar` | filtro troca `usuarioInteressadoId` por `usuario_interessado_id` do actor | PASSOU |
-| INT-SV-02 | Cria interesse com item disponivel e usuario ativo | usuario ativo, item `DISPONIVEL`, sem interesse ativo | interesse `PENDENTE` criado e contador do item incrementado | PASSOU |
-| INT-SV-03 | Cancela interesse aceito | interesse `ACEITO` e item vinculado | interesse vira `CANCELADO` e item volta para `DISPONIVEL` | PASSOU |
-
----
-
-## 6. Resultado de Execucao
-
-| Suite | Arquivo | Testes | Aprovados | Reprovados | Status |
-| ----- | ------- | ------ | --------- | ---------- | ------ |
-| InteresseService | `services/InteresseService.spec.js` | **3** | **3** | **0** | PASSOU |
-
----
-
-## 7. Observacoes
-
-- A cobertura atual valida o fluxo principal, mas ainda pode ser expandida para aceitar, recusar, duplicidade e permissao de doador.
-- As rotas HTTP correspondentes sao cobertas em `src/tests/routes/interesse.spec.js`.
+- Antes de criar o indice unico em banco existente, auditar duplicatas com status `ACEITO`.
+- Notificacoes sao best-effort; sem outbox/retry duravel, uma falha pode causar perda de aviso sem impedir a operacao principal.
+- Ao integrar branches, preservar operacoes atomicas, compensacoes e testes de concorrencia.
