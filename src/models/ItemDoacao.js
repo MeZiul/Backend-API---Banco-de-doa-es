@@ -70,6 +70,10 @@ class ItemDoacao {
                     index: true // Otimização vital para a listagem
                 },
 
+                motivo_cancelamento: {
+                    type: String
+                },
+
                 // Array embutido para as imagens do item (RN-ITEM-002)
                 fotos: [
                     {
