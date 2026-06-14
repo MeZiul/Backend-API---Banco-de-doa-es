@@ -16,6 +16,8 @@ import notificacaoPaths from "../paths/notificacao.js";
 import notificacaoSchema from "../schemas/notificacaoSchema.js";
 import perfilPaths from "../paths/perfil.js";
 import perfilSchemas from "../schemas/perfilSchema.js";
+import categoriasPaths from "../paths/categoria.js";
+import categoriasSchemas from "../schemas/categoriaSchema.js";
 
 const getServersInCorrectOrder = () => {
   const devUrl = process.env.SWAGGER_DEV_URL?.trim();
@@ -65,9 +67,28 @@ Escopo desta documentação:
           "Rotas para login, recuperação de senha, logout e renovação de token.",
       },
       {
+        name: "Administração",
+        description:
+          "Rotas administrativas de moderação, bloqueio, inativação, cancelamento e resolução.",
+      },
+      {
+        name: "Perfil",
+        description: "Rotas perfil tem atualizações.",
+      },
+      {
         name: "Usuários",
         description:
           "Rotas de cadastro, listagem, atualização, exclusão e moderação de usuários.",
+      },
+      {
+        name: "Categorias",
+        description:
+          "Rotas de listagem e gestão de categorias de itens de doação.",
+      },
+      {
+        name: "Itens de Doação",
+        description:
+          "Rotas de itens doação, listagem, atualização, exclusão e moderação de itens.",
       },
       {
         name: "Interesses",
@@ -75,30 +96,32 @@ Escopo desta documentação:
           "Rotas para manifestação, acompanhamento e decisão sobre interesses em itens.",
       },
       {
-        name: "Denúncias",
+        name: "Notificações",
         description:
-          "Rotas para criação, consulta, atualização e remoção de denúncias.",
-      },
-      {
-        name: "Administração",
-        description:
-          "Rotas administrativas de moderação, bloqueio, inativação, cancelamento e resolução.",
+          "Rotas para registro, consulta, atualização de notificações.",
       },
       {
         name: "Avaliações",
         description:
           "Rotas para registro, consulta, atualização e remoção de avaliações.",
       },
+
+      {
+        name: "Denúncias",
+        description:
+          "Rotas para criação, consulta, atualização e remoção de denúncias.",
+      },
     ],
     paths: {
       ...authPaths,
       ...usuariosPaths,
+      ...categoriasPaths,
+      ...itemDoacaoPaths,
       ...interessesPaths,
+      ...avaliacoesPaths,
+      ...notificacaoPaths,
       ...denunciasPaths,
       ...administracaoPaths,
-      ...avaliacoesPaths,
-      ...itemDoacaoPaths,
-      ...notificacaoPaths,
       ...perfilPaths,
     },
     components: {
@@ -112,6 +135,7 @@ Escopo desta documentação:
       schemas: {
         ...authSchemas,
         ...usuariosSchemas,
+        ...categoriasSchemas,
         ...interessesSchemas,
         ...denunciasSchemas,
         ...administracaoSchemas,
