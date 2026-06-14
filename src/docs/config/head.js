@@ -13,6 +13,8 @@ import itemDoacaoPaths from "../paths/itemDoacao.js";
 import itemDoacaoSchemas from "../schemas/itemDoacaoSchema.js";
 import notificacaoPaths from "../paths/notificacao.js";
 import notificacaoSchema from "../schemas/notificacaoSchema.js";
+import perfilPaths from "../paths/perfil.js";
+import perfilSchemas from "../schemas/perfilSchema.js";
 
 const getServersInCorrectOrder = () => {
     const devUrl = process.env.SWAGGER_DEV_URL?.trim();
@@ -83,7 +85,8 @@ Escopo desta documentação:
             ...administracaoPaths,
             ...avaliacoesPaths,
             ...itemDoacaoPaths,
-            ...notificacaoPaths
+            ...notificacaoPaths,
+            ...perfilPaths,
         },
         components: {
             securitySchemes: {
@@ -101,6 +104,7 @@ Escopo desta documentação:
                 ...avaliacoesSchemas,
                 ...itemDoacaoSchemas,
                 ...notificacaoSchema,
+                ...perfilSchemas,
             },
         },
         security: [{
