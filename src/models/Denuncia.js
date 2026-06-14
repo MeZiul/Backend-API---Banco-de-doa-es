@@ -15,6 +15,7 @@ class Denuncia {
           enum: ["ITEM", "USUARIO"],
           required: [true, "O tipo de alvo é obrigatório."]
         },
+        
 
         alvo_item_id: {
           type: mongoose.Schema.Types.ObjectId,

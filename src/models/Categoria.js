@@ -11,6 +11,7 @@ class Categoria {
                     unique: true,
                     trim: true
                 },
+                
 
                 descricao: {
                     type: String,

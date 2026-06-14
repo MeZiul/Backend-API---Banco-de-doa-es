@@ -1,7 +1,10 @@
 import "dotenv/config";
 import app from "./src/app.js";
+import { verificarTodasParidades } from "./src/utils/verificarParidadeSchemas.js";
 
 const port = process.env.APP_PORT || 7340;
+
+verificarTodasParidades();
 
 app.listen(port, '0.0.0.0', (err) => {
     if(err) {

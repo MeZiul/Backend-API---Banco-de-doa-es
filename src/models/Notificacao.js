@@ -25,6 +25,7 @@ const notificacaoSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    
     referencia_tipo: {
         type: String,
         required: false
