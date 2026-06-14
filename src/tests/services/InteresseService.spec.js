@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import InteresseService from "../../services/InteresseService.js";
-import { createRegularUser, testIds } from "../test.js";
+import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("InteresseService", () => {
   let interesseRepository;
@@ -590,5 +590,300 @@ describe("InteresseService", () => {
     });
 
     expect(interesseRepository.listar).not.toHaveBeenCalled();
+  });
+
+  test("Deve listar recebidos, interesses do item e detalhe para envolvidos", async () => {
+    interesseRepository.listar.mockResolvedValue({ docs: [] });
+    interesseRepository.listarPorItem.mockResolvedValue([{ _id: testIds.administracao }]);
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      usuario_interessado_id: { _id: testIds.interessado },
+      usuario_doador_id: { _id: testIds.doador },
+    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+    });
+
+    await service.listarRecebidos(
+      { filtros: { status: "PENDENTE", usuarioDoadorId: "remover" }, page: "2", limit: "4" },
+      createRegularUser({ id: testIds.doador })
+    );
+    await expect(service.listarPorItem(
+      testIds.item,
+      createRegularUser({ id: testIds.doador })
+    )).resolves.toHaveLength(1);
+    await expect(service.listarPorItem(testIds.item, createAdminUser()))
+      .resolves.toHaveLength(1);
+    await expect(service.buscarPorId(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).resolves.toMatchObject({ _id: testIds.administracao });
+    await expect(service.buscarPorId(
+      testIds.administracao,
+      createRegularUser({ id: testIds.doador })
+    )).resolves.toMatchObject({ _id: testIds.administracao });
+
+    expect(interesseRepository.listar).toHaveBeenCalledWith({
+      filtros: { status: "PENDENTE", usuario_doador_id: testIds.doador },
+      page: 2,
+      limit: 4,
+    });
+  });
+
+  test("Deve rejeitar acesso ao item e interesse por terceiro", async () => {
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+    });
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      usuario_interessado_id: testIds.interessado,
+      usuario_doador_id: testIds.doador,
+    });
+
+    await expect(service.listarPorItem(testIds.item, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.buscarPorId(testIds.administracao, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  test("Deve rejeitar criacao para usuario ou item invalido", async () => {
+    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ _id: testIds.interessado, situacao: "SUSPENSO" })
+      .mockResolvedValueOnce({ _id: testIds.interessado, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.interessado, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.interessado, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.interessado, situacao: "ATIVO" });
+    itemDoacaoRepository.buscarPorId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        _id: testIds.item,
+        status: "RESERVADO",
+        usuario_id: testIds.doador,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.item,
+        status: "DISPONIVEL",
+        usuario_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.item,
+        status: "DISPONIVEL",
+        usuario_id: testIds.doador,
+      });
+    interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue({
+      _id: testIds.administracao,
+    });
+
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.criar({ item_id: testIds.item }, createRegularUser({ id: testIds.interessado })))
+      .rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  test("Deve rejeitar aceite e recusa quando estado ou concorrencia mudarem", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "RECUSADO",
+        item_id: testIds.item,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: testIds.item,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: testIds.item,
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "ACEITO",
+        item_id: testIds.item,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        item_id: testIds.item,
+        usuario_interessado_id: testIds.interessado,
+      });
+    itemDoacaoRepository.buscarPorId
+      .mockResolvedValueOnce({ _id: testIds.item, usuario_id: testIds.doador, status: "DISPONIVEL" })
+      .mockResolvedValueOnce({ _id: testIds.item, usuario_id: testIds.doador, status: "RESERVADO" })
+      .mockResolvedValueOnce({ _id: testIds.item, usuario_id: testIds.doador, status: "DISPONIVEL" })
+      .mockResolvedValueOnce({ _id: testIds.item, usuario_id: testIds.doador, status: "DISPONIVEL" })
+      .mockResolvedValueOnce({ _id: testIds.item, usuario_id: testIds.doador, status: "DISPONIVEL" });
+    itemDoacaoRepository.reservarSeDisponivel.mockResolvedValue({});
+    interesseRepository.atualizarSeStatus.mockResolvedValue(null);
+    itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({});
+
+    await expect(service.aceitar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.aceitar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.aceitar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.recusar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.recusar(
+      testIds.administracao,
+      {},
+      createRegularUser({ id: testIds.doador })
+    )).rejects.toMatchObject({ statusCode: 409 });
+  });
+
+  test("Deve rejeitar cancelamentos invalidos e interesse inexistente", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "RECUSADO",
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "ACEITO",
+        item_id: testIds.item,
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce(null);
+    interesseRepository.atualizarSeStatus.mockResolvedValue(null);
+    itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue(null);
+
+    await expect(service.cancelar(testIds.administracao, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.cancelar(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.cancelar(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.cancelar(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.buscarPorId(testIds.administracao, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.listar({}, {}))
+      .rejects.toMatchObject({ statusCode: 401 });
+  });
+
+  test("Deve cancelar interesse pendente sem liberar reserva", async () => {
+    interesseRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "PENDENTE",
+        usuario_interessado_id: testIds.interessado,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.administracao,
+        status: "CANCELADO",
+      });
+    interesseRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "CANCELADO",
+    });
+
+    await expect(service.cancelar(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).resolves.toMatchObject({ status: "CANCELADO" });
+
+    expect(itemDoacaoRepository.liberarReservaDoInteresse).not.toHaveBeenCalled();
+  });
+
+  test("Deve propagar falhas comuns de criacao e compensar falha no incremento", async () => {
+    const falhaCriacao = new Error("falha ao criar");
+    const falhaIncremento = new Error("falha ao incrementar");
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.interessado,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "DISPONIVEL",
+      usuario_id: testIds.doador,
+    });
+    interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue(null);
+    interesseRepository.criar
+      .mockRejectedValueOnce(falhaCriacao)
+      .mockResolvedValueOnce({ _id: testIds.administracao });
+    itemDoacaoRepository.incrementarInteressesSeDisponivel.mockRejectedValue(falhaIncremento);
+    interesseRepository.deletar.mockResolvedValue({});
+
+    await expect(service.criar(
+      { item_id: testIds.item },
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toBe(falhaCriacao);
+    await expect(service.criar(
+      { item_id: testIds.item },
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toBe(falhaIncremento);
+
+    expect(interesseRepository.deletar).toHaveBeenCalledWith(testIds.administracao);
+  });
+
+  test("Deve falhar quando nao conseguir restaurar reserva apos corrida no cancelamento", async () => {
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO",
+      item_id: testIds.item,
+      usuario_interessado_id: testIds.interessado,
+    });
+    itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({});
+    interesseRepository.atualizarSeStatus.mockResolvedValue(null);
+    itemDoacaoRepository.restaurarReservaSeDisponivel.mockResolvedValue(null);
+
+    await expect(service.cancelar(
+      testIds.administracao,
+      createRegularUser({ id: testIds.interessado })
+    )).rejects.toThrow("Falha ao restaurar a reserva");
+  });
+
+  test("Deve permitir ao administrador consultar qualquer interesse", async () => {
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      usuario_interessado_id: testIds.interessado,
+      usuario_doador_id: testIds.doador,
+    });
+
+    await expect(service.buscarPorId(testIds.administracao, createAdminUser()))
+      .resolves.toMatchObject({ _id: testIds.administracao });
   });
 });
