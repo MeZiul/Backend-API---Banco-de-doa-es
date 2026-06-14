@@ -10,6 +10,7 @@ class Interesse {
           ref: "ItemDoacao",
           required: [true, "A referência ao item de doação é obrigatória."]
         },
+        
         usuario_interessado_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Usuario",

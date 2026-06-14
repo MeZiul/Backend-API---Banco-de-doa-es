@@ -13,33 +13,50 @@
 //  C  → Adicione a CAMPOS_INTERNOS abaixo (infra interna, nunca exposto na API)
 
 import UsuarioModel     from '../models/Usuario.js';
-import FilaModel        from '../models/Fila.js';
-import InstituicaoModel from '../models/Instituicao.js';
-import SenhaModel       from '../models/Senha.js';
-import QrCodeModel      from '../models/QrCode.js';
-import AuditoriaModel   from '../models/Auditoria.js';
-import LandingPageModel from '../models/LandingPage.js';
+import AdministracaoModel from '../models/Administracao.js';
+import AvaliacaoModel from '../models/Avaliacao.js';
+import CategoriaModel from '../models/Categoria.js';
+import DenunciaModel from '../models/Denuncia.js';
+import InteresseModel from '../models/Interesse.js';
+//import ItemDoacaoModel from '../models/ItemDoacao.js';
+//import NotificacaoModel from '../models/Notificacao.js';
+
+
+
 
 import { UsuarioResponseSchema }     from './validators/schemas/zod/UsuarioSchema.js';
-import { FilaResponseSchema }        from './validators/schemas/zod/FilaSchema.js';
-import { InstituicaoResponseSchema } from './validators/schemas/zod/InstituicaoSchema.js';
-import { SenhaResponseSchema }       from './validators/schemas/zod/SenhaSchema.js';
-import { QrCodeResponseSchema }      from './validators/schemas/zod/QrCodeSchema.js';
-import { AuditoriaResponseSchema }   from './validators/schemas/zod/AuditoriaSchema.js';
-import { LandingPageResponseSchema } from './validators/schemas/zod/LandingPageSchema.js';
+import {  AdministracaoResponseSchema }     from './validators/schemas/zod/AdministracaoSchema.js';
+import { AvaliacaoResponseSchema }     from './validators/schemas/zod/AvaliacaoSchema.js';
+import { CategoriaResponseSchema }     from './validators/schemas/zod/CategoriaSchema.js';
+import { DenunciaResponseSchema }     from './validators/schemas/zod/DenunciaSchema.js';
+import { InteresseResponseSchema }     from './validators/schemas/zod/InteresseSchema.js';
+import Administracao from '../models/Administracao.js';
+import Avaliacao from '../models/Avaliacao.js';
+import Categoria from '../models/Categoria.js';
+import Denuncia from '../models/Denuncia.js';
+import Interesse from '../models/Interesse.js';
+import ItemDoacao from '../models/ItemDoacao.js';
+import Notificacao from '../models/Notificacao.js';
+//import { ItemDoacaoResponseSchema }     from './validators/schemas/zod/ItemDoacaoSchema.js';
+//import { NotificacaoResponseSchema }     from './validators/schemas/zod/NotificacaoSchema.js';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Campos que existem no model mas são intencionalmente EXCLUÍDOS da resposta
 // pública. Só entre aqui se o campo for de infraestrutura interna.
 // ─────────────────────────────────────────────────────────────────────────────
 const CAMPOS_INTERNOS = {
-  Usuario:     new Set(['codigo_recupera_senha', 'exp_codigo_recupera_senha']),
-  Fila:        new Set([]),
-  Instituicao: new Set([]),
-  Senha:       new Set([]),
-  QrCode:      new Set([]),
-  Auditoria:   new Set([]),
-  LandingPage: new Set([]),
+  Usuario:     new Set([]),
+  Administracao: new Set([]),
+  Avaliacao: new Set([]),
+  Categoria: new Set([]),
+  Denuncia: new Set([]),
+  Interesse: new Set([]),
+  //ItemDoacao: new Set([]),
+  //Notificacao: new Set([]),
+
+
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,13 +101,14 @@ function verificar(nomeModel, mongooseModel, responseSchema) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Funções públicas — usadas por server.js e por testes de paridade
 // ─────────────────────────────────────────────────────────────────────────────
-export function verificarParidadeUsuario()     { verificar('Usuario',     UsuarioModel,     UsuarioResponseSchema); }
-export function verificarParidadeFila()        { verificar('Fila',        FilaModel,        FilaResponseSchema); }
-export function verificarParidadeInstituicao() { verificar('Instituicao', InstituicaoModel, InstituicaoResponseSchema); }
-export function verificarParidadeSenha()       { verificar('Senha',       SenhaModel,       SenhaResponseSchema); }
-export function verificarParidadeQrCode()      { verificar('QrCode',      QrCodeModel,      QrCodeResponseSchema); }
-export function verificarParidadeAuditoria()   { verificar('Auditoria',   AuditoriaModel,   AuditoriaResponseSchema); }
-export function verificarParidadeLandingPage() { verificar('LandingPage', LandingPageModel, LandingPageResponseSchema); }
+export function verificarParidadeUsuario(){ verificar('Usuario',     UsuarioModel,     UsuarioResponseSchema); };
+export function verificarParidadeAdministracao(){ verificar('Administracao',     AdministracaoModel,     AdministracaoResponseSchema); };
+export function verificarParidadeAvaliacao(){ verificar('Avaliacao',     AvaliacaoModel,    AvaliacaoResponseSchema); };
+export function verificarParidadeCategoria(){ verificar('Categorio',     CategoriaModel,     CategoriaResponseSchema); };
+export function verificarParidadeDenuncia(){ verificar('Denuncia',     DenunciaModel,     DenunciaResponseSchema); };
+export function verificarParidadeInteresse(){ verificar('Interesse',     InteresseModel,     InteresseResponseSchema); };
+//export function verificarParidadeIntemDoacao(){ verificar('ItemDoacao',     ItemDoacaoModel,     ItemDoacaoResponseSchema); };
+//export function verificarParidadeNotificacao(){ verificar('Notificacao',     NotificacaoModel,     NotificacaoResponseSchema); };
 
 /**
  * Executa TODAS as verificações de paridade.
@@ -98,10 +116,11 @@ export function verificarParidadeLandingPage() { verificar('LandingPage', Landin
  */
 export function verificarTodasParidades() {
   verificarParidadeUsuario();
-  verificarParidadeFila();
-  verificarParidadeInstituicao();
-  verificarParidadeSenha();
-  verificarParidadeQrCode();
-  verificarParidadeAuditoria();
-  verificarParidadeLandingPage();
+  verificarParidadeAdministracao();
+  verificarParidadeAvaliacao();
+  verificarParidadeCategoria();
+  verificarParidadeDenuncia();
+  verificarParidadeInteresse();
+ // verificarParidadeIntemDoacao();
+  //verificarParidadeNotificacao();
 }

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import { string } from "zod";
 
 class Administracao {
   constructor() {
@@ -26,6 +27,7 @@ class Administracao {
           enum: ["USUARIO", "ITEM", "DENUNCIA"],
           required: [true, "O tipo do alvo é obrigatório."]
         },
+        
         alvo_id: {
           type: mongoose.Schema.Types.ObjectId,
           required: [true, "A referência ao alvo da ação administrativa é obrigatória."],
