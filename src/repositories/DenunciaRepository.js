@@ -67,6 +67,23 @@ class DenunciaRepository extends BaseRepository {
         });
     }
 
+    listarResumoPorUsuario(usuarioId, itemIds = [], limit = 10) {
+        const relacionamentos = [
+            { denunciante_id: usuarioId },
+            { alvo_usuario_id: usuarioId },
+        ];
+
+        if (itemIds.length > 0) {
+            relacionamentos.push({ alvo_item_id: { $in: itemIds } });
+        }
+
+        return this.model.find({ $or: relacionamentos })
+            .select("denunciante_id tipo_alvo alvo_item_id alvo_usuario_id motivo status data_denuncia data_analise")
+            .populate("alvo_item_id", "titulo status")
+            .sort({ data_denuncia: -1 })
+            .limit(limit);
+    }
+
     listar({ filtros = {}, page = 1, limit = 15 }) {
         const query = new DenunciaFilterBuilder()
             .comDenunciante(filtros.denunciante_id || filtros.denuncianteId)

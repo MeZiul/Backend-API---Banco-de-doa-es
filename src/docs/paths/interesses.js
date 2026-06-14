@@ -27,6 +27,7 @@ Regras de negócio:
                 201: commonResponses[201]("#/components/schemas/InteresseDetalhes"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
+                404: commonResponses[404](),
                 409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
@@ -198,6 +199,30 @@ Regras de negócio:
                 403: commonResponses[403](),
                 404: commonResponses[404](),
                 409: commonResponses[409](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/itens/{id}/interesses": {
+        get: {
+            tags: ["Interesses"],
+            summary: "Listar interessados de um item",
+            description: `Lista os interesses registrados para um item de doação.
+
+Regras de negócio:
+- A rota exige autenticação e situação ATIVO.
+- Somente o doador proprietário do item pode consultar seus interessados.
+- Administradores que não sejam proprietários também recebem 403.
+- Caso o item não exista, retorna 404.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "id", in: "path", required: true, schema: { type: "string" } },
+            ],
+            responses: {
+                200: commonResponses[200]("#/components/schemas/InteresseListaDoItem"),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
             },

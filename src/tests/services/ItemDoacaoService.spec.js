@@ -71,6 +71,17 @@ describe("ItemDoacaoService", () => {
             const res = await service.listarInteresses("i1", { id: "dono" });
             expect(res).toHaveLength(1);
         });
+
+        test("deve impedir administrador que nao seja o dono de listar interessados", async () => {
+            mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "dono" });
+
+            await expect(service.listarInteresses("i1", {
+                id: "admin",
+                perfil: "ADMINISTRADOR",
+            })).rejects.toMatchObject({ statusCode: 403 });
+
+            expect(mockInteresseRepository.listarPorItem).not.toHaveBeenCalled();
+        });
     });
 
     describe("confirmarEntrega", () => {

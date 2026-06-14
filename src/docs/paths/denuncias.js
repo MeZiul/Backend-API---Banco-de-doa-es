@@ -26,6 +26,7 @@ Regras de negócio:
                 201: commonResponses[201]("#/components/schemas/DenunciaDetalhes"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
+                404: commonResponses[404](),
                 409: commonResponses[409](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),

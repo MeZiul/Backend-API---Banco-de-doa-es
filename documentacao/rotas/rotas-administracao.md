@@ -3,7 +3,7 @@
 Este documento descreve o contrato funcional das rotas de `administracao` revisadas para a Milestone 3.
 
 Escopo considerado:
-- estado atual da `dev` e endurecimentos preparados nas branches funcionais `130` a `137`
+- estado integrado final da `dev`
 - autenticação via Bearer Token JWT
 - autorização restrita ao perfil `ADMINISTRADOR`
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md`
@@ -147,7 +147,8 @@ Autorização:
 
 Regra de negócio:
 - a resposta deve apresentar dados cadastrais e contexto suficiente para moderação
-- pode incluir histórico resumido de itens, interesses, avaliações e denúncias quando aplicável
+- inclui os 10 registros mais recentes de itens, interesses, avaliações e denúncias relacionadas
+- denúncias relacionadas incluem registros criados pelo usuário, contra ele ou contra seus itens
 - se o usuário não existir, a API deve retornar erro apropriado
 
 Resposta esperada:
@@ -356,12 +357,9 @@ Respostas adicionais:
 - `403 Forbidden` ocorre para usuario nao administrador, usuario sem situacao ativa ou tentativa de auto-moderacao;
 - `498` ocorre quando o Bearer Token nao foi informado ou nao e valido no middleware atual.
 
-Limite conhecido:
-
-- `GET /admin/usuarios/:id` ainda nao agrega todo o historico resumido de itens, interesses, avaliacoes e denuncias previsto no contrato oficial.
-
 Evidencia automatizada:
 
-- testes unitarios conjuntos dos tres Services: **56 testes aprovados**;
-- testes de endpoint conjuntos dos tres modulos: **47 testes aprovados**;
+- testes unitarios conjuntos dos tres Services: **68 testes aprovados**;
+- testes de endpoint conjuntos dos tres modulos: **48 testes aprovados**;
+- suite integrada do projeto: **26 suites e 226 testes aprovados**;
 - Controller e router de Administracao: **100% das linhas** na cobertura focada da branch de endpoints.

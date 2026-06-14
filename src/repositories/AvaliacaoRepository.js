@@ -26,6 +26,21 @@ class AvaliacaoRepository extends BaseRepository {
     return this.model.findOne({ avaliador_id, item_id, tipo });
   }
 
+  listarResumoPorUsuario(usuarioId, limit = 10) {
+    return this.model.find({
+      $or: [
+        { avaliador_id: usuarioId },
+        { avaliado_id: usuarioId },
+      ],
+    })
+      .select("item_id avaliador_id avaliado_id nota tipo data_avaliacao")
+      .populate("item_id", "titulo")
+      .populate("avaliador_id", "nome")
+      .populate("avaliado_id", "nome")
+      .sort({ data_avaliacao: -1 })
+      .limit(limit);
+  }
+
   listar({ filtros = {}, page = 1, limit = 15 }) {
     const builder = new AvaliacaoFilterBuilder()
       .comAvaliador(filtros.avaliador_id)

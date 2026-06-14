@@ -10,7 +10,7 @@ Validar as regras de moderacao administrativa, autorizacao, auditoria, consisten
 
 - Testes unitarios do `AdministracaoService` com repositories mockados.
 - Testes de endpoint com o router real, JWT de teste, `AuthMiddleware`, `EnsureAdminMiddleware`, schemas Zod e Service mockado.
-- Testes de concorrencia e compensacao ficam nas branches funcionais correspondentes.
+- Testes de concorrencia, compensacao e integracao final fazem parte da suite atual.
 
 Arquivos:
 
@@ -30,6 +30,8 @@ src/tests/routes/administracao.spec.js
 - Resultado da denuncia deve ser `PROCEDENTE` ou `IMPROCEDENTE`.
 - Denuncia procedente pode cancelar item ou suspender usuario.
 - Recursos inexistentes retornam `404`.
+- Data de suspensao deve ser uma data e hora ISO 8601 valida.
+- Detalhe administrativo agrega os 10 registros mais recentes de itens, interesses, avaliacoes e denuncias relacionadas.
 - Operacoes concorrentes e falhas de auditoria devem ser tratadas sem deixar estado silenciosamente inconsistente.
 
 ## 4. Cenarios Principais
@@ -46,17 +48,15 @@ src/tests/routes/administracao.spec.js
 
 ## 5. Evidencias
 
-Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+Validacao integrada final:
 
-- suite conjunta dos tres Services: **56 testes aprovados**;
-- Administracao, Interesse e Denuncia: **100% de statements, funcoes e linhas**;
-- cobertura conjunta de branches: **80%**.
+- suite conjunta dos tres Services: **68 testes aprovados**;
+- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
 
-Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
-
-- suite conjunta dos tres modulos: **47 testes aprovados**;
+- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
 - Controllers e routers dos tres modulos: **100% de linhas**;
-- cobertura focada: **96,56% de statements e linhas**.
+- recorte completo dos testes de endpoint: **84,28% de statements**, **71,54% de branches**, **77,77% de funcoes** e **84,04% de linhas**.
+- suite completa: **26 suites e 226 testes aprovados**.
 
 ## 6. Comandos
 
@@ -68,6 +68,4 @@ npm.cmd run test:coverage -- --runInBand
 
 ## 7. Riscos e Pendencias
 
-- O detalhe administrativo de usuario ainda nao agrega todo o historico resumido previsto no contrato oficial.
 - Compensacoes reduzem inconsistencias, mas uma queda do processo entre mutacao e auditoria ainda exige reconciliacao enquanto nao houver transacoes com replica set.
-- Ao integrar as branches `130` a `137`, preservar autorizacao por situacao atual, compare-and-set, compensacoes, notificacoes, filtros seguros e todos os cenarios de teste.

@@ -1,14 +1,17 @@
+import express from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import CustomError from "../../utils/helpers/CustomError.js";
+import errorHandler from "../../utils/helpers/errorHandler.js";
 import {
-    createControllerTestApp,
     createRegularUser,
     testIds,
 } from "../test.js";
 
 const mockCancelarItem = jest.fn();
 const mockListarInteresses = jest.fn();
+const mockUsuarioRepositoryBuscarPorId = jest.fn();
 
 jest.mock("../../services/ItemDoacaoService.js", () => {
     return jest.fn().mockImplementation(() => {
@@ -19,25 +22,38 @@ jest.mock("../../services/ItemDoacaoService.js", () => {
     });
 });
 
+jest.mock("../../repositories/UsuarioRepository.js", () => ({
+    __esModule: true,
+    default: class MockUsuarioRepository {
+        buscarPorId(...args) {
+            return mockUsuarioRepositoryBuscarPorId(...args);
+        }
+    },
+}));
+
 let appUsuario;
 
-beforeAll(async () => {
-    const { default: ctrl } = await import(
-        "../../controllers/ItemDoacaoController.js"
-        );
+const bearer = (user = createRegularUser({ id: testIds.usuario })) =>
+    `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
 
-    appUsuario = createControllerTestApp({
-        user: createRegularUser({ id: testIds.usuario }),
-        registerRoutes: (app) => {
-            app.patch("/itens/:id/cancelar", ctrl.cancelarItem);
-            app.get("/itens/:id/interesses", ctrl.listarInteresses);
-        },
-    });
+beforeAll(async () => {
+    const { default: itemDoacaoRoutes } = await import("../../routes/itemDoacaoRoutes.js");
+
+    appUsuario = express();
+    appUsuario.use(express.json());
+    appUsuario.use(itemDoacaoRoutes);
+    appUsuario.use(errorHandler);
 });
 
 beforeEach(() => {
     mockCancelarItem.mockReset();
     mockListarInteresses.mockReset();
+    mockUsuarioRepositoryBuscarPorId.mockReset();
+    mockUsuarioRepositoryBuscarPorId.mockImplementation(async (id) => ({
+        _id: id,
+        perfil: "USUARIO",
+        situacao: "ATIVO",
+    }));
 });
 
 describe("Rotas de Interação de Itens de Doação", () => {
@@ -54,6 +70,7 @@ describe("Rotas de Interação de Itens de Doação", () => {
 
             const res = await request(appUsuario)
                 .patch(`/itens/${testIds.item}/cancelar`)
+                .set("Authorization", bearer())
                 .send({
                     motivo: "O item sofreu uma avaria durante a mudança e quebrou.",
                 });
@@ -72,6 +89,7 @@ describe("Rotas de Interação de Itens de Doação", () => {
 
             const res = await request(appUsuario)
                 .patch(`/itens/${testIds.item}/cancelar`)
+                .set("Authorization", bearer())
                 .send({
                     motivo: "Motivo de cancelamento válido com mais de dez caracteres.",
                 });
@@ -83,6 +101,7 @@ describe("Rotas de Interação de Itens de Doação", () => {
         test("retorna 400 se o motivo enviado falhar no validador do Zod", async () => {
             const res = await request(appUsuario)
                 .patch(`/itens/${testIds.item}/cancelar`)
+                .set("Authorization", bearer())
                 .send({
                     motivo: "Curto",
                 });
@@ -104,7 +123,9 @@ describe("Rotas de Interação de Itens de Doação", () => {
 
             mockListarInteresses.mockResolvedValue(listaInteressadosPayload);
 
-            const res = await request(appUsuario).get(`/itens/${testIds.item}/interesses`);
+            const res = await request(appUsuario)
+                .get(`/itens/${testIds.item}/interesses`)
+                .set("Authorization", bearer());
 
             expect(res.statusCode).toBe(200);
             expect(Array.isArray(res.body.data)).toBe(true);
@@ -118,10 +139,27 @@ describe("Rotas de Interação de Itens de Doação", () => {
                 })
             );
 
-            const res = await request(appUsuario).get(`/itens/${testIds.item}/interesses`);
+            const res = await request(appUsuario)
+                .get(`/itens/${testIds.item}/interesses`)
+                .set("Authorization", bearer());
 
             expect(res.statusCode).toBe(404);
             expect(res.body.message).toBe("Item não encontrado.");
+        });
+
+        test("rejeita usuario suspenso antes de consultar os interessados", async () => {
+            mockUsuarioRepositoryBuscarPorId.mockResolvedValue({
+                _id: testIds.usuario,
+                perfil: "USUARIO",
+                situacao: "SUSPENSO",
+            });
+
+            const res = await request(appUsuario)
+                .get(`/itens/${testIds.item}/interesses`)
+                .set("Authorization", bearer());
+
+            expect(res.statusCode).toBe(403);
+            expect(mockListarInteresses).not.toHaveBeenCalled();
         });
     });
 });

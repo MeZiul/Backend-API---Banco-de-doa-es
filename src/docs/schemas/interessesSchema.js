@@ -91,6 +91,10 @@ const interessesSchemas = {
         },
     },
     InteressePaginado: paginatedSchema("#/components/schemas/InteresseListagem"),
+    InteresseListaDoItem: {
+        type: "array",
+        items: { $ref: "#/components/schemas/InteresseListagem" },
+    },
 };
 
 export default interessesSchemas;

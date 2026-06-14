@@ -32,6 +32,7 @@ src/tests/routes/interesse.spec.js
 - Somente o interessado pode cancelar.
 - Cancelamento de interesse aceito reabre o item.
 - Eventos relevantes geram notificacoes best-effort.
+- A consulta de interessados de um item exige usuario ativo e somente pode ser feita pelo doador proprietario.
 
 ## 4. Cenarios Principais
 
@@ -52,15 +53,14 @@ Branch de consistencia `132-interesse-consistencia-concorrencia`:
 - validacao real confirmou somente uma reserva concorrente;
 - indice unico parcial rejeitou segundo interesse `ACEITO` para o mesmo item.
 
-Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+Validacao integrada final:
 
-- suite conjunta dos tres Services: **56 testes aprovados**;
-- Services alvo com **100% de statements, funcoes e linhas**.
+- suite conjunta dos tres Services: **68 testes aprovados**;
+- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
 
-Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
-
-- suite conjunta dos tres modulos: **47 testes aprovados**;
+- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
 - Controllers e routers alvo com **100% de linhas**.
+- suite completa: **26 suites e 226 testes aprovados**.
 
 ## 6. Comandos
 
@@ -74,4 +74,3 @@ npm.cmd run test:coverage -- --runInBand
 
 - Antes de criar o indice unico em banco existente, auditar duplicatas com status `ACEITO`.
 - Notificacoes sao best-effort; sem outbox/retry duravel, uma falha pode causar perda de aviso sem impedir a operacao principal.
-- Ao integrar branches, preservar operacoes atomicas, compensacoes e testes de concorrencia.

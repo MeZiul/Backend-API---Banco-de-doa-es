@@ -267,12 +267,12 @@ Fallback de cobertura:
 npm.cmd run test:coverage -- --runInBand
 ```
 
-Evidencias registradas para Administracao, Interesse e Denuncia na Milestone 3:
+Evidencias integradas para Administracao, Interesse e Denuncia na Milestone 3:
 
-- branch de testes unitarios: `56` testes focados aprovados e `100%` de linhas nos tres Services;
-- branch de testes de endpoint: `47` testes focados aprovados e `100%` de linhas nos Controllers e routers;
-- branch documental atual, antes dos merges funcionais: `18` suites e `102` testes aprovados;
-- os totais globais devem ser medidos novamente depois do merge de todas as branches da Milestone 3.
+- Services alvo: `68` testes aprovados e `96,30%` de linhas;
+- endpoints dos tres modulos: `48` testes aprovados;
+- suite completa: `26` suites e `226` testes aprovados;
+- cobertura global: `78,19%` de statements, `64,89%` de branches, `74,21%` de funcoes e `78,63%` de linhas.
 
 Os `warn` exibidos durante os testes sao esperados em cenarios negativos, como validacao invalida, permissao negada, senha incorreta e estado de negocio invalido.
 

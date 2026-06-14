@@ -2,6 +2,7 @@ import express from "express";
 import ItemDoacaoController from "../controllers/ItemDoacaoController.js";
 import ImagemItemController from "../controllers/ImagemItemController.js"; // Novo Import
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
+import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import { uploadFotos } from "../middlewares/uploadMiddleware.js"; // Middleware do Multer
 import asyncWrapper from "../middlewares/asyncWrapper.js";
 import { validate } from "../middlewares/validateMiddleware.js";
@@ -36,6 +37,7 @@ router
 
     .patch("/itens/:id/cancelar", AuthMiddleware, asyncWrapper(ItemDoacaoController.cancelarItem))
 
-    .get("/itens/:id/interesses", AuthMiddleware, asyncWrapper(ItemDoacaoController.listarInteresses));
+    .get("/itens/:id/interesses", AuthMiddleware, EnsureActiveUserMiddleware,
+        asyncWrapper(ItemDoacaoController.listarInteresses));
 
 export default router;

@@ -24,10 +24,16 @@ const optionalTrimmedString = (max, message) =>
       message: "O campo não pode ser vazio quando informado.",
     });
 
+const optionalNullableDatetime = (fieldName) =>
+  z.string()
+    .datetime({ offset: true, message: `${fieldName} deve ser uma data e hora ISO 8601 válida.` })
+    .optional()
+    .nullable();
+
 const administracaoBaseObject = z.object({
   justificativa: optionalTrimmedString(1000, "A justificativa deve ter no máximo 1000 caracteres."),
-  suspensao_ate: z.string().min(1, "suspensao_ate inválida.").optional().nullable(),
-  suspensaoAte: z.string().min(1, "suspensaoAte inválida.").optional().nullable(),
+  suspensao_ate: optionalNullableDatetime("suspensao_ate"),
+  suspensaoAte: optionalNullableDatetime("suspensaoAte"),
   resposta_admin: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
   respostaAdmin: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),
   resposta_administrativa: optionalTrimmedString(1000, "A resposta administrativa deve ter no máximo 1000 caracteres."),

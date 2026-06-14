@@ -8,6 +8,7 @@ describe("AdministracaoService", () => {
   let itemDoacaoRepository;
   let denunciaRepository;
   let interesseRepository;
+  let avaliacaoRepository;
   let notificacaoService;
   let service;
 
@@ -33,6 +34,8 @@ describe("AdministracaoService", () => {
       atualizarSeStatus: jest.fn(),
       listarTodos: jest.fn(),
       listarPorUsuario: jest.fn().mockResolvedValue([]),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
+      listarIdsPorUsuario: jest.fn().mockResolvedValue([]),
       cancelarItensPorUsuario: jest.fn(),
       buscarEmAndamentoPorUsuario: jest.fn(),
       listarDisponiveisPorUsuario: jest.fn(),
@@ -42,10 +45,16 @@ describe("AdministracaoService", () => {
       buscarPorIdDetalhado: jest.fn(),
       atualizarSeStatus: jest.fn(),
       listar: jest.fn(),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
     };
 
     interesseRepository = {
       listarAtivosPorItem: jest.fn().mockResolvedValue([]),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
+    };
+
+    avaliacaoRepository = {
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
     };
 
     notificacaoService = {
@@ -58,6 +67,7 @@ describe("AdministracaoService", () => {
       itemDoacaoRepository,
       denunciaRepository,
       interesseRepository,
+      avaliacaoRepository,
       notificacaoService,
     });
   });
@@ -181,16 +191,45 @@ describe("AdministracaoService", () => {
     expect(usuarioRepository.listar).not.toHaveBeenCalled();
   });
 
-  test("Deve buscar detalhe administrativo com projeção segura", async () => {
+  test("Deve buscar detalhe administrativo com projeção segura e histórico resumido", async () => {
     usuarioRepository.buscarPorIdParaAdministracao.mockResolvedValue({
       _id: testIds.usuario,
       nome: "Usuário moderado",
     });
+    const itens = [{ _id: testIds.item, titulo: "Cadeira" }];
+    const interesses = [{ _id: testIds.administracao, status: "PENDENTE" }];
+    const avaliacoes = [{ _id: testIds.denuncia, nota: 5 }];
+    const denuncias = [{ _id: testIds.denuncia, status: "EM_ANALISE" }];
+    itemDoacaoRepository.listarResumoPorUsuario.mockResolvedValue(itens);
+    itemDoacaoRepository.listarIdsPorUsuario.mockResolvedValue([
+      { _id: testIds.item },
+      { _id: testIds.administracao },
+    ]);
+    interesseRepository.listarResumoPorUsuario.mockResolvedValue(interesses);
+    avaliacaoRepository.listarResumoPorUsuario.mockResolvedValue(avaliacoes);
+    denunciaRepository.listarResumoPorUsuario.mockResolvedValue(denuncias);
 
     const resultado = await service.buscarUsuarioPorId(testIds.usuario, createAdminUser());
 
     expect(usuarioRepository.buscarPorIdParaAdministracao).toHaveBeenCalledWith(testIds.usuario);
-    expect(resultado).toMatchObject({ _id: testIds.usuario });
+    expect(itemDoacaoRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(itemDoacaoRepository.listarIdsPorUsuario).toHaveBeenCalledWith(testIds.usuario);
+    expect(interesseRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(avaliacaoRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(denunciaRepository.listarResumoPorUsuario).toHaveBeenCalledWith(
+      testIds.usuario,
+      [testIds.item, testIds.administracao],
+      10
+    );
+    expect(resultado).toMatchObject({
+      _id: testIds.usuario,
+      historico: {
+        itens,
+        interesses,
+        avaliacoes,
+        denuncias,
+      },
+    });
   });
 
   test("Deve resolver denúncia procedente contra item, cancelar alvo e auditar", async () => {
