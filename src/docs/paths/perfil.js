@@ -3,7 +3,7 @@ import commonResponses from "../schemas/swaggerCommonResponses.js";
 const perfilPaths = {
     "/admin/usuarios/{id}/perfil": {
         patch: {
-            tags: ["Administração (Perfil)"],
+            tags: ["Perfil"],
             summary: "Gerenciar acesso e situação de um usuário",
             description: `Permite a um administrador alterar o nível hierárquico ou a situação cadastral de um usuário no sistema.
 
