@@ -10,6 +10,12 @@ import authSchemas from "../schemas/authSchema.js";
 import avaliacoesSchemas from "../schemas/avaliacoesSchema.js";
 import denunciasSchemas from "../schemas/denunciasSchema.js";
 import interessesSchemas from "../schemas/interessesSchema.js";
+import itemDoacaoPaths from "../paths/itemDoacao.js";
+import itemDoacaoSchemas from "../schemas/itemDoacaoSchema.js";
+import notificacaoPaths from "../paths/notificacao.js";
+import notificacaoSchema from "../schemas/notificacaoSchema.js";
+import perfilPaths from "../paths/perfil.js";
+import perfilSchemas from "../schemas/perfilSchema.js";
 
 const getServersInCorrectOrder = () => {
   const devUrl = process.env.SWAGGER_DEV_URL?.trim();
@@ -59,9 +65,9 @@ Escopo desta documentação:
           "Rotas para login, recuperação de senha, logout e renovação de token.",
       },
       {
-        nome: "Usuario",
+        name: "Usuários",
         description:
-          "Rotas de cadastro, listagem, atualização, exclusão e moderação de usuario.",
+          "Rotas de cadastro, listagem, atualização, exclusão e moderação de usuários.",
       },
       {
         name: "Interesses",
@@ -91,6 +97,9 @@ Escopo desta documentação:
       ...denunciasPaths,
       ...administracaoPaths,
       ...avaliacoesPaths,
+      ...itemDoacaoPaths,
+      ...notificacaoPaths,
+      ...perfilPaths,
     },
     components: {
       securitySchemes: {
@@ -107,6 +116,9 @@ Escopo desta documentação:
         ...denunciasSchemas,
         ...administracaoSchemas,
         ...avaliacoesSchemas,
+        ...itemDoacaoSchemas,
+        ...notificacaoSchema,
+        ...perfilSchemas,
       },
     },
     security: [

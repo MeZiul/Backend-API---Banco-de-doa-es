@@ -139,6 +139,8 @@ Regras de negócio:
 
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
+- Retorna os 10 registros mais recentes de itens, interesses, avaliações e denúncias relacionadas.
+- Denúncias relacionadas incluem registros criados pelo usuário, contra ele ou contra seus itens.
 - Caso o usuário não exista, retorna erro apropriado.`,
             security: [{ bearerAuth: [] }],
             parameters: [

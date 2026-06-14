@@ -117,6 +117,21 @@ class ItemDoacaoRepository extends BaseRepository {
       .sort({ data_cadastro: -1 });
   }
 
+  listarResumoPorUsuario(usuarioId, limit = 10) {
+    return this.model
+      .find({ usuario_id: usuarioId })
+      .select("categoria_id titulo status total_interesses data_cadastro data_doacao")
+      .populate({ path: "categoria_id", select: "nome" })
+      .sort({ data_cadastro: -1 })
+      .limit(limit);
+  }
+
+  listarIdsPorUsuario(usuarioId) {
+    return this.model
+      .find({ usuario_id: usuarioId })
+      .select("_id");
+  }
+
   async buscarEmAndamentoPorUsuario(usuarioId) {
     return this.model.find({
       usuario_id: usuarioId,

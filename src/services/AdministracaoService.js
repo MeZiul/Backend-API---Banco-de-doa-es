@@ -8,6 +8,7 @@ class AdministracaoService {
         itemDoacaoRepository,
         denunciaRepository,
         interesseRepository,
+        avaliacaoRepository,
         notificacaoService,
     }) {
         this.repository = administracaoRepository;
@@ -15,6 +16,7 @@ class AdministracaoService {
         this.itemDoacaoRepository = itemDoacaoRepository;
         this.denunciaRepository = denunciaRepository;
         this.interesseRepository = interesseRepository;
+        this.avaliacaoRepository = avaliacaoRepository;
         this.notificacaoService = notificacaoService;
     }
 
@@ -72,7 +74,28 @@ class AdministracaoService {
             });
         }
 
-        return usuario;
+        const limiteHistorico = 10;
+        const [itens, itensDoUsuario] = await Promise.all([
+            this.itemDoacaoRepository.listarResumoPorUsuario(usuarioId, limiteHistorico),
+            this.itemDoacaoRepository.listarIdsPorUsuario(usuarioId),
+        ]);
+        const itemIds = itensDoUsuario.map((item) => this.getEntityId(item)).filter(Boolean);
+        const [interesses, avaliacoes, denuncias] = await Promise.all([
+            this.interesseRepository.listarResumoPorUsuario(usuarioId, limiteHistorico),
+            this.avaliacaoRepository.listarResumoPorUsuario(usuarioId, limiteHistorico),
+            this.denunciaRepository.listarResumoPorUsuario(usuarioId, itemIds, limiteHistorico),
+        ]);
+        const dadosUsuario = usuario.toObject?.() ?? usuario;
+
+        return {
+            ...dadosUsuario,
+            historico: {
+                itens,
+                interesses,
+                avaliacoes,
+                denuncias,
+            },
+        };
     }
 
     async listarItens({ filtros = {}, page = 1, limit = 15, ordenacao = "recentes" }, usuarioAdmin) {

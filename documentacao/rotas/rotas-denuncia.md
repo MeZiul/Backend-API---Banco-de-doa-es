@@ -3,7 +3,7 @@
 Este documento descreve o contrato funcional das rotas de `denuncia` revisadas para a Milestone 3.
 
 Escopo considerado:
-- estado atual da `dev` e endurecimentos preparados nas branches funcionais `130` a `137`
+- estado integrado final da `dev`
 - autenticação via Bearer Token JWT
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
 
@@ -191,6 +191,7 @@ Riscos de deploy:
 Evidencia automatizada:
 
 - validacao real confirmou indice unico e somente uma resolucao concorrente;
-- testes unitarios conjuntos dos tres Services: **56 testes aprovados**;
-- testes de endpoint conjuntos dos tres modulos: **47 testes aprovados**;
+- testes unitarios conjuntos dos tres Services: **68 testes aprovados**;
+- testes de endpoint conjuntos dos tres modulos: **48 testes aprovados**;
+- suite integrada do projeto: **26 suites e 226 testes aprovados**;
 - Controller e router de Denuncia: **100% das linhas** na cobertura focada da branch de endpoints.

@@ -51,15 +51,14 @@ Branch de consistencia `133-admin-denuncia-consistencia-auditoria`:
 - somente uma resolucao concorrente venceu;
 - mutacoes administrativas condicionais e compensacoes foram exercitadas.
 
-Branch de testes unitarios `136-unit-admin-interesse-denuncia`:
+Validacao integrada final:
 
-- suite conjunta dos tres Services: **56 testes aprovados**;
-- Services alvo com **100% de statements, funcoes e linhas**.
+- suite conjunta dos tres Services: **68 testes aprovados**;
+- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
 
-Branch de endpoints `137-endpoints-admin-interesse-denuncia`:
-
-- suite conjunta dos tres modulos: **47 testes aprovados**;
+- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
 - Controllers e routers alvo com **100% de linhas**.
+- suite completa: **26 suites e 226 testes aprovados**.
 
 ## 6. Comandos
 
@@ -73,4 +72,3 @@ npm.cmd run test:coverage -- --runInBand
 
 - Antes de criar os indices unicos em banco existente, auditar denuncias duplicadas `EM_ANALISE`.
 - Sem transacoes MongoDB, queda do processo entre mutacao e auditoria pode exigir reconciliacao manual.
-- Ao integrar branches, manter a resolucao centralizada em Administracao para impedir moderacao sem historico.

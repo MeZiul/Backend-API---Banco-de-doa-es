@@ -8,6 +8,7 @@ describe("AdministracaoService", () => {
   let itemDoacaoRepository;
   let denunciaRepository;
   let interesseRepository;
+  let avaliacaoRepository;
   let notificacaoService;
   let service;
 
@@ -33,6 +34,8 @@ describe("AdministracaoService", () => {
       atualizarSeStatus: jest.fn(),
       listarTodos: jest.fn(),
       listarPorUsuario: jest.fn().mockResolvedValue([]),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
+      listarIdsPorUsuario: jest.fn().mockResolvedValue([]),
       cancelarItensPorUsuario: jest.fn(),
       buscarEmAndamentoPorUsuario: jest.fn(),
       listarDisponiveisPorUsuario: jest.fn(),
@@ -42,10 +45,16 @@ describe("AdministracaoService", () => {
       buscarPorIdDetalhado: jest.fn(),
       atualizarSeStatus: jest.fn(),
       listar: jest.fn(),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
     };
 
     interesseRepository = {
       listarAtivosPorItem: jest.fn().mockResolvedValue([]),
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
+    };
+
+    avaliacaoRepository = {
+      listarResumoPorUsuario: jest.fn().mockResolvedValue([]),
     };
 
     notificacaoService = {
@@ -58,6 +67,7 @@ describe("AdministracaoService", () => {
       itemDoacaoRepository,
       denunciaRepository,
       interesseRepository,
+      avaliacaoRepository,
       notificacaoService,
     });
   });
@@ -181,16 +191,45 @@ describe("AdministracaoService", () => {
     expect(usuarioRepository.listar).not.toHaveBeenCalled();
   });
 
-  test("Deve buscar detalhe administrativo com projeção segura", async () => {
+  test("Deve buscar detalhe administrativo com projeção segura e histórico resumido", async () => {
     usuarioRepository.buscarPorIdParaAdministracao.mockResolvedValue({
       _id: testIds.usuario,
       nome: "Usuário moderado",
     });
+    const itens = [{ _id: testIds.item, titulo: "Cadeira" }];
+    const interesses = [{ _id: testIds.administracao, status: "PENDENTE" }];
+    const avaliacoes = [{ _id: testIds.denuncia, nota: 5 }];
+    const denuncias = [{ _id: testIds.denuncia, status: "EM_ANALISE" }];
+    itemDoacaoRepository.listarResumoPorUsuario.mockResolvedValue(itens);
+    itemDoacaoRepository.listarIdsPorUsuario.mockResolvedValue([
+      { _id: testIds.item },
+      { _id: testIds.administracao },
+    ]);
+    interesseRepository.listarResumoPorUsuario.mockResolvedValue(interesses);
+    avaliacaoRepository.listarResumoPorUsuario.mockResolvedValue(avaliacoes);
+    denunciaRepository.listarResumoPorUsuario.mockResolvedValue(denuncias);
 
     const resultado = await service.buscarUsuarioPorId(testIds.usuario, createAdminUser());
 
     expect(usuarioRepository.buscarPorIdParaAdministracao).toHaveBeenCalledWith(testIds.usuario);
-    expect(resultado).toMatchObject({ _id: testIds.usuario });
+    expect(itemDoacaoRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(itemDoacaoRepository.listarIdsPorUsuario).toHaveBeenCalledWith(testIds.usuario);
+    expect(interesseRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(avaliacaoRepository.listarResumoPorUsuario).toHaveBeenCalledWith(testIds.usuario, 10);
+    expect(denunciaRepository.listarResumoPorUsuario).toHaveBeenCalledWith(
+      testIds.usuario,
+      [testIds.item, testIds.administracao],
+      10
+    );
+    expect(resultado).toMatchObject({
+      _id: testIds.usuario,
+      historico: {
+        itens,
+        interesses,
+        avaliacoes,
+        denuncias,
+      },
+    });
   });
 
   test("Deve resolver denúncia procedente contra item, cancelar alvo e auditar", async () => {
@@ -694,5 +733,205 @@ describe("AdministracaoService", () => {
     expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
     expect(denunciaRepository.atualizarSeStatus).not.toHaveBeenCalled();
     expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve encaminhar consultas administrativas e normalizar paginacao", async () => {
+    const adminPorPapel = createRegularUser({ papeis: ["ADMINISTRADOR"] });
+    administracaoRepository.listar.mockResolvedValue({ docs: ["acoes"] });
+    administracaoRepository.listarPorAlvo.mockResolvedValue({ docs: ["alvo"] });
+    administracaoRepository.listarPorAdministrador.mockResolvedValue({ docs: ["admin"] });
+    itemDoacaoRepository.listarTodos.mockResolvedValue({ docs: ["itens"] });
+    denunciaRepository.listar.mockResolvedValue({ docs: ["denuncias"] });
+
+    await expect(service.listar(
+      { filtros: { tipo: "ITEM" }, page: "2", limit: "5" },
+      adminPorPapel
+    )).resolves.toEqual({ docs: ["acoes"] });
+    await service.listarPorAlvo(testIds.item, { page: "3", limit: "6" }, adminPorPapel);
+    await service.listarPorAdministrador(testIds.admin, { page: "4", limit: "7" }, adminPorPapel);
+    await service.listarItens(
+      { filtros: { status: "DISPONIVEL" }, page: "5", limit: "8", ordenacao: "antigos" },
+      adminPorPapel
+    );
+    await service.listarDenuncias(
+      { filtros: { status: "EM_ANALISE" }, page: "6", limit: "9" },
+      adminPorPapel
+    );
+
+    expect(administracaoRepository.listar).toHaveBeenCalledWith({
+      filtros: { tipo: "ITEM" },
+      page: 2,
+      limit: 5,
+    });
+    expect(administracaoRepository.listarPorAlvo).toHaveBeenCalledWith(testIds.item, {
+      page: 3,
+      limit: 6,
+    });
+    expect(administracaoRepository.listarPorAdministrador).toHaveBeenCalledWith(testIds.admin, {
+      page: 4,
+      limit: 7,
+    });
+    expect(itemDoacaoRepository.listarTodos).toHaveBeenCalledWith({
+      filtros: { status: "DISPONIVEL" },
+      page: 5,
+      limit: 8,
+      ordenacao: "antigos",
+    });
+    expect(denunciaRepository.listar).toHaveBeenCalledWith({
+      filtros: { status: "EM_ANALISE" },
+      page: 6,
+      limit: 9,
+    });
+  });
+
+  test("Deve retornar 404 para recursos administrativos inexistentes", async () => {
+    administracaoRepository.buscarPorIdDetalhado.mockResolvedValue(null);
+    usuarioRepository.buscarPorIdParaAdministracao.mockResolvedValue(null);
+    itemDoacaoRepository.buscarPorId.mockResolvedValue(null);
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(null);
+
+    await expect(service.buscarPorId(testIds.administracao, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.buscarUsuarioPorId(testIds.usuario, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.cancelarItem(testIds.item, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.resolverDenuncia(testIds.denuncia, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  test("Deve rejeitar estados invalidos antes de moderar recursos", async () => {
+    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" })
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "INATIVO" });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    denunciaRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({ _id: testIds.denuncia, status: "PROCEDENTE" })
+      .mockResolvedValueOnce({ _id: testIds.denuncia, status: "EM_ANALISE" });
+
+    await expect(service.bloquearUsuario(
+      testIds.usuario,
+      { justificativa: "   " },
+      createAdminUser()
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.bloquearUsuario(
+      testIds.usuario,
+      { justificativa: "Motivo valido" },
+      createAdminUser()
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.desbloquearUsuario(testIds.usuario, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.inativarUsuario(testIds.usuario, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.cancelarItem(testIds.item, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.resolverDenuncia(
+      testIds.denuncia,
+      { resultado: "IMPROCEDENTE" },
+      createAdminUser()
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.resolverDenuncia(
+      testIds.denuncia,
+      { resultado: "PENDENTE" },
+      createAdminUser()
+    )).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test("Deve rejeitar corrida de bloqueio e falha de compensacao", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    usuarioRepository.atualizarSeSituacao
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" })
+      .mockResolvedValueOnce(null);
+
+    await expect(service.bloquearUsuario(
+      testIds.usuario,
+      { justificativa: "Primeira tentativa" },
+      createAdminUser()
+    )).rejects.toMatchObject({ statusCode: 409 });
+
+    administracaoRepository.criar.mockRejectedValue(new Error("auditoria indisponivel"));
+
+    await expect(service.bloquearUsuario(
+      testIds.usuario,
+      { justificativa: "Segunda tentativa" },
+      createAdminUser()
+    )).rejects.toThrow("Falha ao compensar bloqueio sem registro de auditoria.");
+  });
+
+  test("Deve compensar itens quando a inativacao perder a corrida", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
+    itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([
+      { _id: testIds.item, status: "DISPONIVEL" },
+    ]);
+    itemDoacaoRepository.atualizarSeStatus
+      .mockResolvedValueOnce({ _id: testIds.item, status: "CANCELADO" })
+      .mockResolvedValueOnce({ _id: testIds.item, status: "DISPONIVEL" });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue(null);
+
+    await expect(service.inativarUsuario(testIds.usuario, {}, createAdminUser()))
+      .rejects.toMatchObject({ statusCode: 409 });
+
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenNthCalledWith(
+      2,
+      testIds.item,
+      "CANCELADO",
+      { status: "DISPONIVEL" }
+    );
+  });
+
+  test("Deve resolver denuncia sem repetir moderacao de alvo ja tratado", async () => {
+    denunciaRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        tipo_alvo: "USUARIO",
+        alvo_usuario_id: testIds.doador,
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "PROCEDENTE",
+    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.doador,
+      situacao: "SUSPENSO",
+    });
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await expect(service.resolverDenuncia(
+      testIds.denuncia,
+      { resultado: "PROCEDENTE" },
+      createAdminUser()
+    )).resolves.toMatchObject({ status: "PROCEDENTE" });
+    await expect(service.resolverDenuncia(
+      testIds.denuncia,
+      { resultado: "PROCEDENTE" },
+      createAdminUser()
+    )).resolves.toMatchObject({ status: "PROCEDENTE" });
+
+    expect(itemDoacaoRepository.atualizarSeStatus).not.toHaveBeenCalled();
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
   });
 });

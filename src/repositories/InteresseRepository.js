@@ -55,6 +55,19 @@ class InteresseRepository extends BaseRepository {
         });
     }
 
+    listarResumoPorUsuario(usuarioId, limit = 10) {
+        return this.model.find({
+            $or: [
+                { usuario_interessado_id: usuarioId },
+                { usuario_doador_id: usuarioId },
+            ],
+        })
+            .select("item_id usuario_interessado_id usuario_doador_id status data_interesse data_resposta data_cancelamento")
+            .populate("item_id", "titulo status")
+            .sort({ data_interesse: -1 })
+            .limit(limit);
+    }
+
     atualizarSeStatus(id, statusEsperado, dadosAtualizacao) {
         const status = Array.isArray(statusEsperado)
             ? { $in: statusEsperado }

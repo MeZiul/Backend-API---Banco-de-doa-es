@@ -149,7 +149,10 @@ describe("Endpoints de Administracao", () => {
 
   test("deve listar e consultar usuarios", async () => {
     mockAdministracaoService.listarUsuarios.mockResolvedValue({ docs: [{ _id: testIds.usuario }] });
-    mockAdministracaoService.buscarUsuarioPorId.mockResolvedValue({ _id: testIds.usuario });
+    mockAdministracaoService.buscarUsuarioPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      historico: { itens: [], interesses: [], avaliacoes: [], denuncias: [] },
+    });
 
     const lista = await request(app)
       .get("/admin/usuarios")
@@ -161,6 +164,12 @@ describe("Endpoints de Administracao", () => {
 
     expect(lista.statusCode).toBe(200);
     expect(detalhe.statusCode).toBe(200);
+    expect(detalhe.body.data.historico).toEqual({
+      itens: [],
+      interesses: [],
+      avaliacoes: [],
+      denuncias: [],
+    });
     expect(mockAdministracaoService.listarUsuarios).toHaveBeenCalledWith({
       filtros: { nome: "Carlos", situacao: "ATIVO" },
       page: 2,
@@ -218,6 +227,16 @@ describe("Endpoints de Administracao", () => {
       .put(`/admin/usuarios/${testIds.usuario}/bloquear`)
       .set("Authorization", adminAuth())
       .send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(mockAdministracaoService.bloquearUsuario).not.toHaveBeenCalled();
+  });
+
+  test("deve rejeitar data de suspensao invalida antes de chamar o service", async () => {
+    const res = await request(app)
+      .put(`/admin/usuarios/${testIds.usuario}/bloquear`)
+      .set("Authorization", adminAuth())
+      .send({ justificativa: "Violacao das regras", suspensaoAte: "2026-99-99" });
 
     expect(res.statusCode).toBe(400);
     expect(mockAdministracaoService.bloquearUsuario).not.toHaveBeenCalled();

@@ -98,15 +98,16 @@ As branches funcionais incluem validacoes com MongoDB descartavel para:
 | `133-admin-denuncia-consistencia-auditoria` | indices, auditoria e compensacoes; validacao real e 117 testes |
 | `134-notificacoes-admin-interesse-denuncia` | notificacoes e handlers; suite completa com 114 testes |
 | `135-filtros-projecoes-admin-interesse-denuncia` | filtros/projecoes; validacao real e 111 testes |
-| `136-unit-admin-interesse-denuncia` | 56 testes focados; Services alvo com 100% de linhas |
-| `137-endpoints-admin-interesse-denuncia` | 47 testes focados; Controllers e routers alvo com 100% de linhas |
+| `136-unit-admin-interesse-denuncia` | base ampliada e integrada em 68 testes dos Services alvo |
+| `137-endpoints-admin-interesse-denuncia` | base ampliada e integrada em 48 testes de endpoint dos tres modulos |
 
-Os totais de suite completa variam porque cada branch foi criada separadamente a partir de `dev`. Depois dos merges, a equipe deve executar novamente a suite e registrar o resultado integrado final.
+Validacao integrada final da `dev`:
 
-Validacao da branch documental `138-admin-interesse-denuncia-m3`, antes da integracao das branches funcionais:
-
-- testes de endpoint atuais dos tres modulos: `3` suites e `10` testes aprovados;
-- suite completa atual: `18` suites e `102` testes aprovados;
+- testes unitarios dos tres Services: `3` suites e `68` testes aprovados;
+- testes de endpoint dos tres modulos: `3` suites e `48` testes aprovados;
+- suite completa atual: `26` suites e `226` testes aprovados;
+- cobertura focada dos Services: `96,16%` statements, `84,67%` branches, `97,16%` funcoes e `96,30%` linhas;
+- cobertura global: `78,19%` statements, `64,89%` branches, `74,21%` funcoes e `78,63%` linhas;
 - importacao das fontes Swagger de Administracao, Interesse e Denuncia aprovada.
 
 ## 7. Comandos
@@ -155,8 +156,7 @@ Demonstrar:
 - Auditar dados existentes antes de criar indices unicos de Interesse e Denuncia.
 - Compensacoes nao substituem completamente transacoes MongoDB em caso de queda abrupta do processo.
 - Notificacoes podem ser perdidas sem outbox ou retry duravel.
-- O detalhe administrativo de usuario ainda nao possui todas as agregacoes historicas do contrato oficial.
-- Conflitos de merge entre as branches `130` a `137` devem preservar todas as correcoes e cenarios de teste.
+- Os historicos administrativos retornam os 10 registros mais recentes por categoria para manter a resposta resumida.
 
 ## 10. Criterio de Aceite
 
