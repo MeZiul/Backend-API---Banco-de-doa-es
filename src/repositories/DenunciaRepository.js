@@ -1,5 +1,10 @@
 import DenunciaModel from "../models/Denuncia.js";
 import BaseRepository from "./base/BaseRepository.js";
+import DenunciaFilterBuilder from "./filters/DenunciaFilterBuilder.js";
+
+const DENUNCIA_ITEM_SELECT = "titulo status cidade uf usuario_id";
+const DENUNCIA_USUARIO_SELECT = "nome email cidade uf situacao";
+const DENUNCIA_ADMIN_SELECT = "nome email";
 
 class DenunciaRepository extends BaseRepository {
     constructor() {
@@ -24,10 +29,34 @@ class DenunciaRepository extends BaseRepository {
 
     buscarPorIdDetalhado(id) {
         return this.model.findById(id)
-            .populate("denunciante_id", "nome email cidade uf")
-            .populate("alvo_item_id")
-            .populate("alvo_usuario_id", "nome email cidade uf situacao")
-            .populate("admin_id", "nome email");
+            .populate("denunciante_id", DENUNCIA_USUARIO_SELECT)
+            .populate("alvo_item_id", DENUNCIA_ITEM_SELECT)
+            .populate("alvo_usuario_id", DENUNCIA_USUARIO_SELECT)
+            .populate("admin_id", DENUNCIA_ADMIN_SELECT);
+    }
+
+    atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+        const status = Array.isArray(statusEsperado)
+            ? { $in: statusEsperado }
+            : statusEsperado;
+
+        return this.model.findOneAndUpdate(
+            {
+                _id: id,
+                status,
+                ...filtrosAdicionais,
+            },
+            { $set: dadosAtualizacao },
+            { new: true, runValidators: true }
+        );
+    }
+
+    deletarSeEmAnalise(id, denuncianteId) {
+        return this.model.findOneAndDelete({
+            _id: id,
+            denunciante_id: denuncianteId,
+            status: "EM_ANALISE",
+        });
     }
 
     listarEmAnalise({ page = 1, limit = 15 } = {}) {
@@ -39,59 +68,26 @@ class DenunciaRepository extends BaseRepository {
     }
 
     listar({ filtros = {}, page = 1, limit = 15 }) {
-        const query = {};
-
-        if (filtros.denunciante_id || filtros.denuncianteId) {
-            query.denunciante_id = filtros.denunciante_id || filtros.denuncianteId;
-        }
-
-        if (filtros.tipo_alvo || filtros.tipoAlvo) {
-            query.tipo_alvo = filtros.tipo_alvo || filtros.tipoAlvo;
-        }
-
-        if (filtros.alvo_item_id || filtros.alvoItemId) {
-            query.alvo_item_id = filtros.alvo_item_id || filtros.alvoItemId;
-        }
-
-        if (filtros.alvo_usuario_id || filtros.alvoUsuarioId) {
-            query.alvo_usuario_id = filtros.alvo_usuario_id || filtros.alvoUsuarioId;
-        }
-
-        if (filtros.motivo) {
-            query.motivo = filtros.motivo;
-        }
-
-        if (filtros.status) {
-            query.status = filtros.status;
-        }
-
-        if (filtros.admin_id || filtros.adminId) {
-            query.admin_id = filtros.admin_id || filtros.adminId;
-        }
-
-        if (filtros.dataInicio || filtros.dataFim) {
-            query.data_denuncia = {};
-
-            if (filtros.dataInicio) {
-                query.data_denuncia.$gte = new Date(filtros.dataInicio);
-            }
-
-            if (filtros.dataFim) {
-                const fim = new Date(filtros.dataFim);
-                fim.setHours(23, 59, 59, 999);
-                query.data_denuncia.$lte = fim;
-            }
-        }
+        const query = new DenunciaFilterBuilder()
+            .comDenunciante(filtros.denunciante_id || filtros.denuncianteId)
+            .comTipoAlvo(filtros.tipo_alvo || filtros.tipoAlvo)
+            .comAlvoItem(filtros.alvo_item_id || filtros.alvoItemId)
+            .comAlvoUsuario(filtros.alvo_usuario_id || filtros.alvoUsuarioId)
+            .comMotivo(filtros.motivo)
+            .comStatus(filtros.status)
+            .comAdmin(filtros.admin_id || filtros.adminId)
+            .comPeriodo(filtros.dataInicio, filtros.dataFim)
+            .build();
 
         return this.listarComPaginacao(query, {
             page,
             limit,
             sort: { data_denuncia: -1 },
             populate: [
-                { path: "denunciante_id", select: "nome email cidade uf" },
-                { path: "alvo_item_id" },
-                { path: "alvo_usuario_id", select: "nome email cidade uf situacao" },
-                { path: "admin_id", select: "nome email" }
+                { path: "denunciante_id", select: DENUNCIA_USUARIO_SELECT },
+                { path: "alvo_item_id", select: DENUNCIA_ITEM_SELECT },
+                { path: "alvo_usuario_id", select: DENUNCIA_USUARIO_SELECT },
+                { path: "admin_id", select: DENUNCIA_ADMIN_SELECT }
             ]
         });
     }

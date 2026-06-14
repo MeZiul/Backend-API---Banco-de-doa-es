@@ -1,14 +1,15 @@
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import { CustomError, messages } from "../utils/helpers/index.js";
+import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class InteresseService {
-    constructor({ interesseRepository, usuarioRepository }) {
+    constructor({ interesseRepository, itemDoacaoRepository, usuarioRepository, notificacaoService }) {
         this.repository = interesseRepository;
+        this.itemDoacaoRepository = itemDoacaoRepository;
         this.usuarioRepository = usuarioRepository;
-        this.itemModel = ItemDoacaoModel;
+        this.notificacaoService = notificacaoService;
     }
-
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
 
         if (!this.isAdmin(usuario)) {
@@ -24,6 +25,7 @@ class InteresseService {
     }
 
     async listarRecebidos({ filtros = {}, page = 1, limit = 15 }, usuario) {
+        this.ensureActorAtivo(usuario);
         filtros.usuario_doador_id = this.getActorId(usuario);
         delete filtros.usuarioDoadorId;
 
@@ -35,6 +37,7 @@ class InteresseService {
     }
 
     async listarPorItem(itemId, usuario) {
+        this.ensureActorAtivo(usuario);
         const item = await this.ensureItemExists(itemId);
         this.ensureDoadorOuAdmin(item, usuario);
 
@@ -42,6 +45,7 @@ class InteresseService {
     }
 
     async buscarPorId(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
 
         if (!this.canAccessInteresse(interesse, usuario)) {
@@ -55,13 +59,14 @@ class InteresseService {
     }
 
     async criar(dados, usuario) {
+        this.ensureActorAtivo(usuario);
         const usuarioId = this.getActorId(usuario);
         const usuarioAtual = await this.ensureUsuarioAtivo(usuarioId);
         const item = await this.ensureItemExists(dados.item_id || dados.itemId);
 
         if (item.status !== "DISPONIVEL") {
             throw new CustomError({
-                statusCode: 400,
+                statusCode: 409,
                 customMessage: "Só é possível manifestar interesse em itens disponíveis.",
             });
         }
@@ -85,23 +90,60 @@ class InteresseService {
             });
         }
 
-        const interesse = await this.repository.criar({
-            item_id: item._id,
-            usuario_interessado_id: usuarioAtual._id,
-            usuario_doador_id: item.usuario_id,
-            mensagem_interessado: dados.mensagem_interessado ?? dados.mensagemInteressado ?? null,
-            status: "PENDENTE",
-            data_interesse: new Date(),
-        });
+        let interesse;
 
-        await this.itemModel.findByIdAndUpdate(item._id, {
-            $inc: { total_interesses: 1 },
-        });
+
+        try {
+            interesse = await this.repository.criar({
+                item_id: item._id,
+                usuario_interessado_id: usuarioAtual._id,
+                usuario_doador_id: item.usuario_id,
+                mensagem_interessado: dados.mensagem_interessado ?? dados.mensagemInteressado ?? null,
+                status: "PENDENTE",
+                data_interesse: new Date(),
+            });
+        } catch (error) {
+            if (this.isDuplicateKeyError(error)) {
+                throw this.createConflictError(
+                    "Já existe um interesse ativo deste usuário para este item."
+                );
+            }
+
+            throw error;
+        }
+
+        let itemAtualizado;
+
+        try {
+            itemAtualizado = await this.itemDoacaoRepository.incrementarInteressesSeDisponivel(item._id);
+        } catch (error) {
+            await this.removerInteresseCriado(interesse._id);
+            throw error;
+        }
+
+        if (!itemAtualizado) {
+            await this.removerInteresseCriado(interesse._id);
+            throw this.createConflictError(
+                "O item não está mais disponível para receber interesses."
+            );
+        }
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: item.usuario_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECEBIDO,
+                titulo: "Novo interesse recebido",
+                mensagem: `Um usuário demonstrou interesse no item "${item.titulo}".`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesse._id,
+            }),
+        ]);
 
         return this.repository.buscarPorIdDetalhado(interesse._id);
     }
 
     async aceitar(id, dados = {}, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const item = await this.ensureItemExists(interesse.item_id._id || interesse.item_id);
 
@@ -122,26 +164,73 @@ class InteresseService {
         }
 
         const dataResposta = new Date();
+        const itemReservado = await this.itemDoacaoRepository.reservarSeDisponivel(item._id, interesse._id);
 
-        const interesseAceito = await this.repository.atualizar(id, {
-            status: "ACEITO",
-            data_resposta: dataResposta,
-            resposta_doador: dados.resposta_doador ?? dados.respostaDoador ?? null,
-        });
+        if (!itemReservado) {
+            throw this.createConflictError("O item não está mais disponível para reserva.");
+        }
 
-        await this.itemModel.findByIdAndUpdate(item._id, {
-            status: "RESERVADO",
-            interesse_aceito_id: interesseAceito._id,
-        });
+        let interesseAceito;
 
-        await this.repository.recusarPendentesDoItem(item._id, interesseAceito._id, {
-            data_resposta: dataResposta,
-        });
+        try {
+            interesseAceito = await this.repository.atualizarSeStatus(id, "PENDENTE", {
+                status: "ACEITO",
+                data_resposta: dataResposta,
+                resposta_doador: dados.resposta_doador ?? dados.respostaDoador ?? null,
+            });
+
+            if (!interesseAceito) {
+                throw this.createConflictError("O interesse não está mais pendente.");
+            }
+
+            await this.repository.recusarPendentesDoItem(item._id, interesseAceito._id, {
+                data_resposta: dataResposta,
+            });
+        } catch (error) {
+            await this.compensarAceiteFalho({
+                itemId: item._id,
+                interesseId: interesse._id,
+                interesseAceito,
+                dataResposta,
+            });
+
+            if (this.isDuplicateKeyError(error)) {
+                throw this.createConflictError("Outro interesse já foi aceito para este item.");
+            }
+
+            throw error;
+        }
+
+        const outrosRecusados = await this.listarRecusadosParaNotificacao(
+            item._id,
+            interesseAceito._id,
+            dataResposta
+        );
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: interesse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_ACEITO,
+                titulo: "Interesse aceito",
+                mensagem: `Seu interesse no item "${item.titulo}" foi aceito.`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesseAceito._id,
+            }),
+            ...outrosRecusados.map((outroInteresse) => this.criarNotificacao({
+                usuarioId: outroInteresse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECUSADO,
+                titulo: "Interesse recusado",
+                mensagem: `Outro interessado foi selecionado para o item "${item.titulo}".`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: outroInteresse._id,
+            })),
+        ]);
 
         return this.repository.buscarPorIdDetalhado(interesseAceito._id);
     }
 
     async recusar(id, dados = {}, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const item = await this.ensureItemExists(interesse.item_id._id || interesse.item_id);
 
@@ -154,16 +243,32 @@ class InteresseService {
             });
         }
 
-        const interesseRecusado = await this.repository.atualizar(id, {
+        const interesseRecusado = await this.repository.atualizarSeStatus(id, "PENDENTE", {
             status: "RECUSADO",
             data_resposta: new Date(),
             resposta_doador: dados.resposta_doador ?? dados.respostaDoador ?? null,
         });
 
+        if (!interesseRecusado) {
+            throw this.createConflictError("O interesse não está mais pendente.");
+        }
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: interesse.usuario_interessado_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_RECUSADO,
+                titulo: "Interesse recusado",
+                mensagem: `Seu interesse no item "${item.titulo}" foi recusado.`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesseRecusado._id,
+            }),
+        ]);
+
         return this.repository.buscarPorIdDetalhado(interesseRecusado._id);
     }
 
     async cancelar(id, usuario) {
+        this.ensureActorAtivo(usuario);
         const interesse = await this.ensureExists(id);
         const usuarioId = this.getActorId(usuario);
 
@@ -181,19 +286,103 @@ class InteresseService {
             });
         }
 
-        const interesseCancelado = await this.repository.atualizar(id, {
+        if (interesse.status === "ACEITO") {
+            return this.cancelarAceito(interesse);
+        }
+
+        const interesseCancelado = await this.repository.atualizarSeStatus(id, "PENDENTE", {
             status: "CANCELADO",
             data_cancelamento: new Date(),
         });
 
-        if (interesse.status === "ACEITO") {
-            await this.itemModel.findByIdAndUpdate(interesse.item_id._id || interesse.item_id, {
-                status: "DISPONIVEL",
-                interesse_aceito_id: null,
-            });
+        if (!interesseCancelado) {
+            throw this.createConflictError("O interesse não está mais pendente.");
         }
 
         return this.repository.buscarPorIdDetalhado(interesseCancelado._id);
+    }
+
+    async cancelarAceito(interesse) {
+        const itemId = interesse.item_id._id || interesse.item_id;
+        const itemLiberado = await this.itemDoacaoRepository.liberarReservaDoInteresse(itemId, interesse._id);
+
+        if (!itemLiberado) {
+            throw this.createConflictError("A reserva do item não corresponde mais a este interesse.");
+        }
+
+        let interesseCancelado;
+
+        try {
+            interesseCancelado = await this.repository.atualizarSeStatus(interesse._id, "ACEITO", {
+                status: "CANCELADO",
+                data_cancelamento: new Date(),
+            });
+
+            if (!interesseCancelado) {
+                throw this.createConflictError("O interesse não está mais aceito.");
+            }
+
+        } catch (error) {
+            const reservaRestaurada = await this.itemDoacaoRepository.restaurarReservaSeDisponivel(
+                itemId,
+                interesse._id
+            );
+
+            if (!reservaRestaurada) {
+                throw new Error("Falha ao restaurar a reserva após cancelamento concorrente.");
+            }
+
+            throw error;
+        }
+
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: interesse.usuario_doador_id,
+                tipo: TIPOS_NOTIFICACAO.INTERESSE_CANCELADO,
+                titulo: "Interesse aceito cancelado",
+                mensagem: "O interessado selecionado cancelou o interesse. O item voltou a ficar disponível.",
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.INTERESSE,
+                referenciaId: interesseCancelado._id,
+            }),
+        ]);
+
+        return this.repository.buscarPorIdDetalhado(interesseCancelado._id);
+    }
+
+    async removerInteresseCriado(interesseId) {
+        const interesseRemovido = await this.repository.deletar(interesseId);
+
+        if (!interesseRemovido) {
+            throw new Error("Falha ao remover interesse criado durante compensação.");
+        }
+    }
+
+    async compensarAceiteFalho({ itemId, interesseId, interesseAceito, dataResposta }) {
+        const compensacoesInteresse = [];
+
+        if (interesseAceito) {
+            compensacoesInteresse.push(
+                this.repository.restaurarRecusadosDoAceite(itemId, interesseAceito._id, dataResposta),
+                this.repository.atualizarSeStatus(interesseAceito._id, "ACEITO", {
+                    status: "PENDENTE",
+                    data_resposta: null,
+                    resposta_doador: null,
+                })
+            );
+        }
+
+        const resultadosInteresse = await Promise.allSettled(compensacoesInteresse);
+        const resultadoReserva = await Promise.allSettled([
+            this.itemDoacaoRepository.liberarReservaDoInteresse(itemId, interesseId)
+        ]);
+        const resultados = [...resultadosInteresse, ...resultadoReserva];
+        const compensacaoIncompleta = resultados.some((resultado) => {
+            return resultado.status === "rejected" || resultado.value === null;
+        });
+
+        if (compensacaoIncompleta) {
+            throw new Error("Falha ao compensar aceite de interesse.");
+        }
     }
 
     async ensureExists(id) {
@@ -210,7 +399,7 @@ class InteresseService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemModel.findById(id);
+        const item = await this.itemDoacaoRepository.buscarPorId(id);
 
         if (!item) {
             throw new CustomError({
@@ -279,6 +468,27 @@ class InteresseService {
         return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
     }
 
+    isDuplicateKeyError(error) {
+        return error?.code === 11000;
+    }
+
+    createConflictError(customMessage) {
+        return new CustomError({
+            statusCode: 409,
+            customMessage,
+        });
+    }
+
+    ensureActorAtivo(usuario) {
+        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
+            throw new CustomError({
+                statusCode: 403,
+                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+            });
+        }
+
+    }
+
     getActorId(usuario) {
         const actorId = usuario?.id || usuario?._id?.toString?.();
 
@@ -295,6 +505,37 @@ class InteresseService {
     getEntityId(entidade) {
         const entityId = entidade?._id ?? entidade;
         return entityId?.toString?.() ?? entityId;
+    }
+
+    criarNotificacao({ usuarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId }) {
+        return {
+            usuario_id: this.getEntityId(usuarioId),
+            tipo,
+            titulo,
+            mensagem,
+            referencia_tipo: referenciaTipo,
+            referencia_id: this.getEntityId(referenciaId),
+        };
+    }
+
+    async listarRecusadosParaNotificacao(itemId, interesseId, dataResposta) {
+        try {
+            return await this.repository.listarRecusadosDoAceite(itemId, interesseId, dataResposta);
+        } catch {
+            return [];
+        }
+    }
+
+    async notificar(notificacoes) {
+        if (notificacoes.length === 0) {
+            return [];
+        }
+
+        try {
+            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(notificacoes);
+        } catch {
+            return [];
+        }
     }
 }
 

@@ -4,20 +4,9 @@ import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("DenunciaService", () => {
   let denunciaRepository;
+  let itemDoacaoRepository;
   let usuarioRepository;
-  let itemModel;
   let service;
-
-  const denunciaEmAnalise = (overrides = {}) => ({
-    _id: testIds.denuncia,
-    status: "EM_ANALISE",
-    tipo_alvo: "ITEM",
-    denunciante_id: { _id: testIds.usuario },
-    alvo_item_id: { _id: testIds.item },
-    motivo: "FRAUDE",
-    descricao: "Descricao original.",
-    ...overrides,
-  });
 
   beforeEach(() => {
     denunciaRepository = {
@@ -27,368 +16,466 @@ describe("DenunciaService", () => {
       buscarEmAnalisePorItemEDenunciante: jest.fn(),
       buscarEmAnalisePorUsuarioEDenunciante: jest.fn(),
       criar: jest.fn(),
-      atualizar: jest.fn(),
-      deletar: jest.fn(),
+      atualizarSeStatus: jest.fn(),
+      deletarSeEmAnalise: jest.fn(),
     };
 
     usuarioRepository = {
       buscarPorId: jest.fn(),
-      atualizar: jest.fn(),
     };
 
-    itemModel = {
-      findById: jest.fn(),
-      findByIdAndUpdate: jest.fn(),
+    itemDoacaoRepository = {
+      buscarPorId: jest.fn(),
     };
 
-    service = new DenunciaService({ denunciaRepository, usuarioRepository });
-    service.itemModel = itemModel;
+    service = new DenunciaService({
+      denunciaRepository,
+      itemDoacaoRepository,
+      usuarioRepository,
+    });
   });
 
-  test("deve restringir a listagem do usuario comum ao proprio denunciante", async () => {
+  test("Deve restringir a listagem ao denunciante quando o usuário não for administrador", async () => {
     denunciaRepository.listar.mockResolvedValue({ docs: [] });
 
-    await service.listar({
-      filtros: { status: "EM_ANALISE", denuncianteId: "remover" },
-      page: "3",
-      limit: "15",
-    }, createRegularUser());
+    await service.listar(
+      {
+        filtros: {
+          status: "EM_ANALISE",
+          denuncianteId: "deve-ser-removido",
+        },
+        page: 3,
+        limit: 15,
+      },
+      createRegularUser({ id: testIds.usuario })
+    );
 
     expect(denunciaRepository.listar).toHaveBeenCalledWith({
-      filtros: { status: "EM_ANALISE", denunciante_id: testIds.usuario },
+      filtros: {
+        status: "EM_ANALISE",
+        denunciante_id: testIds.usuario,
+      },
       page: 3,
       limit: 15,
     });
   });
 
-  test("deve permitir listagens administrativas com paginacao normalizada", async () => {
+  test("Deve criar denúncia contra item usando repositories", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "DISPONIVEL",
+    });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
+    denunciaRepository.criar.mockResolvedValue({ _id: testIds.denuncia });
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
+
+    const resultado = await service.criar(
+      {
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+        motivo: "FRAUDE",
+        descricao: "O item é suspeito.",
+      },
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(itemDoacaoRepository.buscarPorId).toHaveBeenCalledWith(testIds.item);
+    expect(denunciaRepository.criar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        denunciante_id: testIds.usuario,
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+        motivo: "FRAUDE",
+        status: "EM_ANALISE",
+      })
+    );
+    expect(resultado).toMatchObject({ status: "EM_ANALISE" });
+  });
+
+  test("Deve converter corrida de denúncia duplicada em conflito", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({ _id: testIds.item });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
+    denunciaRepository.criar.mockRejectedValue({ code: 11000 });
+
+    await expect(
+      service.criar(
+        {
+          tipo_alvo: "ITEM",
+          alvo_item_id: testIds.item,
+          motivo: "FRAUDE",
+        },
+        createRegularUser({ id: testIds.usuario })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "Já existe uma denúncia em análise para este item.",
+    });
+  });
+
+  test("Deve atualizar somente denúncia ainda em análise do próprio autor", async () => {
+    denunciaRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+        motivo: "SPAM",
+        descricao: null,
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        descricao: "Descrição corrigida",
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
+
+    const resultado = await service.atualizar(
+      testIds.denuncia,
+      { descricao: "Descrição corrigida" },
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledWith(
+      testIds.denuncia,
+      "EM_ANALISE",
+      {
+        motivo: "SPAM",
+        descricao: "Descrição corrigida",
+      },
+      { denunciante_id: testIds.usuario }
+    );
+    expect(resultado).toMatchObject({ descricao: "Descrição corrigida" });
+  });
+
+  test("Deve rejeitar atualização que perdeu corrida para resolução administrativa", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: testIds.usuario,
+      status: "EM_ANALISE",
+      motivo: "SPAM",
+    });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue(null);
+
+    await expect(
+      service.atualizar(
+        testIds.denuncia,
+        { descricao: "Nova descrição" },
+        createRegularUser({ id: testIds.usuario })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "A denúncia não está mais disponível para atualização.",
+    });
+  });
+
+  test("Deve permitir limpar a descrição opcional da denúncia", async () => {
+    denunciaRepository.buscarPorIdDetalhado
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+        motivo: "SPAM",
+        descricao: "Descrição anterior",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        status: "EM_ANALISE",
+        descricao: null,
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
+
+    await service.atualizar(
+      testIds.denuncia,
+      { descricao: null },
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledWith(
+      testIds.denuncia,
+      "EM_ANALISE",
+      {
+        motivo: "SPAM",
+        descricao: null,
+      },
+      { denunciante_id: testIds.usuario }
+    );
+  });
+
+  test("Deve remover somente denúncia ainda em análise do próprio autor", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: testIds.usuario,
+      status: "EM_ANALISE",
+    });
+    denunciaRepository.deletarSeEmAnalise.mockResolvedValue({
+      _id: testIds.denuncia,
+    });
+
+    await service.deletar(
+      testIds.denuncia,
+      createRegularUser({ id: testIds.usuario })
+    );
+
+    expect(denunciaRepository.deletarSeEmAnalise).toHaveBeenCalledWith(
+      testIds.denuncia,
+      testIds.usuario
+    );
+  });
+
+  test("Não deve expor resolução administrativa sem registro de auditoria", () => {
+    expect(service.resolver).toBeUndefined();
+  });
+
+  test("Deve impedir que o usuário denuncie a própria conta", async () => {
+    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.usuario,
+        situacao: "ATIVO",
+      });
+
+    await expect(
+      service.criar(
+        {
+          tipo_alvo: "USUARIO",
+          alvo_usuario_id: testIds.usuario,
+          motivo: "SPAM",
+        },
+        createRegularUser({ id: testIds.usuario, situacao: "ATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      customMessage: "O usuário não pode denunciar a própria conta.",
+    });
+
+    expect(denunciaRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve bloquear operação protegida de usuário inativo", async () => {
+    await expect(
+      service.listar(
+        { filtros: {}, page: 1, limit: 15 },
+        createRegularUser({ situacao: "INATIVO" })
+      )
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      customMessage: "Somente usuários ativos podem realizar operações protegidas.",
+    });
+
+    expect(denunciaRepository.listar).not.toHaveBeenCalled();
+  });
+
+  test("Deve permitir listagens administrativas e consultas autorizadas", async () => {
     denunciaRepository.listar.mockResolvedValue({ docs: ["todas"] });
     denunciaRepository.listarEmAnalise.mockResolvedValue({ docs: ["analise"] });
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: { _id: testIds.usuario },
+      status: "EM_ANALISE",
+    });
     const adminPorPapel = createRegularUser({ papeis: ["ADMINISTRADOR"] });
-    const filtros = { status: "PROCEDENTE", denunciante_id: testIds.usuario };
 
-    await expect(service.listar({ filtros }, createAdminUser())).resolves.toEqual({ docs: ["todas"] });
-    await expect(service.listarAdmin({ filtros, page: "2", limit: "4" }, adminPorPapel))
-      .resolves.toEqual({ docs: ["todas"] });
-    await expect(service.listarEmAnalise({ page: "5", limit: "6" }, adminPorPapel))
-      .resolves.toEqual({ docs: ["analise"] });
-
-    expect(denunciaRepository.listar).toHaveBeenNthCalledWith(1, { filtros, page: 1, limit: 15 });
-    expect(denunciaRepository.listar).toHaveBeenNthCalledWith(2, { filtros, page: 2, limit: 4 });
-    expect(denunciaRepository.listarEmAnalise).toHaveBeenCalledWith({ page: 5, limit: 6 });
-  });
-
-  test("deve rejeitar listagem administrativa para usuario comum", async () => {
-    await expect(service.listarAdmin({}, createRegularUser())).rejects.toMatchObject({ statusCode: 403 });
-    await expect(service.listarEmAnalise({}, createRegularUser())).rejects.toMatchObject({ statusCode: 403 });
-    expect(denunciaRepository.listar).not.toHaveBeenCalled();
-    expect(denunciaRepository.listarEmAnalise).not.toHaveBeenCalled();
-  });
-
-  test("deve permitir consulta ao autor e ao administrador", async () => {
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denunciaEmAnalise());
-
+    await expect(service.listarAdmin(
+      { filtros: { status: "PROCEDENTE" }, page: "2", limit: "4" },
+      adminPorPapel
+    )).resolves.toEqual({ docs: ["todas"] });
+    await expect(service.listarEmAnalise(
+      { page: "3", limit: "5" },
+      adminPorPapel
+    )).resolves.toEqual({ docs: ["analise"] });
     await expect(service.buscarPorId(testIds.denuncia, createRegularUser()))
       .resolves.toMatchObject({ status: "EM_ANALISE" });
     await expect(service.buscarPorId(testIds.denuncia, createAdminUser()))
       .resolves.toMatchObject({ status: "EM_ANALISE" });
+
+    expect(denunciaRepository.listar).toHaveBeenCalledWith({
+      filtros: { status: "PROCEDENTE" },
+      page: 2,
+      limit: 4,
+    });
+    expect(denunciaRepository.listarEmAnalise).toHaveBeenCalledWith({
+      page: 3,
+      limit: 5,
+    });
   });
 
-  test("deve rejeitar consulta da denuncia para terceiro", async () => {
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denunciaEmAnalise());
+  test("Deve impedir listagens administrativas e consulta de terceiro", async () => {
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      denunciante_id: { _id: testIds.usuario },
+      status: "EM_ANALISE",
+    });
 
+    await expect(service.listarAdmin({}, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.listarEmAnalise({}, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 403 });
     await expect(service.buscarPorId(
       testIds.denuncia,
       createRegularUser({ id: testIds.interessado })
     )).rejects.toMatchObject({ statusCode: 403 });
   });
 
-  test("deve criar denuncia contra item sem duplicidade em analise", async () => {
-    usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.usuario, situacao: "ATIVO" });
-    itemModel.findById.mockResolvedValue({ _id: testIds.item, status: "DISPONIVEL" });
-    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
-    denunciaRepository.criar.mockResolvedValue({ _id: testIds.denuncia });
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denunciaEmAnalise());
-
-    const resultado = await service.criar({
-      tipoAlvo: "ITEM",
-      alvoItemId: testIds.item,
-      motivo: "FRAUDE",
-      descricao: "Item suspeito.",
-    }, createRegularUser());
-
-    expect(denunciaRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
-      denunciante_id: testIds.usuario,
-      tipo_alvo: "ITEM",
-      alvo_item_id: testIds.item,
-      alvo_usuario_id: null,
-      motivo: "FRAUDE",
-      descricao: "Item suspeito.",
-      status: "EM_ANALISE",
-      data_denuncia: expect.any(Date),
-    }));
-    expect(resultado).toMatchObject({ status: "EM_ANALISE" });
-  });
-
-  test("deve criar denuncia contra usuario sem duplicidade em analise", async () => {
+  test("Deve criar denuncia contra usuario usando repositories", async () => {
     usuarioRepository.buscarPorId
       .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
       .mockResolvedValueOnce({ _id: testIds.doador, situacao: "ATIVO" });
     denunciaRepository.buscarEmAnalisePorUsuarioEDenunciante.mockResolvedValue(null);
     denunciaRepository.criar.mockResolvedValue({ _id: testIds.denuncia });
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denunciaEmAnalise({
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
       tipo_alvo: "USUARIO",
-      alvo_item_id: null,
-      alvo_usuario_id: { _id: testIds.doador },
-    }));
+      status: "EM_ANALISE",
+    });
 
-    await expect(service.criar({
-      tipo_alvo: "USUARIO",
-      alvo_usuario_id: testIds.doador,
-      motivo: "COMPORTAMENTO_INADEQUADO",
-    }, createRegularUser())).resolves.toMatchObject({ tipo_alvo: "USUARIO" });
+    await expect(service.criar(
+      {
+        tipoAlvo: "USUARIO",
+        alvoUsuarioId: testIds.doador,
+        motivo: "SPAM",
+      },
+      createRegularUser()
+    )).resolves.toMatchObject({ tipo_alvo: "USUARIO" });
 
     expect(denunciaRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
       denunciante_id: testIds.usuario,
-      tipo_alvo: "USUARIO",
       alvo_usuario_id: testIds.doador,
       alvo_item_id: null,
-      descricao: null,
+      status: "EM_ANALISE",
     }));
   });
 
-  test("deve rejeitar tipo de alvo invalido", async () => {
-    usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.usuario, situacao: "ATIVO" });
-
-    await expect(service.criar(
-      { tipo_alvo: "OUTRO", motivo: "FRAUDE" },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 400 });
-
-    expect(denunciaRepository.criar).not.toHaveBeenCalled();
-  });
-
-  test("deve rejeitar criacao por usuario inexistente ou inativo", async () => {
+  test("Deve rejeitar alvo invalido, denunciante inativo e recursos inexistentes", async () => {
     usuarioRepository.buscarPorId
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" });
-
-    await expect(service.criar(
-      { tipo_alvo: "ITEM", alvo_item_id: testIds.item },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 404 });
-    await expect(service.criar(
-      { tipo_alvo: "ITEM", alvo_item_id: testIds.item },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 403 });
-  });
-
-  test("deve rejeitar denuncia de item ou usuario inexistente", async () => {
-    usuarioRepository.buscarPorId
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" })
       .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
       .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
       .mockResolvedValueOnce(null);
-    itemModel.findById.mockResolvedValue(null);
+    itemDoacaoRepository.buscarPorId.mockResolvedValue(null);
 
     await expect(service.criar(
-      { tipo_alvo: "ITEM", alvo_item_id: testIds.item },
+      { tipo_alvo: "OUTRO", motivo: "SPAM" },
+      createRegularUser()
+    )).rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.criar(
+      { tipo_alvo: "ITEM", alvo_item_id: testIds.item, motivo: "SPAM" },
+      createRegularUser()
+    )).rejects.toMatchObject({ statusCode: 403 });
+    await expect(service.criar(
+      { tipo_alvo: "ITEM", alvo_item_id: testIds.item, motivo: "SPAM" },
       createRegularUser()
     )).rejects.toMatchObject({ statusCode: 404 });
     await expect(service.criar(
-      { tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador },
+      { tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador, motivo: "SPAM" },
       createRegularUser()
     )).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  test("deve rejeitar denuncias duplicadas em analise", async () => {
-    usuarioRepository.buscarPorId
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" })
-      .mockResolvedValueOnce({ _id: testIds.doador, situacao: "ATIVO" });
-    itemModel.findById.mockResolvedValue({ _id: testIds.item });
-    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue({ _id: testIds.denuncia });
-    denunciaRepository.buscarEmAnalisePorUsuarioEDenunciante.mockResolvedValue({ _id: testIds.denuncia });
-
-    await expect(service.criar(
-      { tipo_alvo: "ITEM", alvo_item_id: testIds.item },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 409 });
-    await expect(service.criar(
-      { tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 409 });
-
-    expect(denunciaRepository.criar).not.toHaveBeenCalled();
-  });
-
-  test("deve atualizar denuncia em analise pelo autor", async () => {
+  test("Deve rejeitar alteracoes sem autoria, em estado final ou perdidas por corrida", async () => {
     denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise({ motivo: "OUTRO", descricao: "Atualizada." }));
-    denunciaRepository.atualizar.mockResolvedValue({ _id: testIds.denuncia });
-
-    await expect(service.atualizar(
-      testIds.denuncia,
-      { motivo: "OUTRO", descricao: "Atualizada." },
-      createRegularUser()
-    )).resolves.toMatchObject({ motivo: "OUTRO", descricao: "Atualizada." });
-
-    expect(denunciaRepository.atualizar).toHaveBeenCalledWith(testIds.denuncia, {
-      motivo: "OUTRO",
-      descricao: "Atualizada.",
-    });
-  });
-
-  test("deve preservar campos omitidos na atualizacao", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise());
-    denunciaRepository.atualizar.mockResolvedValue({ _id: testIds.denuncia });
-
-    await service.atualizar(testIds.denuncia, {}, createRegularUser());
-
-    expect(denunciaRepository.atualizar).toHaveBeenCalledWith(testIds.denuncia, {
-      motivo: "FRAUDE",
-      descricao: "Descricao original.",
-    });
-  });
-
-  test("deve rejeitar atualizacao por terceiro ou fora de analise", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "PROCEDENTE" }));
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "PROCEDENTE",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      })
+      .mockResolvedValueOnce({
+        _id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue(null);
+    denunciaRepository.deletarSeEmAnalise.mockResolvedValue(null);
 
     await expect(service.atualizar(
       testIds.denuncia,
       {},
       createRegularUser({ id: testIds.interessado })
     )).rejects.toMatchObject({ statusCode: 403 });
-    await expect(service.atualizar(
-      testIds.denuncia,
-      {},
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 400 });
-
-    expect(denunciaRepository.atualizar).not.toHaveBeenCalled();
-  });
-
-  test("deve remover denuncia em analise pelo autor", async () => {
-    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denunciaEmAnalise());
-
-    await expect(service.deletar(testIds.denuncia, createRegularUser())).resolves.toBeUndefined();
-    expect(denunciaRepository.deletar).toHaveBeenCalledWith(testIds.denuncia);
-  });
-
-  test("deve rejeitar remocao por terceiro ou fora de analise", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "IMPROCEDENTE" }));
-
+    await expect(service.atualizar(testIds.denuncia, {}, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 400 });
+    await expect(service.atualizar(testIds.denuncia, {}, createRegularUser()))
+      .rejects.toMatchObject({ statusCode: 409 });
     await expect(service.deletar(
       testIds.denuncia,
       createRegularUser({ id: testIds.interessado })
     )).rejects.toMatchObject({ statusCode: 403 });
     await expect(service.deletar(testIds.denuncia, createRegularUser()))
-      .rejects.toMatchObject({ statusCode: 400 });
-
-    expect(denunciaRepository.deletar).not.toHaveBeenCalled();
+      .rejects.toMatchObject({ statusCode: 409 });
   });
 
-  test("deve resolver denuncia improcedente sem alterar o alvo", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "IMPROCEDENTE" }));
-    denunciaRepository.atualizar.mockResolvedValue({ _id: testIds.denuncia });
-
-    await expect(service.resolver(
-      testIds.denuncia,
-      { resultado: "IMPROCEDENTE", respostaAdmin: "Nao confirmada." },
-      createAdminUser()
-    )).resolves.toMatchObject({ status: "IMPROCEDENTE" });
-
-    expect(itemModel.findByIdAndUpdate).not.toHaveBeenCalled();
-    expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
-    expect(denunciaRepository.atualizar).toHaveBeenCalledWith(testIds.denuncia, expect.objectContaining({
-      status: "IMPROCEDENTE",
-      admin_id: testIds.admin,
-      resposta_admin: "Nao confirmada.",
-      data_analise: expect.any(Date),
-    }));
-  });
-
-  test("deve resolver denuncia procedente contra item e cancelar o alvo", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise())
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "PROCEDENTE" }));
-    itemModel.findById.mockResolvedValue({ _id: testIds.item });
-    denunciaRepository.atualizar.mockResolvedValue({ _id: testIds.denuncia });
-
-    await service.resolver(
-      testIds.denuncia,
-      { status: "PROCEDENTE", acao_tomada: "Item cancelado." },
-      createAdminUser()
-    );
-
-    expect(itemModel.findByIdAndUpdate).toHaveBeenCalledWith(testIds.item, { status: "CANCELADO" });
-  });
-
-  test("deve resolver denuncia procedente contra usuario e suspender o alvo", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise({
-        tipo_alvo: "USUARIO",
-        alvo_item_id: null,
-        alvo_usuario_id: { _id: testIds.doador },
-      }))
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "PROCEDENTE" }));
-    usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.doador, situacao: "ATIVO" });
-    denunciaRepository.atualizar.mockResolvedValue({ _id: testIds.denuncia });
-
-    await service.resolver(
-      testIds.denuncia,
-      { status: "PROCEDENTE", acaoTomada: "Suspensao aplicada.", suspensaoAte: "2026-07-01" },
-      createAdminUser()
-    );
-
-    expect(usuarioRepository.atualizar).toHaveBeenCalledWith(testIds.doador, {
-      situacao: "SUSPENSO",
-      motivo_suspensao: "Suspensao aplicada.",
-      suspensao_ate: "2026-07-01",
-    });
-  });
-
-  test("deve rejeitar resolucao por usuario comum, fora de analise ou com resultado invalido", async () => {
-    denunciaRepository.buscarPorIdDetalhado
-      .mockResolvedValueOnce(denunciaEmAnalise({ status: "PROCEDENTE" }))
-      .mockResolvedValueOnce(denunciaEmAnalise());
-
-    await expect(service.resolver(
-      testIds.denuncia,
-      { status: "PROCEDENTE" },
-      createRegularUser()
-    )).rejects.toMatchObject({ statusCode: 403 });
-    await expect(service.resolver(
-      testIds.denuncia,
-      { status: "PROCEDENTE" },
-      createAdminUser()
-    )).rejects.toMatchObject({ statusCode: 400 });
-    await expect(service.resolver(
-      testIds.denuncia,
-      { status: "PENDENTE" },
-      createAdminUser()
-    )).rejects.toMatchObject({ statusCode: 400 });
-
-    expect(denunciaRepository.atualizar).not.toHaveBeenCalled();
-  });
-
-  test("deve retornar 404 para denuncia inexistente", async () => {
+  test("Deve rejeitar denuncia inexistente e usuario nao autenticado", async () => {
     denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(null);
 
-    await expect(service.buscarPorId(testIds.denuncia, createAdminUser()))
+    await expect(service.buscarPorId(testIds.denuncia, createRegularUser()))
       .rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.listar({}, {}))
+      .rejects.toMatchObject({ statusCode: 401 });
   });
 
-  test("deve rejeitar operacao sem usuario autenticado", async () => {
-    await expect(service.listar({}, {})).rejects.toMatchObject({ statusCode: 401 });
-    expect(denunciaRepository.listar).not.toHaveBeenCalled();
+  test("Deve rejeitar duplicidades detectadas antes da escrita e propagar erro comum", async () => {
+    usuarioRepository.buscarPorId.mockImplementation((id) => Promise.resolve({
+      _id: id,
+      situacao: "ATIVO",
+    }));
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "DISPONIVEL",
+    });
+    denunciaRepository.buscarEmAnalisePorUsuarioEDenunciante.mockResolvedValue({
+      _id: testIds.denuncia,
+    });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante
+      .mockResolvedValueOnce({ _id: testIds.denuncia })
+      .mockResolvedValueOnce(null);
+    const falha = new Error("banco indisponivel");
+    denunciaRepository.criar.mockRejectedValue(falha);
+
+    await expect(service.criar(
+      { tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador, motivo: "SPAM" },
+      createRegularUser()
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.criar(
+      { tipo_alvo: "ITEM", alvo_item_id: testIds.item, motivo: "FRAUDE" },
+      createRegularUser()
+    )).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.criar(
+      { tipo_alvo: "ITEM", alvo_item_id: testIds.item, motivo: "FRAUDE" },
+      createRegularUser()
+    )).rejects.toBe(falha);
   });
 });

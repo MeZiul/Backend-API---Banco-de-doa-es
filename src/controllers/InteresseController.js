@@ -1,4 +1,4 @@
-import { interesseService } from "../containers/services.interesse.container.js";
+import { interesseService } from "../containers/services.index.js";
 import {
   InteresseIdSchema,
   InteresseQuerySchema,

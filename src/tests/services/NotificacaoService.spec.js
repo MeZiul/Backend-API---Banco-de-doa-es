@@ -6,6 +6,7 @@ import CustomError from "../../utils/helpers/CustomError.js";
 // Mockamos o repositório que o serviço injeta automaticamente
 jest.mock("../../repositories/NotificacaoRepository.js", () => ({
     criar: jest.fn(),
+    criarMuitas: jest.fn(),
     listarDoUsuario: jest.fn(),
     contarNaoLidas: jest.fn(),
     marcarComoLida: jest.fn(),
@@ -22,6 +23,29 @@ describe("NotificacaoService", () => {
         NotificacaoRepository.listarDoUsuario.mockResolvedValue({ docs: [] });
         await NotificacaoService.listar("user123");
         expect(NotificacaoRepository.listarDoUsuario).toHaveBeenCalledWith("user123", { page: 1, limit: 20 });
+    });
+
+    test("criarNotificacoes deve ignorar destinatários ausentes e persistir em lote", async () => {
+        const notificacoes = [
+            { usuario_id: "user123", tipo: "SISTEMA" },
+            { usuario_id: null, tipo: "SISTEMA" },
+        ];
+        NotificacaoRepository.criarMuitas.mockResolvedValue([notificacoes[0]]);
+
+        const resultado = await NotificacaoService.criarNotificacoes(notificacoes);
+
+        expect(NotificacaoRepository.criarMuitas).toHaveBeenCalledWith([notificacoes[0]]);
+        expect(resultado).toEqual([notificacoes[0]]);
+    });
+
+    test("criarNotificacoesComSeguranca não deve propagar falha do subsistema", async () => {
+        NotificacaoRepository.criarMuitas.mockRejectedValue(new Error("banco indisponível"));
+
+        await expect(
+            NotificacaoService.criarNotificacoesComSeguranca([
+                { usuario_id: "user123", tipo: "SISTEMA" },
+            ])
+        ).resolves.toEqual([]);
     });
 
     test("contarNaoLidas deve retornar formato esperado", async () => {

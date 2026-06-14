@@ -1,4 +1,14 @@
 import { z } from "zod";
+import mongoose from "mongoose";
+
+const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
+const isValidObjectId = (value) => !value || mongoose.Types.ObjectId.isValid(value);
+const periodoAdministrativo = {
+    dataInicio: z.string().optional()
+        .refine(isValidDate, { message: "dataInicio inválida" }),
+    dataFim: z.string().optional()
+        .refine(isValidDate, { message: "dataFim inválida" }),
+};
 
 export const itemDoacaoQuerySchema = z.object({
     //Paginaão
@@ -7,10 +17,14 @@ export const itemDoacaoQuerySchema = z.object({
 
     //Busca textual e filtros combinados
     busca: z.string().optional(),
-    categoria_id: z.string().optional(),
-    categoriaId: z.string().optional(),
-    usuario_id: z.string().optional(),
-    usuarioId: z.string().optional(),
+    categoria_id: z.string().optional()
+        .refine(isValidObjectId, { message: "categoria_id inválido" }),
+    categoriaId: z.string().optional()
+        .refine(isValidObjectId, { message: "categoriaId inválido" }),
+    usuario_id: z.string().optional()
+        .refine(isValidObjectId, { message: "usuario_id inválido" }),
+    usuarioId: z.string().optional()
+        .refine(isValidObjectId, { message: "usuarioId inválido" }),
     cidade: z.string().optional(),
     uf: z.coerce.string().length(2).toUpperCase().optional(),
     status: z.enum(["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"]).optional(),
@@ -20,3 +34,5 @@ export const itemDoacaoQuerySchema = z.object({
     //Ordenação suportada.
     ordenacao: z.enum(["recentes", "antigos", "visualizados", "interessados"]).default("recentes")
 });
+
+export const administracaoItemDoacaoQuerySchema = itemDoacaoQuerySchema.extend(periodoAdministrativo);

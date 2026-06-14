@@ -1,4 +1,4 @@
-import { denunciaService } from "../containers/services.denuncia.container.js";
+import { denunciaService } from "../containers/services.index.js";
 import {
     DenunciaIdSchema,
     DenunciaQuerySchema,

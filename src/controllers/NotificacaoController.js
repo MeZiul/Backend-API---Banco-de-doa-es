@@ -29,6 +29,24 @@ class NotificacaoController {
         }
     }
 
+    marcarComoLida = async (req, res) => {
+        try {
+            const resultado = await NotificacaoService.marcarComoLida(req.params.id, req.user.id);
+            return CommonResponse.success(res, resultado, 200, "Notificação marcada como lida.");
+        } catch (error) {
+            return this._handleError(res, error, "Erro ao atualizar notificação.");
+        }
+    }
+
+    marcarTodasComoLidas = async (req, res) => {
+        try {
+            const resultado = await NotificacaoService.marcarTodasComoLidas(req.user.id);
+            return CommonResponse.success(res, resultado, 200, resultado.mensagem);
+        } catch (error) {
+            return this._handleError(res, error, "Erro ao marcar todas as notificações.");
+        }
+    }
+
     _handleError(res, error, defaultMessage) {
         if (error.isOperational || error.statusCode) {
             return CommonResponse.error(
