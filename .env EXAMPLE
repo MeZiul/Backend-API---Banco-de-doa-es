@@ -2,11 +2,11 @@
 # Configuração do Banco de Dados
 ############################################
 # URL do banco de dados para ambiente de desenvolvimento
-DB_URL="mongodb+srv://doacao_user:senhaDoBanco@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
+DB_URL="mongodb+srv://doacao_user:GZLWa3jmeWzkEDP9@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
 # URL do banco de dados para ambiente de teste
-DB_URL_TEST="mongodb+srv://doacao_user:senhaDoBanco@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
+DB_URL_TEST="mongodb+srv://doacao_user:GZLWa3jmeWzkEDP9@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
 # URL do banco de dados para ambiente de produção
-DB_URL_PROD="mongodb+srv://doacao_user:senhaDoBanco@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
+DB_URL_PROD="mongodb+srv://doacao_user:GZLWa3jmeWzkEDP9@cluster0.v5l2ppv.mongodb.net/?appName=Cluster0"
 
 USE_IN_MEMORY_DB=false
 
