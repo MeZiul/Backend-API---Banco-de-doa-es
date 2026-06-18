@@ -9,10 +9,7 @@ class ItemDoacaoService {
   }
 
   async criar(dadosItem, usuarioAutenticado) {
-    console.log("=== DEBUG USUARIO ===");
-    console.log(usuarioAutenticado);
-    console.log("=====================");
-
+    
     if (usuarioAutenticado.situacao !== "ATIVO") {
       throw new CustomError({
         statusCode: 403,

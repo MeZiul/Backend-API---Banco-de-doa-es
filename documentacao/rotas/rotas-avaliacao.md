@@ -1,186 +1,191 @@
-# Rotas de Avaliação
+# Plano de Teste — Rotas de Avaliacao
+---
 
-Este documento descreve o contrato funcional das rotas de `avaliação` previstas para a Milestone 2.
+## 1. Apresentacao
 
-Escopo considerado:
-- branches de rota de `avaliação` mergeadas na `dev`
-- autenticação via Bearer Token JWT
-- regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
+Este plano documenta os testes de contrato HTTP das rotas de avaliacao da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado, autenticacao via token JWT e controle de acesso por autoria, com o `AvaliacaoService` completamente mockado.
 
-## Visão Geral
+A suite importa o arquivo de rotas real (`avaliacaoRotas.js`) e exercita a cadeia de middleware (`AuthMiddleware`) antes de chegar ao controller, garantindo que o arquivo de rotas seja efetivamente coberto pelos testes.
 
-Domínio responsável por:
-- registrar avaliações entre usuários após doações concluídas
-- consultar avaliações registradas
-- permitir atualização do feedback pelo autor
-- permitir remoção da avaliação pelo autor
-- manter a média e o total de avaliações do usuário avaliado
+---
 
-Rotas do módulo:
-- `POST /avaliacoes`
-- `GET /avaliacoes`
-- `GET /avaliacoes/:id`
-- `PUT /avaliacoes/:id`
-- `DELETE /avaliacoes/:id`
+## 2. Objetivo
 
-## POST /avaliacoes
+Validar que as rotas de avaliacao respondem corretamente a cada cenario, cobrindo:
 
-Objetivo:
-Permitir que um usuário avalie a outra parte envolvida em uma doação concluída.
+- Status HTTP corretos para cada operacao — 200, 201, 204, 400, 403, 404, 498
+- Payload de resposta conforme o contrato da API
+- Exigencia de token JWT em todas as rotas do modulo
+- Repasse correto dos parametros (dados, filtros, ator) do controller ao service
+- Bloqueio de alteracao de campos sensiveis na atualizacao (item_id, avaliador_id, avaliado_id, tipo)
+- Controle de autoria propagado do service (apenas o autor altera/remove)
+- Propagacao correta dos erros do service para o cliente
 
-Autorização:
-- usuário autenticado
+---
 
-Body esperado:
+## 3. Escopo
 
-```json
-{
-  "item_id": "6807f6b90d32b53a1bcb0001",
-  "avaliado_id": "6807f6b90d32b53a1bcb0002",
-  "nota": 5,
-  "comentario": "Usuário pontual e comunicação boa.",
-  "tipo": "DOADOR_PARA_INTERESSADO"
-}
+### 3.1 Endpoints Testados
+
+| Metodo   | Rota               | Autenticacao | RF/RN  |
+| -------- | ------------------ | ------------ | ------ |
+| `POST`   | `/avaliacoes`      | Token        | RF-017 |
+| `GET`    | `/avaliacoes`      | Token        | RF-017 |
+| `GET`    | `/avaliacoes/:id`  | Token        | RF-017 |
+| `PUT`    | `/avaliacoes/:id`  | Token (autor) | RF-017 |
+| `DELETE` | `/avaliacoes/:id`  | Token (autor) | RF-017 |
+
+### 3.2 Fora do Escopo
+
+- Testes de regras de negocio (cobertos em `services/avaliacaoService.spec.js`)
+- Testes de repository (utilizam banco real / banco em memoria, sem mock)
+- Recalculo de media e total de avaliacoes (regra de negocio do service)
+- Testes E2E com frontend
+
+---
+
+## 4. Estrategia
+
+**Abordagem:** testes de contrato HTTP — o `AvaliacaoService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express que monta o roteador real de avaliacao (`avaliacaoRotas.js`), de modo que o middleware de autenticacao e o proprio arquivo de rotas sejam exercitados e contabilizados na cobertura.
+
+### 4.1 Autenticacao via JWT
+
+Todas as rotas do modulo exigem token JWT valido. O token e gerado no proprio teste com `jsonwebtoken` e enviado no header `Authorization`:
+
+| Helper          | Perfil Simulado                                  | Usado em                        |
+| --------------- | ------------------------------------------------ | ------------------------------- |
+| `usuarioAuth()` | `{ id: testIds.interessado, perfil: "USUARIO" }` | todas as operacoes autenticadas |
+
+### 4.3 Observacao sobre o repasse do ator
+
+O controller de avaliacao repassa o ator de forma distinta conforme o metodo:
+
+- `criar` envia `req.user.id` (string) ao service;
+- `listar`, `buscarPorId`, `atualizar` e `deletar` enviam `req.user` (objeto) ao service.
+
+As assercoes do teste refletem essa diferenca.
+
+### 4.4 Arquivo de Teste
+
 ```
-
-Regra de negócio:
-- o usuário deve estar autenticado
-- o item deve existir
-- o item deve estar com status `DOADO`
-- a avaliação deve estar relacionada a um item de doação concluído
-- a nota deve ser um número inteiro entre `1` e `5`
-- o comentário é opcional
-- o tipo deve ser `DOADOR_PARA_INTERESSADO` ou `INTERESSADO_PARA_DOADOR`
-- o avaliador deve ter participado da doação
-- o avaliado deve ser a outra parte envolvida na doação
-- a avaliação deve respeitar o interesse aceito vinculado ao item
-- não deve existir avaliação duplicada do mesmo avaliador para o mesmo item e tipo
-- quando houver prazo de avaliação, a criação deve respeitar o limite definido pela regra de negócio
-- após criar, a média e o total de avaliações do usuário avaliado devem ser recalculados
-
-Resposta esperada:
-- `201 Created` com a avaliação criada
-
-Erros comuns:
-- `400 Bad Request` para payload inválido, nota fora do intervalo ou item ainda não doado
-- `403 Forbidden` para usuário fora do fluxo da doação
-- `404 Not Found` para item ou usuário avaliado inexistente
-- `409 Conflict` para avaliação duplicada
-- `498 Invalid Token` para token inválido ou expirado
-
-## GET /avaliacoes
-
-Objetivo:
-Listar avaliações registradas, com filtros opcionais.
-
-Autorização:
-- usuário autenticado
-
-Query params suportados:
-- `avaliado_id`
-- `avaliador_id`
-- `item_id`
-- `tipo`
-- `page`
-- `limite`
-
-Regra de negócio:
-- a rota exige autenticação
-- a listagem deve retornar avaliações cadastradas conforme os filtros informados
-- usuários comuns devem consultar avaliações relacionadas ao próprio contexto permitido
-- administradores podem consultar avaliações de qualquer usuário
-- a resposta deve ser paginada
-- cada registro deve exibir item, avaliador, avaliado, nota, comentário, tipo e data da avaliação
-
-Resposta esperada:
-- `200 OK` com lista paginada de avaliações
-
-Erros comuns:
-- `400 Bad Request` para query params inválidos
-- `403 Forbidden` para acesso fora do escopo permitido
-- `498 Invalid Token` para token inválido ou expirado
-
-## GET /avaliacoes/:id
-
-Objetivo:
-Consultar os detalhes de uma avaliação específica.
-
-Autorização:
-- usuário autenticado
-- acesso permitido ao avaliador, ao avaliado ou ao administrador
-
-Regra de negócio:
-- a rota exige autenticação
-- o identificador informado deve ser um ObjectId válido
-- o sistema deve buscar a avaliação pelo ID
-- a resposta deve conter item, avaliador, avaliado, nota, comentário, tipo e data da avaliação
-- caso a avaliação não exista, a API deve retornar erro apropriado
-
-Resposta esperada:
-- `200 OK` com o detalhe da avaliação
-
-Erros comuns:
-- `400 Bad Request` para ID inválido
-- `403 Forbidden` para usuário sem permissão de consulta
-- `404 Not Found` para avaliação inexistente
-- `498 Invalid Token` para token inválido ou expirado
-
-## PUT /avaliacoes/:id
-
-Objetivo:
-Permitir que o autor atualize uma avaliação registrada.
-
-Autorização:
-- usuário autenticado
-- apenas o autor da avaliação
-
-Body esperado:
-
-```json
-{
-  "nota": 4,
-  "comentario": "Comentário atualizado após revisar a experiência."
-}
+src/tests/routes/avaliacao.spec.js
 ```
+---
 
-Regra de negócio:
-- a rota exige autenticação
-- apenas o autor da avaliação pode editar
-- somente `nota` e `comentario` podem ser alterados
-- `item_id`, `avaliador_id`, `avaliado_id` e `tipo` não podem ser alterados após a criação
-- a nota deve continuar entre `1` e `5`
-- após atualização da nota, a média e o total de avaliações do usuário avaliado devem ser recalculados
+## 5. Cenarios de Teste
 
-Resposta esperada:
-- `200 OK` com a avaliação atualizada
+### 5.1 Autenticacao
 
-Erros comuns:
-- `400 Bad Request` para payload inválido ou tentativa de alterar campos bloqueados
-- `403 Forbidden` para usuário diferente do autor
-- `404 Not Found` para avaliação inexistente
-- `498 Invalid Token` para token inválido ou expirado
+**RF-017**
 
-## DELETE /avaliacoes/:id
+| ID    | Descricao                        | Payload / Auth              | Mock Service          | Status HTTP | Validacao                     | Status |
+| ----- | -------------------------------- | --------------------------- | --------------------- | ----------- | ----------------------------- | ------ |
+| RA-01 | Requisicao sem token retorna 498 | GET sem header Authorization | nao chega ao service  | `498`       | bloqueado pelo AuthMiddleware | PASSOU |
 
-Objetivo:
-Permitir que o autor remova uma avaliação registrada.
+---
 
-Autorização:
-- usuário autenticado
-- apenas o autor da avaliação
+### 5.2 POST /avaliacoes — Criar
 
-Regra de negócio:
-- a rota exige autenticação
-- apenas o autor da avaliação pode remover
-- a exclusão deve remover o registro de avaliação
-- após remover, a média e o total de avaliações do usuário avaliado devem ser recalculados
-- a remoção não deve alterar o status do item nem o histórico da doação
+**RF-017**
 
-Resposta esperada:
-- `204 No Content` ou confirmação de remoção, conforme implementação do controller
+| ID    | Descricao                                | Payload / Auth                        | Mock Service                | Status HTTP | Validacao                                   | Status |
+| ----- | ---------------------------------------- | ------------------------------------- | --------------------------- | ----------- | ------------------------------------------- | ------ |
+| RA-02 | Cria avaliacao retorna 201               | body completo, token de usuario       | `criar: avaliacao`          | `201`       | `data` correto; `criar` recebe dados + `req.user.id` | PASSOU |
 
-Erros comuns:
-- `400 Bad Request` para ID inválido
-- `403 Forbidden` para usuário diferente do autor
-- `404 Not Found` para avaliação inexistente
-- `498 Invalid Token` para token inválido ou expirado
+---
+
+### 5.3 GET /avaliacoes — Listar
+
+**RF-017**
+
+| ID    | Descricao                                | Payload / Auth                                  | Mock Service                  | Status HTTP | Validacao                                     | Status |
+| ----- | ---------------------------------------- | ----------------------------------------------- | ----------------------------- | ----------- | --------------------------------------------- | ------ |
+| RA-03 | Lista avaliacoes com filtros retorna 200 | `?avaliado_id&page=2&limite=5`, token de usuario | `listarPorUsuario: paginado` | `200`       | `listarPorUsuario` recebe filtros/page/limit + ator | PASSOU |
+
+---
+
+### 5.4 GET /avaliacoes/:id — Buscar por ID
+
+**RF-017**
+
+| ID    | Descricao                          | Payload / Auth          | Mock Service                     | Status HTTP | Validacao               | Status |
+| ----- | ---------------------------------- | ----------------------- | -------------------------------- | ----------- | ----------------------- | ------ |
+| RA-04 | Busca avaliacao por id retorna 200 | `GET /avaliacoes/:id`   | `buscarPorId: avaliacao`         | `200`       | `data` correto          | PASSOU |
+| RA-05 | Avaliacao inexistente retorna 404  | `GET /avaliacoes/:id`   | `buscarPorId: CustomError 404`   | `404`       | mensagem nao encontrada | PASSOU |
+
+---
+
+### 5.5 PUT /avaliacoes/:id — Atualizar
+
+**RF-017**
+
+| ID    | Descricao                                            | Payload / Auth                            | Mock Service                | Status HTTP | Validacao                                         | Status |
+| ----- | --------------------------------------------------- | ----------------------------------------- | --------------------------- | ----------- | ------------------------------------------------- | ------ |
+| RA-06 | Atualiza apenas nota e comentario retorna 200       | `{ nota, comentario }`, token de usuario  | `atualizar: avaliacao`      | `200`       | `atualizar` recebe id + dados + ator              | PASSOU |
+| RA-07 | Tentativa de alterar campos sensiveis retorna 400   | `{ item_id }`, token de usuario           | nao chega ao service        | `400`       | `atualizar` nao chamado (bloqueado pelo schema)   | PASSOU |
+
+---
+
+### 5.6 DELETE /avaliacoes/:id — Remover
+
+**RF-017**
+
+| ID    | Descricao                                              | Payload / Auth          | Mock Service                  | Status HTTP | Validacao                                        | Status |
+| ----- | ----------------------------------------------------- | ----------------------- | ----------------------------- | ----------- | ------------------------------------------------ | ------ |
+| RA-08 | Remover avaliacao de outro usuario retorna 403        | token de usuario        | `deletar: CustomError 403`    | `403`       | mensagem de autoria; `deletar` recebe id + ator  | PASSOU |
+| RA-09 | Remover avaliacao com sucesso retorna 204             | token de usuario        | `deletar: ok`                 | `204`       | sem body; `deletar` chamado 1x                   | PASSOU |
+
+---
+
+## 6. Resultado de Execucao
+
+| Suite          | Arquivo                    | Testes | Aprovados | Reprovados | Status |
+| -------------- | -------------------------- | ------ | --------- | ---------- | ------ |
+| Rotas Avaliacao | `routes/avaliacao.spec.js` | **9**  | **9**     | **0**      | PASSOU |
+
+### 6.1 Cobertura
+
+> Preencher com os numeros reais de `npm run test:coverage`. Com a importacao do `avaliacaoRotas.js`, o arquivo de rotas passa a aparecer no relatorio de cobertura.
+
+| Arquivo                  | Statements | Branches | Functions | Lines | Status |
+| ------------------------ | ---------- | -------- | --------- | ----- | ------ |
+| `avaliacaoRotas.js`      | _a definir_ | _a definir_ | _a definir_ | _a definir_ | _a definir_ |
+| `AvaliacaoController.js` | _a definir_ | _a definir_ | _a definir_ | _a definir_ | _a definir_ |
+
+---
+
+## 7. Resumo dos Cenarios
+
+| ID    | Rota                  | Descricao                         | Status HTTP | Status |
+| ----- | --------------------- | --------------------------------- | ----------- | ------ |
+| RA-01 | GET /avaliacoes       | Sem token retorna 498             | 498         | PASSOU |
+| RA-02 | POST /avaliacoes      | Cria avaliacao                    | 201         | PASSOU |
+| RA-03 | GET /avaliacoes       | Lista com filtros                 | 200         | PASSOU |
+| RA-04 | GET /avaliacoes/:id   | Busca por id                      | 200         | PASSOU |
+| RA-05 | GET /avaliacoes/:id   | Avaliacao inexistente             | 404         | PASSOU |
+| RA-06 | PUT /avaliacoes/:id   | Atualiza nota e comentario        | 200         | PASSOU |
+| RA-07 | PUT /avaliacoes/:id   | Bloqueia campos sensiveis         | 400         | PASSOU |
+| RA-08 | DELETE /avaliacoes/:id | Remover de outro autor — 403     | 403         | PASSOU |
+| RA-09 | DELETE /avaliacoes/:id | Remover com sucesso              | 204         | PASSOU |
+
+---
+
+## 8. Criterios de Aceitacao
+
+- 100% dos testes de rotas de avaliacao aprovados (9/9)
+- Status HTTP corretos para todos os cenarios
+- Todas as rotas exigindo token JWT valido (498 sem token)
+- Bloqueio de alteracao de campos sensiveis na atualizacao (400)
+- Controle de autoria propagado do service (403 para nao-autor)
+- Propagacao correta de erros do service para o cliente
+- Arquivo `avaliacaoRotas.js` coberto pelo relatorio de cobertura
+
+---
+
+## 9. Observacoes
+
+- A suite monta o roteador real (`avaliacaoRotas.js`) e gera token JWT no proprio teste, exercitando o `AuthMiddleware` de ponta a ponta. Por isso o arquivo de rotas passa a constar na cobertura.
+- Todas as rotas do modulo exigem apenas autenticacao (`AuthMiddleware`); nao ha exigencia de perfil ADMINISTRADOR neste modulo.
+- O controle de autoria (apenas o autor edita/remove) e responsabilidade do service e e validado por propagacao de erro (RA-08).
+- O bloqueio de campos sensiveis na atualizacao (item_id, avaliador_id, avaliado_id, tipo) ocorre na validacao do schema, antes de chegar ao service (RA-07).
+- O `DELETE /avaliacoes/:id` retorna `204` (sem corpo), conforme `CommonResponse.success(res, null, 204)` no controller.

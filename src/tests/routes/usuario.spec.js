@@ -1,12 +1,17 @@
+import express from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
-import {beforeEach,describe,expect,jest,test} from "@jest/globals";
-import CustomError from "../../utils/helpers/CustomError.js";
 import {
-  createControllerTestApp,
-  createRegularUser,
-  createAdminUser,
-  testIds,
-} from "../test.js";
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "@jest/globals";
+import CustomError from "../../utils/helpers/CustomError.js";
+import errorHandler from "../../utils/helpers/errorHandler.js";
+import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 const mockUsuarioService = {
   cadastrar: jest.fn(),
@@ -24,35 +29,20 @@ jest.mock("../../containers/services.index.js", () => ({
   usuarioService: mockUsuarioService,
 }));
 
-let appUsuario;
-let appAdmin;
+let app;
+
+const bearer = (user) =>
+  `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+const usuarioAuth = () => bearer(createRegularUser({ id: testIds.usuario }));
+const adminAuth = () => bearer(createAdminUser());
 
 beforeAll(async () => {
-  const { default: UsuarioController } =
-    await import("../../controllers/UsuarioController.js");
-  const ctrl = new UsuarioController();
-
-  appUsuario = createControllerTestApp({
-    user: createRegularUser({ id: testIds.usuario }),
-    registerRoutes: (app) => {
-      app.post("/usuario", ctrl.cadastrar);
-      app.get("/usuario", ctrl.listar);
-      app.get("/usuario/:id/itens", ctrl.listarItens);
-      app.get("/usuario/:id/avaliacoes", ctrl.listarAvaliacoes);
-      app.get("/usuario/:id", ctrl.buscarPorId);
-      app.put("/usuario/:id", ctrl.atualizar);
-      app.patch("/usuario/:id", ctrl.atualizarParcial);
-      app.delete("/usuario/:id", ctrl.excluir);
-    },
-  });
-
-  appAdmin = createControllerTestApp({
-    user: createAdminUser(),
-    registerRoutes: (app) => {
-      app.patch("/usuario/:id/suspender", ctrl.suspender);
-      app.patch("/usuario/:id/reativar", ctrl.reativar);
-    },
-  });
+  const { default: usuarioRoutes } =
+    await import("../../routes/usuarioRoutes.js");
+  app = express();
+  app.use(express.json());
+  app.use(usuarioRoutes);
+  app.use(errorHandler);
 });
 
 beforeEach(() => {
@@ -60,7 +50,7 @@ beforeEach(() => {
 });
 
 describe("Rotas de Usuario", () => {
-  describe("POST /usuario — cadastrar", () => {
+  describe("POST /usuario — cadastrar (publico)", () => {
     test("retorna 201 com usuario criado — RF-001", async () => {
       const payload = {
         _id: testIds.usuario,
@@ -73,7 +63,7 @@ describe("Rotas de Usuario", () => {
         toObject: () => payload,
       });
 
-      const res = await request(appUsuario).post("/usuario").send({
+      const res = await request(app).post("/usuario").send({
         nome: "Teste Silva",
         email: "teste@email.com",
         cpf: "123.456.789-09",
@@ -96,7 +86,7 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appUsuario).post("/usuario").send({
+      const res = await request(app).post("/usuario").send({
         nome: "Usuario",
         email: "existe@email.com",
         cpf: "111.111.111-11",
@@ -111,16 +101,20 @@ describe("Rotas de Usuario", () => {
       );
     });
 
-    test("retorna 422 se campos obrigatorios ausentes", async () => {
-      const res = await request(appUsuario)
+    test("retorna 400 se campos obrigatorios ausentes", async () => {
+      const res = await request(app)
         .post("/usuario")
         .send({ email: "teste@email.com" });
-
       expect(res.statusCode).toBe(400);
     });
   });
 
   describe("GET /usuario — listar", () => {
+    test("exige autenticacao", async () => {
+      const res = await request(app).get("/usuario");
+      expect(res.statusCode).toBe(498);
+    });
+
     test("retorna 200 com lista paginada — RF-014", async () => {
       mockUsuarioService.listar.mockResolvedValue({
         docs: [{ _id: testIds.usuario, nome: "Teste" }],
@@ -128,7 +122,9 @@ describe("Rotas de Usuario", () => {
         page: 1,
       });
 
-      const res = await request(appUsuario).get("/usuario");
+      const res = await request(app)
+        .get("/usuario")
+        .set("Authorization", usuarioAuth());
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data.docs).toHaveLength(1);
@@ -142,7 +138,9 @@ describe("Rotas de Usuario", () => {
         nome: "Teste",
       });
 
-      const res = await request(appUsuario).get(`/usuario/${testIds.usuario}`);
+      const res = await request(app)
+        .get(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth());
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data._id).toBe(testIds.usuario);
@@ -156,7 +154,9 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appUsuario).get(`/usuario/${testIds.usuario}`);
+      const res = await request(app)
+        .get(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth());
 
       expect(res.statusCode).toBe(404);
     });
@@ -169,8 +169,9 @@ describe("Rotas de Usuario", () => {
         toObject: () => payload,
       });
 
-      const res = await request(appUsuario)
+      const res = await request(app)
         .put(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
         .send({ nome: "Novo Nome" });
 
       expect(res.statusCode).toBe(200);
@@ -185,11 +186,29 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appUsuario)
+      const res = await request(app)
         .put(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
         .send({ nome: "Novo Nome" });
 
       expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe("PATCH /usuario/:id — atualizar parcial", () => {
+    test("retorna 200 com usuario atualizado", async () => {
+      const payload = { _id: testIds.usuario, bio: "Nova bio" };
+      mockUsuarioService.atualizar.mockResolvedValue({
+        toObject: () => payload,
+      });
+
+      const res = await request(app)
+        .patch(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
+        .send({ bio: "Nova bio" });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.bio).toBe("Nova bio");
     });
   });
 
@@ -199,8 +218,9 @@ describe("Rotas de Usuario", () => {
         message: "Conta excluída com sucesso.",
       });
 
-      const res = await request(appUsuario)
+      const res = await request(app)
         .delete(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
         .send({ senha: "Teste@123" });
 
       expect(res.statusCode).toBe(204);
@@ -211,8 +231,9 @@ describe("Rotas de Usuario", () => {
         new CustomError({ statusCode: 401, customMessage: "Senha incorreta." }),
       );
 
-      const res = await request(appUsuario)
+      const res = await request(app)
         .delete(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
         .send({ senha: "SenhaErrada" });
 
       expect(res.statusCode).toBe(401);
@@ -227,8 +248,9 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appUsuario)
+      const res = await request(app)
         .delete(`/usuario/${testIds.usuario}`)
+        .set("Authorization", usuarioAuth())
         .send({ senha: "Teste@123" });
 
       expect(res.statusCode).toBe(400);
@@ -241,9 +263,9 @@ describe("Rotas de Usuario", () => {
         { _id: testIds.item, titulo: "Sofa" },
       ]);
 
-      const res = await request(appUsuario).get(
-        `/usuario/${testIds.usuario}/itens`,
-      );
+      const res = await request(app)
+        .get(`/usuario/${testIds.usuario}/itens`)
+        .set("Authorization", usuarioAuth());
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data).toHaveLength(1);
@@ -257,23 +279,49 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appUsuario).get(
-        `/usuario/${testIds.usuario}/itens`,
-      );
+      const res = await request(app)
+        .get(`/usuario/${testIds.usuario}/itens`)
+        .set("Authorization", usuarioAuth());
 
       expect(res.statusCode).toBe(404);
     });
   });
 
+  describe("GET /usuario/:id/avaliacoes — listar avaliacoes", () => {
+    test("retorna 200 com avaliacoes do usuario", async () => {
+      mockUsuarioService.listarAvaliacoes.mockResolvedValue({ docs: [] });
+
+      const res = await request(app)
+        .get(`/usuario/${testIds.usuario}/avaliacoes`)
+        .set("Authorization", usuarioAuth());
+
+      expect(res.statusCode).toBe(200);
+    });
+  });
+
   describe("PATCH /usuario/:id/suspender — admin", () => {
+    test("retorna 403 se nao for admin — RN-USR-025", async () => {
+      const res = await request(app)
+        .patch(`/usuario/${testIds.usuario}/suspender`)
+        .set("Authorization", usuarioAuth())
+        .send({
+          motivo: "Violacao",
+          suspensao_ate: "2026-12-31T00:00:00.000Z",
+        });
+
+      expect(res.statusCode).toBe(403);
+      expect(mockUsuarioService.suspender).not.toHaveBeenCalled();
+    });
+
     test("retorna 200 ao suspender usuario — RN-USR-025", async () => {
       mockUsuarioService.suspender.mockResolvedValue({
         _id: testIds.usuario,
         situacao: "SUSPENSO",
       });
 
-      const res = await request(appAdmin)
+      const res = await request(app)
         .patch(`/usuario/${testIds.usuario}/suspender`)
+        .set("Authorization", adminAuth())
         .send({
           motivo: "Violacao dos termos",
           suspensao_ate: "2026-12-31T00:00:00.000Z",
@@ -291,9 +339,9 @@ describe("Rotas de Usuario", () => {
         situacao: "ATIVO",
       });
 
-      const res = await request(appAdmin).patch(
-        `/usuario/${testIds.usuario}/reativar`,
-      );
+      const res = await request(app)
+        .patch(`/usuario/${testIds.usuario}/reativar`)
+        .set("Authorization", adminAuth());
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data.situacao).toBe("ATIVO");
@@ -307,9 +355,9 @@ describe("Rotas de Usuario", () => {
         }),
       );
 
-      const res = await request(appAdmin).patch(
-        `/usuario/${testIds.usuario}/reativar`,
-      );
+      const res = await request(app)
+        .patch(`/usuario/${testIds.usuario}/reativar`)
+        .set("Authorization", adminAuth());
 
       expect(res.statusCode).toBe(400);
     });
