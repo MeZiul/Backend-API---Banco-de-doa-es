@@ -1,12 +1,12 @@
 # Plano de Teste — Rotas de Usuario
 
-## API DoaI — Banco de Doacoes | Fabrica de Software 2026.1
-
 ---
 
 ## 1. Apresentacao
 
-Este plano documenta os testes de contrato HTTP das rotas de usuario da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado e controle de autorizacao por perfil, com o `UsuarioService` completamente mockado.
+Este plano documenta os testes de contrato HTTP das rotas de usuario da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado, autenticacao via token JWT e controle de autorizacao por perfil, com o `UsuarioService` completamente mockado.
+
+A suite importa o arquivo de rotas real (`usuarioRoutes.js`) e exercita a cadeia completa de middlewares (`AuthMiddleware`, `authorize`) antes de chegar ao controller, garantindo que o arquivo de rotas seja efetivamente coberto pelos testes.
 
 ---
 
@@ -14,9 +14,10 @@ Este plano documenta os testes de contrato HTTP das rotas de usuario da API REST
 
 Validar que as rotas de usuario respondem corretamente a cada cenario, cobrindo:
 
-- Status HTTP corretos para cada operacao — 200, 201, 204, 400, 401, 403, 404
+- Status HTTP corretos para cada operacao — 200, 201, 204, 400, 401, 403, 404, 498
 - Payload de resposta conforme o contrato da API
 - Senha nunca exposta na resposta — RN-USR-004
+- Autenticacao via token JWT — exigencia de token nas rotas protegidas
 - Controle de acesso por perfil — USUARIO vs ADMINISTRADOR
 - Validacao de entrada via Zod antes de chegar ao service
 - Propagacao correta dos erros do service para o cliente
@@ -50,33 +51,29 @@ Validar que as rotas de usuario respondem corretamente a cada cenario, cobrindo:
 
 ## 4. Estrategia
 
-**Abordagem:** testes de contrato HTTP — o `UsuarioService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express de teste criado com `createControllerTestApp`.
+**Abordagem:** testes de contrato HTTP — o `UsuarioService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express que monta o roteador real de usuario (`usuarioRoutes.js`), de modo que a cadeia de middlewares e o proprio arquivo de rotas sejam exercitados e contabilizados na cobertura.
 
-### 4.1 Apps de Teste
+### 4.1 Autenticacao via JWT
 
-| App          | Perfil Simulado                                  | Usado em                                                     |
-| ------------ | ------------------------------------------------ | ------------------------------------------------------------ |
-| `appUsuario` | `{ id: testIds.usuario, perfil: "USUARIO" }`     | POST, GET, PUT, PATCH, DELETE, listarItens, listarAvaliacoes |
-| `appAdmin`   | `{ id: testIds.admin, perfil: "ADMINISTRADOR" }` | suspender, reativar                                          |
+As rotas protegidas exigem token JWT valido. Os tokens sao gerados no proprio teste com `jsonwebtoken`, assinados com o segredo de acesso da aplicacao, e enviados no header `Authorization`:
 
-### 4.2 Arquivo de Teste
+| Helper          | Perfil Simulado                                  | Usado em                                          |
+| --------------- | ------------------------------------------------ | ------------------------------------------------- |
+| `usuarioAuth()` | `{ id: testIds.usuario, perfil: "USUARIO" }`     | GET, PUT, PATCH, DELETE, listarItens, avaliacoes  |
+| `adminAuth()`   | `{ id: testIds.admin, perfil: "ADMINISTRADOR" }` | suspender, reativar                               |
+
+A rota `POST /usuario` e publica e e testada sem token.
+
+### 4.3 Arquivo de Teste
 
 ```
 src/tests/routes/usuario.spec.js
 ```
-
-### 4.3 Comandos
-
-```bash
-npm test -- --testPathPattern=routes/usuario
-npm run test:coverage
-```
-
 ---
 
 ## 5. Cenarios de Teste
 
-### 5.1 POST /usuario — Cadastrar
+### 5.1 POST /usuario — Cadastrar (Publico)
 
 **RF-001 | RN-USR-004, RN-USR-005, RN-USR-006, RN-USR-007**
 
@@ -92,9 +89,10 @@ npm run test:coverage
 
 **RF-014**
 
-| ID    | Descricao                                             | Payload Enviado      | Mock Service                                     | Status HTTP | Validacao              | Status |
-| ----- | ----------------------------------------------------- | -------------------- | ------------------------------------------------ | ----------- | ---------------------- | ------ |
-| RT-04 | Listar usuarios autenticado retorna 200 com paginacao | GET sem query params | `listar: { docs: [...], totalDocs: 1, page: 1 }` | `200`       | `data.docs` com 1 item | PASSOU |
+| ID    | Descricao                                             | Payload Enviado            | Mock Service                                     | Status HTTP | Validacao                  | Status |
+| ----- | ----------------------------------------------------- | -------------------------- | ------------------------------------------------ | ----------- | -------------------------- | ------ |
+| RT-04 | Requisicao sem token retorna 498                      | GET sem header Authorization | nao chega ao service                           | `498`       | bloqueado pelo AuthMiddleware | PASSOU |
+| RT-05 | Listar usuarios autenticado retorna 200 com paginacao | GET com token de usuario   | `listar: { docs: [...], totalDocs: 1, page: 1 }` | `200`       | `data.docs` com 1 item     | PASSOU |
 
 ---
 
@@ -104,8 +102,8 @@ npm run test:coverage
 
 | ID    | Descricao                                  | Payload Enviado        | Mock Service                            | Status HTTP | Validacao               | Status |
 | ----- | ------------------------------------------ | ---------------------- | --------------------------------------- | ----------- | ----------------------- | ------ |
-| RT-05 | ID valido retorna 200 com dados do usuario | `GET /usuario/507f...` | `buscarPorId: { _id: testIds.usuario }` | `200`       | `data._id` correto      | PASSOU |
-| RT-06 | Usuario inexistente retorna 404            | `GET /usuario/507f...` | `buscarPorId: CustomError 404`          | `404`       | mensagem nao encontrado | PASSOU |
+| RT-06 | ID valido retorna 200 com dados do usuario | `GET /usuario/507f...` | `buscarPorId: { _id: testIds.usuario }` | `200`       | `data._id` correto      | PASSOU |
+| RT-07 | Usuario inexistente retorna 404            | `GET /usuario/507f...` | `buscarPorId: CustomError 404`          | `404`       | mensagem nao encontrado | PASSOU |
 
 ---
 
@@ -115,52 +113,75 @@ npm run test:coverage
 
 | ID    | Descricao                              | Payload Enviado       | Mock Service                                  | Status HTTP | Validacao              | Status |
 | ----- | -------------------------------------- | --------------------- | --------------------------------------------- | ----------- | ---------------------- | ------ |
-| RT-07 | Atualizar proprio usuario retorna 200  | `{ nome: Novo Nome }` | `atualizar: usuario (toObject com nome novo)` | `200`       | `data.nome` atualizado | PASSOU |
-| RT-08 | Atualizar usuario de outro retorna 403 | `{ nome: Novo Nome }` | `atualizar: CustomError 403`                  | `403`       | mensagem sem permissao | PASSOU |
+| RT-08 | Atualizar proprio usuario retorna 200  | `{ nome: Novo Nome }` | `atualizar: usuario (toObject com nome novo)` | `200`       | `data.nome` atualizado | PASSOU |
+| RT-09 | Atualizar usuario de outro retorna 403 | `{ nome: Novo Nome }` | `atualizar: CustomError 403`                  | `403`       | mensagem sem permissao | PASSOU |
 
 ---
 
-### 5.5 DELETE /usuario/:id — Excluir
+### 5.5 PATCH /usuario/:id — Atualizar Parcial
+
+**RF-004 | RN-USR-012**
+
+| ID    | Descricao                              | Payload Enviado      | Mock Service                                 | Status HTTP | Validacao             | Status |
+| ----- | -------------------------------------- | -------------------- | -------------------------------------------- | ----------- | --------------------- | ------ |
+| RT-10 | Atualizacao parcial retorna 200        | `{ bio: Nova bio }`  | `atualizar: usuario (toObject com bio nova)` | `200`       | `data.bio` atualizado | PASSOU |
+
+Observacao: o handler `atualizarParcial` do controller reutiliza `usuarioService.atualizar`, por isso o mock configurado e o de `atualizar`.
+
+---
+
+### 5.6 DELETE /usuario/:id — Excluir
 
 **RF-020 | RN-USR-018, RN-USR-019**
 
 | ID    | Descricao                                   | Payload Enviado          | Mock Service               | Status HTTP | Validacao                     | Status |
 | ----- | ------------------------------------------- | ------------------------ | -------------------------- | ----------- | ----------------------------- | ------ |
-| RT-09 | Excluir conta com senha correta retorna 204 | `{ senha: Teste@123 }`   | `excluir: { message: ok }` | `204`       | sem body na resposta          | PASSOU |
-| RT-10 | Excluir com senha incorreta retorna 401     | `{ senha: SenhaErrada }` | `excluir: CustomError 401` | `401`       | mensagem senha incorreta      | PASSOU |
-| RT-11 | Excluir com itens em andamento retorna 400  | `{ senha: Teste@123 }`   | `excluir: CustomError 400` | `400`       | mensagem doacoes em andamento | PASSOU |
+| RT-11 | Excluir conta com senha correta retorna 204 | `{ senha: Teste@123 }`   | `excluir: { message: ok }` | `204`       | sem body na resposta          | PASSOU |
+| RT-12 | Excluir com senha incorreta retorna 401     | `{ senha: SenhaErrada }` | `excluir: CustomError 401` | `401`       | mensagem senha incorreta      | PASSOU |
+| RT-13 | Excluir com itens em andamento retorna 400  | `{ senha: Teste@123 }`   | `excluir: CustomError 400` | `400`       | mensagem doacoes em andamento | PASSOU |
 
 ---
 
-### 5.6 GET /usuario/:id/itens — Listar Itens
+### 5.7 GET /usuario/:id/itens — Listar Itens
 
 **RF-015**
 
 | ID    | Descricao                                       | Payload Enviado          | Mock Service                     | Status HTTP | Validacao               | Status |
 | ----- | ----------------------------------------------- | ------------------------ | -------------------------------- | ----------- | ----------------------- | ------ |
-| RT-12 | Listar itens do usuario retorna 200 com array   | `GET /usuario/:id/itens` | `listarItens: [{ _id, titulo }]` | `200`       | data com 1 item         | PASSOU |
-| RT-13 | Listar itens de usuario inexistente retorna 404 | `GET /usuario/:id/itens` | `listarItens: CustomError 404`   | `404`       | mensagem nao encontrado | PASSOU |
+| RT-14 | Listar itens do usuario retorna 200 com array   | `GET /usuario/:id/itens` | `listarItens: [{ _id, titulo }]` | `200`       | data com 1 item         | PASSOU |
+| RT-15 | Listar itens de usuario inexistente retorna 404 | `GET /usuario/:id/itens` | `listarItens: CustomError 404`   | `404`       | mensagem nao encontrado | PASSOU |
 
 ---
 
-### 5.7 PATCH /usuario/:id/suspender — Suspender
+### 5.8 GET /usuario/:id/avaliacoes — Listar Avaliacoes
+
+**RF-017**
+
+| ID    | Descricao                                        | Payload Enviado               | Mock Service                  | Status HTTP | Validacao        | Status |
+| ----- | ------------------------------------------------ | ----------------------------- | ----------------------------- | ----------- | ---------------- | ------ |
+| RT-16 | Listar avaliacoes do usuario retorna 200         | `GET /usuario/:id/avaliacoes` | `listarAvaliacoes: { docs: [] }` | `200`    | resposta 200     | PASSOU |
+
+---
+
+### 5.9 PATCH /usuario/:id/suspender — Suspender (Admin)
 
 **RN-USR-025**
 
 | ID    | Descricao                                                | Payload Enviado                        | Mock Service                        | Status HTTP | Validacao                  | Status |
 | ----- | -------------------------------------------------------- | -------------------------------------- | ----------------------------------- | ----------- | -------------------------- | ------ |
-| RT-14 | Admin suspende usuario retorna 200 com situacao SUSPENSO | `{ motivo, suspensao_ate }` (appAdmin) | `suspender: { situacao: SUSPENSO }` | `200`       | `data.situacao = SUSPENSO` | PASSOU |
+| RT-17 | Usuario comum tentando suspender retorna 403             | `{ motivo, suspensao_ate }` (token usuario) | bloqueado por `authorize`      | `403`       | service nao chamado        | PASSOU |
+| RT-18 | Admin suspende usuario retorna 200 com situacao SUSPENSO | `{ motivo, suspensao_ate }` (token admin)   | `suspender: { situacao: SUSPENSO }` | `200`   | `data.situacao = SUSPENSO` | PASSOU |
 
 ---
 
-### 5.8 PATCH /usuario/:id/reativar — Reativar
+### 5.10 PATCH /usuario/:id/reativar — Reativar (Admin)
 
 **RN-USR-026**
 
 | ID    | Descricao                                                     | Payload Enviado     | Mock Service                    | Status HTTP | Validacao                  | Status |
 | ----- | ------------------------------------------------------------- | ------------------- | ------------------------------- | ----------- | -------------------------- | ------ |
-| RT-15 | Admin reativa usuario suspenso retorna 200 com situacao ATIVO | sem body (appAdmin) | `reativar: { situacao: ATIVO }` | `200`       | `data.situacao = ATIVO`    | PASSOU |
-| RT-16 | Reativar usuario nao suspenso retorna 400                     | sem body (appAdmin) | `reativar: CustomError 400`     | `400`       | mensagem nao esta suspenso | PASSOU |
+| RT-19 | Admin reativa usuario suspenso retorna 200 com situacao ATIVO | sem body (token admin) | `reativar: { situacao: ATIVO }` | `200`    | `data.situacao = ATIVO`    | PASSOU |
+| RT-20 | Reativar usuario nao suspenso retorna 400                     | sem body (token admin) | `reativar: CustomError 400`     | `400`    | mensagem nao esta suspenso | PASSOU |
 
 ---
 
@@ -168,16 +189,7 @@ npm run test:coverage
 
 | Suite         | Arquivo                  | Testes | Aprovados | Reprovados | Status |
 | ------------- | ------------------------ | ------ | --------- | ---------- | ------ |
-| Rotas Usuario | `routes/usuario.spec.js` | **16** | **16**    | **0**      | PASSOU |
-
-### 6.1 Cobertura — UsuarioController
-
-| Metrica    | Meta   | Resultado | Status   |
-| ---------- | ------ | --------- | -------- |
-| Statements | >= 60% | 78.57%    | APROVADO |
-| Branches   | >= 45% | 50.00%    | APROVADO |
-| Functions  | >= 61% | 80.00%    | APROVADO |
-| Lines      | >= 59% | 78.57%    | APROVADO |
+| Rotas Usuario | `routes/usuario.spec.js` | **20** | **20**    | **0**      | PASSOU |
 
 ---
 
@@ -188,35 +200,42 @@ npm run test:coverage
 | RT-01 | POST /usuario                | Cadastro valido sem senha na resposta | RN-USR-004, RN-USR-005 | 201         | PASSOU |
 | RT-02 | POST /usuario                | Email duplicado                       | RN-USR-006             | 400         | PASSOU |
 | RT-03 | POST /usuario                | Campos obrigatorios ausentes          | RN-USR-007             | 400         | PASSOU |
-| RT-04 | GET /usuario                 | Listagem paginada                     | RF-014                 | 200         | PASSOU |
-| RT-05 | GET /usuario/:id             | Busca por ID valido                   | RF-014                 | 200         | PASSOU |
-| RT-06 | GET /usuario/:id             | Usuario inexistente                   | RF-014                 | 404         | PASSOU |
-| RT-07 | PUT /usuario/:id             | Atualizar proprio usuario             | RN-USR-012             | 200         | PASSOU |
-| RT-08 | PUT /usuario/:id             | Atualizar usuario de outro            | RN-USR-012             | 403         | PASSOU |
-| RT-09 | DELETE /usuario/:id          | Excluir com senha correta             | RN-USR-018             | 204         | PASSOU |
-| RT-10 | DELETE /usuario/:id          | Excluir com senha incorreta           | RN-USR-018             | 401         | PASSOU |
-| RT-11 | DELETE /usuario/:id          | Excluir com itens em andamento        | RN-USR-019             | 400         | PASSOU |
-| RT-12 | GET /usuario/:id/itens       | Listar itens do usuario               | RF-015                 | 200         | PASSOU |
-| RT-13 | GET /usuario/:id/itens       | Usuario inexistente                   | RF-015                 | 404         | PASSOU |
-| RT-14 | PATCH /usuario/:id/suspender | Admin suspende usuario                | RN-USR-025             | 200         | PASSOU |
-| RT-15 | PATCH /usuario/:id/reativar  | Admin reativa usuario suspenso        | RN-USR-026             | 200         | PASSOU |
-| RT-16 | PATCH /usuario/:id/reativar  | Reativar usuario nao suspenso         | RN-USR-026             | 400         | PASSOU |
+| RT-04 | GET /usuario                 | Sem token retorna 498                 | RF-014                 | 498         | PASSOU |
+| RT-05 | GET /usuario                 | Listagem paginada autenticada         | RF-014                 | 200         | PASSOU |
+| RT-06 | GET /usuario/:id             | Busca por ID valido                   | RF-014                 | 200         | PASSOU |
+| RT-07 | GET /usuario/:id             | Usuario inexistente                   | RF-014                 | 404         | PASSOU |
+| RT-08 | PUT /usuario/:id             | Atualizar proprio usuario             | RN-USR-012             | 200         | PASSOU |
+| RT-09 | PUT /usuario/:id             | Atualizar usuario de outro            | RN-USR-012             | 403         | PASSOU |
+| RT-10 | PATCH /usuario/:id           | Atualizacao parcial                   | RN-USR-012             | 200         | PASSOU |
+| RT-11 | DELETE /usuario/:id          | Excluir com senha correta             | RN-USR-018             | 204         | PASSOU |
+| RT-12 | DELETE /usuario/:id          | Excluir com senha incorreta           | RN-USR-018             | 401         | PASSOU |
+| RT-13 | DELETE /usuario/:id          | Excluir com itens em andamento        | RN-USR-019             | 400         | PASSOU |
+| RT-14 | GET /usuario/:id/itens       | Listar itens do usuario               | RF-015                 | 200         | PASSOU |
+| RT-15 | GET /usuario/:id/itens       | Usuario inexistente                   | RF-015                 | 404         | PASSOU |
+| RT-16 | GET /usuario/:id/avaliacoes  | Listar avaliacoes do usuario          | RF-017                 | 200         | PASSOU |
+| RT-17 | PATCH /usuario/:id/suspender | Usuario comum bloqueado               | RN-USR-025             | 403         | PASSOU |
+| RT-18 | PATCH /usuario/:id/suspender | Admin suspende usuario                | RN-USR-025             | 200         | PASSOU |
+| RT-19 | PATCH /usuario/:id/reativar  | Admin reativa usuario suspenso        | RN-USR-026             | 200         | PASSOU |
+| RT-20 | PATCH /usuario/:id/reativar  | Reativar usuario nao suspenso         | RN-USR-026             | 400         | PASSOU |
 
 ---
 
 ## 8. Criterios de Aceitacao
 
-- 100% dos testes de rotas de usuario aprovados (16/16)
+- 100% dos testes de rotas de usuario aprovados (20/20)
 - Nenhuma resposta com campo `senha` exposto
 - Status HTTP corretos para todos os cenarios
+- Rotas protegidas exigindo token JWT valido (498 sem token)
+- Autorizacao por perfil bloqueando usuario comum em rotas administrativas (403)
 - Validacao Zod bloqueando payloads invalidos antes do service
 - Propagacao correta de erros do service para o cliente
+- Arquivo `usuarioRoutes.js` coberto pelo relatorio de cobertura
 
 ---
 
 ## 9. Observacoes
 
-- O controller `atualizar` nao repassa `req.user` ao service — a verificacao de ownership e responsabilidade do service via parametro `actor`.
-- O controller `excluir` chama `usuarioService.excluir(req.params.id, senha)` — sem `req.user`, portanto o service nao verifica se o usuario logado e o dono.
-- Os testes de `suspender` e `reativar` usam `appAdmin` — simulam perfil `ADMINISTRADOR` injetado via `createControllerTestApp`.
-- A rota `GET /usuario/:id/avaliacoes` nao tem cenario de erro coberto neste plano — candidato a expansao futura.
+- A suite monta o roteador real (`usuarioRoutes.js`) e gera tokens JWT no proprio teste, exercitando `AuthMiddleware` e `authorize` de ponta a ponta. Por isso o arquivo de rotas passa a constar na cobertura.
+- O handler `atualizarParcial` do controller reutiliza `usuarioService.atualizar`; o mock de teste deve configurar `atualizar`, nao `atualizarParcial`.
+- O controller `atualizar` repassa `req.user` ao service — a verificacao de ownership e responsabilidade do service via parametro `actor`.
+- Os testes de `suspender` e `reativar` usam token de administrador; ha cenario adicional que confirma o bloqueio (403) de usuario comum em rota administrativa.
