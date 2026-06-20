@@ -216,7 +216,105 @@ Regras de negócio:
                 500: commonResponses[500](),
             },
         },
+    },
+"/itemdoacao/{id}/fotos": {
+        post: {
+            tags: ["Itens de Doação"],
+            summary: "Adicionar fotos ao item",
+            description: `Faz upload de uma ou mais fotos para um item de doação.
+
+Regras de negócio:
+- A rota exige autenticação via token.
+- Apenas o doador (proprietário do item) pode adicionar fotos.
+- O item deve estar com o status DISPONIVEL.
+- São aceitas no máximo 5 fotos por item (RN-ITEM-002).
+- Formatos aceitos: JPEG, PNG e WebP, com tamanho máximo de 5 MB cada (RN-ITEM-003).`,
+            security: [{ bearerAuth: [] }],
+            parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, description: "ID do item" }],
+            requestBody: {
+                required: true,
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                fotos: {
+                                    type: "array",
+                                    items: { type: "string", format: "binary" },
+                                    description: "Arquivos de imagem (até 5)",
+                                },
+                            },
+                            required: ["fotos"],
+                        },
+                    },
+                },
+            },
+            responses: {
+                200: {
+                    description: "Fotos adicionadas com sucesso",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    mensagem: { type: "string", example: "Fotos adicionadas com sucesso!" },
+                                    fotos: { type: "array", items: { $ref: "#/components/schemas/ItemDoacaoFotoObj" } },
+                                },
+                            },
+                        },
+                    },
+                },
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/itemdoacao/{id}/fotos/{fotoId}": {
+        delete: {
+            tags: ["Itens de Doação"],
+            summary: "Remover uma foto do item",
+            description: `Remove uma foto específica de um item de doação.
+
+Regras de negócio:
+- A rota exige autenticação via token.
+- Apenas o doador (proprietário do item) pode remover fotos.
+- O arquivo físico da imagem também é removido do servidor.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                { name: "id", in: "path", required: true, schema: { type: "string" }, description: "ID do item" },
+                { name: "fotoId", in: "path", required: true, schema: { type: "string" }, description: "ID da foto a remover" },
+            ],
+            responses: {
+                200: {
+                    description: "Foto removida com sucesso",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    mensagem: { type: "string", example: "Foto removida com sucesso!" },
+                                    fotos: { type: "array", items: { $ref: "#/components/schemas/ItemDoacaoFotoObj" } },
+                                },
+                            },
+                        },
+                    },
+                },
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
     }
+
+
+
+
 };
 
 export default itemDoacaoPaths;

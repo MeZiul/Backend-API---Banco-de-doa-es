@@ -45,18 +45,35 @@ const getSwaggerOptions = () => ({
     info: {
       title: "API Banco de Doações DoaÍ",
       version: "1.0-alpha",
-      description: `Documentação Swagger dos módulos de Autenticação, Administração, Interesses, Denúncias e Avaliações.
+      description: `É necessário autenticar com token JWT antes de utilizar a maioria das rotas.
 
-As rotas protegidas exigem autenticação via Bearer Token JWT.
+## Credenciais de Teste (Seed)
 
-Escopo desta documentação:
-- Autenticação, recuperação de senha, logout e renovação de token
-- Manifestação e gestão de interesses em itens de doação
-- Registro e acompanhamento de denúncias
-- Ações administrativas de moderação e auditoria dessas operações
-- Registro e consulta de avaliações após doações concluídas`,
+| Perfil | E-mail | Senha |
+|----|----|----|
+| ADMINISTRADOR | admin@doai.com | Admin@123 |
+| USUARIO | carlos@email.com | Senha@123 |
+
+## Fluxo de Teste
+
+1. **Login** → obter token JWT
+2. **Criar item** (usuário doador)
+3. **Manifestar interesse** no item (usuário interessado)
+4. **Aceitar interesse** (doador) → item fica RESERVADO
+5. **Confirmar entrega** (doador) → AGUARDANDO_CONFIRMACAO
+6. **Confirmar recebimento** (interessado) → item DOADO
+
+## Perfis
+
+- **ADMINISTRADOR** — acesso total: modera usuários, itens, denúncias e categorias
+- **USUARIO** — cadastra itens, manifesta interesse, avalia e denuncia
+
+## Status do Item
+
+DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
       contact: {
         name: "Equipe Banco de Doações",
+        url: "https://api.doai.fs.fslab.dev/docs#/", 
       },
     },
     servers: getServersInCorrectOrder(),
