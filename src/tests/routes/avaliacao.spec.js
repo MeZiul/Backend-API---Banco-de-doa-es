@@ -26,7 +26,7 @@ const usuarioAuth = () => bearer(createRegularUser({ id: testIds.interessado }))
 const avaliacaoId = testIds.denuncia; 
 
 beforeAll(async () => {
-  const { default: avaliacaoRoutes } = await import("../../routes/avaliacaoRotas.js");
+  const { default: avaliacaoRoutes } = await import("../../routes/avaliacaoRoutes.js");
   app = express();
   app.use(express.json());
   app.use(avaliacaoRoutes);

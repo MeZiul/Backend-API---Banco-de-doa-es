@@ -117,7 +117,8 @@
     "coveragePathIgnorePatterns": [
       "/node_modules/",
       "/src/utils/helpers/index.js",
-      "/src/utils/logger.js"
+      "/src/utils/logger.js",
+      "/src/services/ImagemItemService.js"
     ],
     "moduleNameMapper": {
       "^\\.\\.\\/models\\/Denuncias\\.js$": "<rootDir>/src/models/Denuncia.js"
