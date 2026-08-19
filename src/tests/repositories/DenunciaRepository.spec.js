@@ -2,43 +2,64 @@ import { describe, expect, jest, test } from "@jest/globals";
 import DenunciaRepository from "../../repositories/DenunciaRepository.js";
 import { testIds } from "../test.js";
 
+function attachClient(repository, client) {
+  Object.defineProperty(repository, "client", { value: client, configurable: true });
+}
+
 describe("DenunciaRepository - consistência", () => {
-  const repository = new DenunciaRepository();
+  test("atualiza somente quando status e filtros ainda correspondem", async () => {
+    const repository = new DenunciaRepository();
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const findUnique = jest.fn().mockResolvedValue({
+      id: testIds.denuncia,
+      status: "PROCEDENTE",
+    });
+    const tx = { denuncia: { updateMany, findUnique } };
+    attachClient(repository, { $transaction: (callback) => callback(tx) });
 
-  test("Deve atualizar somente quando o status e os filtros adicionais ainda corresponderem", () => {
-    const query = { exec: jest.fn() };
-    const spy = jest.spyOn(repository.model, "findOneAndUpdate").mockReturnValue(query);
-
-    const resultado = repository.atualizarSeStatus(
+    const resultado = await repository.atualizarSeStatus(
       testIds.denuncia,
       "EM_ANALISE",
       { status: "PROCEDENTE" },
-      { admin_id: null }
+      { admin_id: null },
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      {
-        _id: testIds.denuncia,
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: testIds.denuncia,
         status: "EM_ANALISE",
         admin_id: null,
       },
-      { $set: { status: "PROCEDENTE" } },
-      { new: true, runValidators: true }
-    );
-    expect(resultado).toBe(query);
+      data: { status: "PROCEDENTE" },
+    });
+    expect(resultado).toMatchObject({ _id: testIds.denuncia, status: "PROCEDENTE" });
   });
 
-  test("Deve remover somente denúncia em análise do autor informado", () => {
-    const query = { exec: jest.fn() };
-    const spy = jest.spyOn(repository.model, "findOneAndDelete").mockReturnValue(query);
-
-    const resultado = repository.deletarSeEmAnalise(testIds.denuncia, testIds.usuario);
-
-    expect(spy).toHaveBeenCalledWith({
-      _id: testIds.denuncia,
+  test("remove somente denúncia em análise do autor informado", async () => {
+    const repository = new DenunciaRepository();
+    const existing = {
+      id: testIds.denuncia,
       denunciante_id: testIds.usuario,
       status: "EM_ANALISE",
+    };
+    const findFirst = jest.fn().mockResolvedValue(existing);
+    const deleteFn = jest.fn().mockResolvedValue(existing);
+    const tx = { denuncia: { findFirst, delete: deleteFn } };
+    attachClient(repository, { $transaction: (callback) => callback(tx) });
+
+    const resultado = await repository.deletarSeEmAnalise(
+      testIds.denuncia,
+      testIds.usuario,
+    );
+
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      },
     });
-    expect(resultado).toBe(query);
+    expect(deleteFn).toHaveBeenCalledWith({ where: { id: testIds.denuncia } });
+    expect(resultado._id).toBe(testIds.denuncia);
   });
 });

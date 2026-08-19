@@ -1,13 +1,22 @@
 services:
-  meu-mongodb:
-    image: mongo:8
+  postgres:
+    image: postgres:18-alpine
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      POSTGRES_USER: doai
+      POSTGRES_PASSWORD: doai_local
+      POSTGRES_DB: doai
+    ports:
+      - "5432:5432"
     volumes:
-      - vol-mongodb:/data/db
+      - vol-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doai -d doai"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
-  minha-api:
+  api:
     restart: unless-stopped
     build:
       context: .
@@ -15,10 +24,16 @@ services:
         NODE_ENV: production
     env_file:
       - .env
+    environment:
+      # Dentro da rede do Compose, o host do banco é o nome do serviço.
+      DATABASE_URL: postgresql://doai:doai_local@postgres:5432/doai?schema=public
+      NODE_ENV: production
     ports:
-      - 80:7340
+      - "7340:7340"
     depends_on:
-      - meu-mongodb
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "npm run db:migrate:deploy && npm start"]
 
 volumes:
-  vol-mongodb:
+  vol-postgres:

@@ -1,19 +1,19 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
-const isValidObjectId = (value) => !value || mongoose.Types.ObjectId.isValid(value);
+const isValidEntityId = (value) => !value || isEntityId(value);
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
 
 export const AdministracaoIdSchema = z.string().refine(
-  (id) => mongoose.Types.ObjectId.isValid(id),
+  (id) => isEntityId(id),
   { message: "ID inválido" }
 );
 
 export const AdministracaoQuerySchema = z.object({
   administrador_id: z.string().optional()
-    .refine(isValidObjectId, { message: "administrador_id inválido" }),
+    .refine(isValidEntityId, { message: "administrador_id inválido" }),
   administradorId: z.string().optional()
-    .refine(isValidObjectId, { message: "administradorId inválido" }),
+    .refine(isValidEntityId, { message: "administradorId inválido" }),
   tipo_acao: z.string().optional()
     .refine((value) => !value || ["BLOQUEIO_USUARIO", "DESBLOQUEIO_USUARIO", "INATIVACAO_USUARIO", "CANCELAMENTO_ITEM", "RESOLUCAO_DENUNCIA"].includes(value), {
       message: "tipo_acao inválido",
@@ -31,9 +31,9 @@ export const AdministracaoQuerySchema = z.object({
       message: "tipoAlvo inválido",
     }),
   alvo_id: z.string().optional()
-    .refine(isValidObjectId, { message: "alvo_id inválido" }),
+    .refine(isValidEntityId, { message: "alvo_id inválido" }),
   alvoId: z.string().optional()
-    .refine(isValidObjectId, { message: "alvoId inválido" }),
+    .refine(isValidEntityId, { message: "alvoId inválido" }),
   resultado_denuncia: z.string().optional()
     .refine((value) => !value || ["PROCEDENTE", "IMPROCEDENTE"].includes(value), {
       message: "resultado_denuncia inválido",

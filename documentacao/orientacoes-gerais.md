@@ -1,5 +1,8 @@
 # Guia offline para criar uma rota completa
 
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+
+
 Este guia e uma cola pratica para a prova final sem internet. Ele foi escrito com base na estrutura real deste projeto (`backend-api-banco-de-doacoes`) e deve ser usado para criar uma rota nova do zero mantendo o mesmo padrao da API DoaI.
 
 Use este documento junto com os arquivos ja existentes do projeto. A forma mais rapida e segura e copiar uma rota parecida e renomear com cuidado.

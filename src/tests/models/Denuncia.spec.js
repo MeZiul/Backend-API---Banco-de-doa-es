@@ -1,29 +1,20 @@
+import fs from "node:fs";
 import { describe, expect, test } from "@jest/globals";
-import DenunciaModel from "../../models/Denuncia.js";
 
-describe("Índices do model Denuncia", () => {
+const migration = fs.readFileSync(
+  new URL("../../../prisma/migrations/20260818213000_init_postgresql/migration.sql", import.meta.url),
+  "utf8",
+);
+
+describe("Constraints relacionais de Denuncia", () => {
   test.each([
-    [
-      "denuncia_item_em_analise_unica_por_denunciante",
-      { denunciante_id: 1, alvo_item_id: 1 },
-      { tipo_alvo: "ITEM", status: "EM_ANALISE" },
-    ],
-    [
-      "denuncia_usuario_em_analise_unica_por_denunciante",
-      { denunciante_id: 1, alvo_usuario_id: 1 },
-      { tipo_alvo: "USUARIO", status: "EM_ANALISE" },
-    ],
-  ])("Deve declarar o índice parcial %s", (nome, campos, filtroParcial) => {
-    const indice = DenunciaModel.schema.indexes().find(([, options]) => {
-      return options.name === nome;
-    });
+    "denuncia_item_em_analise_unica_por_denunciante",
+    "denuncia_usuario_em_analise_unica_por_denunciante",
+  ])("declara o índice parcial %s", (nome) => {
+    expect(migration).toContain(`CREATE UNIQUE INDEX "${nome}"`);
+  });
 
-    expect(indice).toEqual([
-      campos,
-      expect.objectContaining({
-        unique: true,
-        partialFilterExpression: filtroParcial,
-      }),
-    ]);
+  test("exige exatamente o alvo correspondente ao tipo", () => {
+    expect(migration).toContain('CONSTRAINT "Denuncia_alvo_check" CHECK');
   });
 });

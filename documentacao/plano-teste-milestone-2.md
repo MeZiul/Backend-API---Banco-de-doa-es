@@ -1,5 +1,8 @@
 # Plano de Teste - Milestone 2
 
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+
+
 Este documento organiza o plano geral de testes da Milestone 2 da API DoaI. Ele deve ser usado como visao de integracao: fluxo principal, comandos de execucao, evidencias e limites da entrega.
 
 Os detalhes por modulo ficam separados em `documentacao/doc-service/`.

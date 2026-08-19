@@ -6,7 +6,6 @@ import logger from '../logger.js';
 import CommonResponse from './CommonResponse.js';
 import StatusService from './StatusService.js';
 import { v4 as uuidv4 } from 'uuid';
-import mongoose from 'mongoose';
 import AuthenticationError from '../errors/AuthenticationError.js';
 import CustomError from './CustomError.js';
 
@@ -69,7 +68,7 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  // Tratamento para erro de chave duplicada no MongoDB (código 11000)
+  // Compatibilidade: repositories convertem P2002 para o código legado 11000
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue || {})[0];
     const value = err.keyValue ? err.keyValue[field] : 'duplicado';
@@ -84,11 +83,42 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  // Tratamento para erros de validação do Mongoose
-  if (err instanceof mongoose.Error.ValidationError) {
-    const detalhes = Object.values(err.errors).map(e => ({ path: e.path, message: e.message }));
-    logger.warn('Erro de validação do Mongoose', { details: detalhes, path: req.path, requestId });
-    return CommonResponse.error(res, 400, 'validationError', null, detalhes);
+  // Erros conhecidos do Prisma/PostgreSQL que podem escapar dos repositories.
+  if (err.code === 'P2002') {
+    const target = Array.isArray(err?.meta?.target) ? err.meta.target : [];
+    const field = target[0] || 'campo';
+    logger.warn('Restrição única do Prisma', { target, path: req.path, requestId });
+    return CommonResponse.error(
+      res,
+      409,
+      'duplicateEntry',
+      field,
+      [{ path: field, message: 'O valor informado já está em uso.' }],
+      'Entrada duplicada.'
+    );
+  }
+
+  if (err.code === 'P2003') {
+    logger.warn('Violação de integridade referencial do Prisma', { meta: err.meta, path: req.path, requestId });
+    return CommonResponse.error(
+      res,
+      409,
+      'referentialIntegrity',
+      err?.meta?.field_name || null,
+      [{ message: 'A operação viola uma referência existente no banco de dados.' }],
+      'Operação não permitida por integridade referencial.'
+    );
+  }
+
+  if (err.code === 'P2025') {
+    return CommonResponse.error(
+      res,
+      404,
+      'resourceNotFound',
+      null,
+      [{ message: 'Registro não encontrado.' }],
+      'Registro não encontrado.'
+    );
   }
 
   // Tratamento para erros de autenticação customizados

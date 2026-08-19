@@ -1,7 +1,22 @@
-import path from "path";
-import ItemDoacaoModel from "../models/ItemDoacao.js";
 import BaseRepository from "./base/BaseRepository.js";
 import ItemDoacaoFilterBuilder from "./filters/ItemDoacaoFilterBuilder.js";
+import {
+  mapPrismaErrorToLegacy,
+  projectLegacy,
+  toPrismaWhere,
+} from "./prisma/prismaUtils.js";
+
+const RELATIONS = {
+  categoria_id: "categoria",
+  usuario_id: "usuario",
+  interesse_aceito_id: "interesse_aceito",
+};
+
+const DEFAULT_INCLUDE = {
+  fotos: {
+    orderBy: { ordem: "asc" },
+  },
+};
 
 const ADMIN_ITEM_SELECT = [
   "usuario_id",
@@ -24,7 +39,71 @@ const ADMIN_ITEM_SELECT = [
 
 class ItemDoacaoRepository extends BaseRepository {
   constructor() {
-    super(ItemDoacaoModel);
+    super("itemDoacao", {
+      relationMap: RELATIONS,
+      defaultInclude: DEFAULT_INCLUDE,
+    });
+  }
+
+  normalizeData(data, { mode = "update" } = {}) {
+    const clean = super.normalizeData(data);
+
+    if (clean.$push || clean.$pull) {
+      return clean;
+    }
+
+    if (typeof clean.uf === "string") clean.uf = clean.uf.trim().toUpperCase();
+
+    if (Array.isArray(clean.fotos)) {
+      const fotos = clean.fotos.map((foto) => {
+        const copy = { ...foto };
+        delete copy._id;
+        delete copy.id;
+        delete copy.item_id;
+        return copy;
+      });
+
+      clean.fotos =
+        mode === "create"
+          ? { create: fotos }
+          : { deleteMany: {}, create: fotos };
+    }
+
+    return clean;
+  }
+
+  async criar(dados) {
+    try {
+      const record = await this.delegate.create({
+        data: this.normalizeData(dados, { mode: "create" }),
+        include: DEFAULT_INCLUDE,
+      });
+      return this.mapRecord(record);
+    } catch (error) {
+      throw mapPrismaErrorToLegacy(error);
+    }
+  }
+
+  async atualizar(id, dados) {
+    if (dados?.$push?.fotos?.$each) {
+      return this.adicionarFotos(id, dados.$push.fotos.$each);
+    }
+
+    if (dados?.$pull?.fotos?._id) {
+      return this.removerFoto(id, dados.$pull.fotos._id);
+    }
+
+    try {
+      const record = await this.delegate.update({
+        where: { id: String(id) },
+        data: this.normalizeData(dados, { mode: "update" }),
+        include: DEFAULT_INCLUDE,
+      });
+      return this.mapRecord(record);
+    } catch (error) {
+      if (error?.code === "P2025") return null;
+      throw mapPrismaErrorToLegacy(error);
+    }
   }
 
   listarDisponiveis({ filtros = {}, page = 1, limit = 10, ordenacao }) {
@@ -36,19 +115,16 @@ class ItemDoacaoRepository extends BaseRepository {
       .comCondicao(filtros.condicao_item)
       .comUf(filtros.uf);
 
-    const regraDeOrdenacao =
-      ItemDoacaoFilterBuilder.construirOrdenacao(ordenacao);
-
     return this.listarComPaginacao(builder.build(), {
       page,
       limit,
       select:
-        "titulo cidade uf condicao_item data_cadastro status fotos usuario_id",
+        "titulo cidade uf condicao_item data_cadastro status fotos usuario_id categoria_id",
       populate: [
         { path: "categoria_id", select: "nome" },
         { path: "usuario_id", select: "nome cidade media_avaliacoes" },
       ],
-      sort: regraDeOrdenacao,
+      sort: ItemDoacaoFilterBuilder.construirOrdenacao(ordenacao),
     });
   }
 
@@ -80,142 +156,228 @@ class ItemDoacaoRepository extends BaseRepository {
     });
   }
 
-  buscarDetalhes(id) {
-    return this.model
-      .findByIdAndUpdate(id, { $inc: { visualizacoes: 1 } }, { new: true })
-      .populate({ path: "categoria_id", select: "nome descricao" })
-      .populate({
-        path: "usuario_id",
-        select: "nome cidade uf media_avaliacoes",
+  async buscarDetalhes(id) {
+    try {
+      const record = await this.delegate.update({
+        where: { id: String(id) },
+        data: { visualizacoes: { increment: 1 } },
+        include: {
+          ...DEFAULT_INCLUDE,
+          categoria: { select: { id: true, nome: true, descricao: true } },
+          usuario: {
+            select: {
+              id: true,
+              nome: true,
+              cidade: true,
+              uf: true,
+              media_avaliacoes: true,
+            },
+          },
+        },
       });
+      return this.mapRecord(record);
+    } catch (error) {
+      if (error?.code === "P2025") return null;
+      throw mapPrismaErrorToLegacy(error);
+    }
   }
 
   async adicionarFotos(idItem, novasFotos) {
-    return this.model.findByIdAndUpdate(
-      idItem,
-      { $push: { fotos: { $each: novasFotos } } },
-      { new: true },
-    );
+    try {
+      return await this.client.$transaction(async (tx) => {
+        const existing = await tx.itemDoacao.findUnique({
+          where: { id: String(idItem) },
+          select: { id: true },
+        });
+        if (!existing) return null;
+
+        if (novasFotos.length) {
+          await tx.fotoItemDoacao.createMany({
+            data: novasFotos.map((foto) => ({
+              item_id: String(idItem),
+              url: foto.url,
+              ordem: foto.ordem,
+              nome_original: foto.nome_original ?? null,
+              tamanho: foto.tamanho ?? null,
+              mime_type: foto.mime_type ?? null,
+              data_upload: foto.data_upload ?? new Date(),
+            })),
+          });
+        }
+
+        const record = await tx.itemDoacao.findUnique({
+          where: { id: String(idItem) },
+          include: DEFAULT_INCLUDE,
+        });
+        return this.mapRecord(record);
+      });
+    } catch (error) {
+      throw mapPrismaErrorToLegacy(error);
+    }
   }
 
   async removerFoto(idItem, idFoto) {
-    return this.model.findByIdAndUpdate(
-      idItem,
-      { $pull: { fotos: { _id: idFoto } } },
-      { new: true },
-    );
-  }
+    return this.client.$transaction(async (tx) => {
+      const existing = await tx.itemDoacao.findUnique({
+        where: { id: String(idItem) },
+        select: { id: true },
+      });
+      if (!existing) return null;
 
-  async buscarFotosDoItem(idItem) {
-    return this.model.findById(idItem).select("fotos usuario_id status");
-  }
+      await tx.fotoItemDoacao.deleteMany({
+        where: {
+          item_id: String(idItem),
+          id: String(idFoto),
+        },
+      });
 
-  async listarPorUsuario(usuarioId) {
-    return this.model
-      .find({ usuario_id: usuarioId })
-      .populate({ path: "categoria_id", select: "nome" })
-      .sort({ data_cadastro: -1 });
-  }
-
-  listarResumoPorUsuario(usuarioId, limit = 10) {
-    return this.model
-      .find({ usuario_id: usuarioId })
-      .select("categoria_id titulo status total_interesses data_cadastro data_doacao")
-      .populate({ path: "categoria_id", select: "nome" })
-      .sort({ data_cadastro: -1 })
-      .limit(limit);
-  }
-
-  listarIdsPorUsuario(usuarioId) {
-    return this.model
-      .find({ usuario_id: usuarioId })
-      .select("_id");
-  }
-
-  async buscarEmAndamentoPorUsuario(usuarioId) {
-    return this.model.find({
-      usuario_id: usuarioId,
-      status: { $in: ["RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
+      const record = await tx.itemDoacao.findUnique({
+        where: { id: String(idItem) },
+        include: DEFAULT_INCLUDE,
+      });
+      return this.mapRecord(record);
     });
   }
 
-  async listarDisponiveisPorUsuario(usuarioId) {
-    return this.model
-      .find({
-        usuario_id: usuarioId,
-        status: "DISPONIVEL",
-      })
-      .select("_id status");
+  async buscarFotosDoItem(idItem) {
+    const record = await this.delegate.findUnique({
+      where: { id: String(idItem) },
+      include: DEFAULT_INCLUDE,
+    });
+    return projectLegacy(this.mapRecord(record), "fotos usuario_id status");
   }
 
-  atualizarSeStatus(id, statusEsperado, dadosAtualizacao, filtrosAdicionais = {}) {
+  async listarPorUsuario(usuarioId) {
+    const records = await this.delegate.findMany({
+      where: { usuario_id: usuarioId },
+      include: {
+        ...DEFAULT_INCLUDE,
+        categoria: { select: { id: true, nome: true } },
+      },
+      orderBy: { data_cadastro: "desc" },
+    });
+    return records.map((record) => this.mapRecord(record));
+  }
+
+  async listarResumoPorUsuario(usuarioId, limit = 10) {
+    const records = await this.delegate.findMany({
+      where: { usuario_id: usuarioId },
+      include: { categoria: { select: { id: true, nome: true } } },
+      orderBy: { data_cadastro: "desc" },
+      take: limit,
+    });
+    return records.map((record) =>
+      projectLegacy(
+        this.mapRecord(record),
+        "categoria_id titulo status total_interesses data_cadastro data_doacao",
+      ),
+    );
+  }
+
+  async listarIdsPorUsuario(usuarioId) {
+    const records = await this.delegate.findMany({
+      where: { usuario_id: usuarioId },
+      select: { id: true },
+    });
+    return records.map((record) => this.mapRecord(record));
+  }
+
+  async buscarEmAndamentoPorUsuario(usuarioId) {
+    const records = await this.delegate.findMany({
+      where: {
+        usuario_id: usuarioId,
+        status: { in: ["RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
+      },
+      include: DEFAULT_INCLUDE,
+    });
+    return records.map((record) => this.mapRecord(record));
+  }
+
+  async listarDisponiveisPorUsuario(usuarioId) {
+    const records = await this.delegate.findMany({
+      where: {
+        usuario_id: usuarioId,
+        status: "DISPONIVEL",
+      },
+      include: DEFAULT_INCLUDE,
+    });
+    return records.map((record) => projectLegacy(this.mapRecord(record), "status"));
+  }
+
+  async atualizarSeStatus(
+    id,
+    statusEsperado,
+    dadosAtualizacao,
+    filtrosAdicionais = {},
+  ) {
     const status = Array.isArray(statusEsperado)
-      ? { $in: statusEsperado }
+      ? { in: statusEsperado }
       : statusEsperado;
 
-    return this.model.findOneAndUpdate(
-      {
-        _id: id,
-        status,
-        ...filtrosAdicionais,
-      },
-      { $set: dadosAtualizacao },
-      { new: true, runValidators: true },
-    );
+    try {
+      return await this.client.$transaction(async (tx) => {
+        const result = await tx.itemDoacao.updateMany({
+          where: {
+            id: String(id),
+            status,
+            ...toPrismaWhere(filtrosAdicionais),
+          },
+          data: this.normalizeData(dadosAtualizacao),
+        });
+
+        if (result.count === 0) return null;
+
+        const record = await tx.itemDoacao.findUnique({
+          where: { id: String(id) },
+          include: DEFAULT_INCLUDE,
+        });
+        return this.mapRecord(record);
+      });
+    } catch (error) {
+      throw mapPrismaErrorToLegacy(error);
+    }
   }
 
   async cancelarItensPorUsuario(usuarioId) {
-    return this.model.updateMany(
-      {
+    const result = await this.delegate.updateMany({
+      where: {
         usuario_id: usuarioId,
-        status: { $in: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO"] },
+        status: {
+          in: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO"],
+        },
       },
-      { status: "CANCELADO" },
-    );
+      data: { status: "CANCELADO" },
+    });
+    return { matchedCount: result.count, modifiedCount: result.count };
   }
 
   incrementarInteressesSeDisponivel(itemId) {
-    return this.model.findOneAndUpdate(
-      { _id: itemId, status: "DISPONIVEL" },
-      { $inc: { total_interesses: 1 } },
-      { new: true, runValidators: true },
-    );
+    return this.atualizarSeStatus(itemId, "DISPONIVEL", {
+      total_interesses: { increment: 1 },
+    });
   }
 
   reservarSeDisponivel(itemId, interesseId) {
-    return this.model.findOneAndUpdate(
+    return this.atualizarSeStatus(
+      itemId,
+      "DISPONIVEL",
       {
-        _id: itemId,
-        status: "DISPONIVEL",
-        $or: [
-          { interesse_aceito_id: null },
-          { interesse_aceito_id: { $exists: false } },
-        ],
+        status: "RESERVADO",
+        interesse_aceito_id: String(interesseId),
       },
-      {
-        $set: {
-          status: "RESERVADO",
-          interesse_aceito_id: interesseId,
-        },
-      },
-      { new: true, runValidators: true },
+      { interesse_aceito_id: null },
     );
   }
 
   liberarReservaDoInteresse(itemId, interesseId) {
-    return this.model.findOneAndUpdate(
+    return this.atualizarSeStatus(
+      itemId,
+      "RESERVADO",
       {
-        _id: itemId,
-        status: "RESERVADO",
-        interesse_aceito_id: interesseId,
+        status: "DISPONIVEL",
+        interesse_aceito_id: null,
       },
-      {
-        $set: {
-          status: "DISPONIVEL",
-          interesse_aceito_id: null,
-        },
-      },
-      { new: true, runValidators: true },
+      { interesse_aceito_id: String(interesseId) },
     );
   }
 

@@ -1,44 +1,148 @@
+import express from "express";
+import jwt from "jsonwebtoken";
 import request from "supertest";
-import { beforeAll, describe, expect, jest, test } from "@jest/globals";
 import {
-    createControllerTestApp,
-    createRegularUser,
-    testIds,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "@jest/globals";
+
+import errorHandler from "../../utils/helpers/errorHandler.js";
+import {
+  createAdminUser,
+  createRegularUser,
+  testIds,
 } from "../test.js";
 
-jest.mock("../../models/Usuario.js", () => {
-    return {
-        findByIdAndUpdate: jest.fn(),
-        findById: jest.fn(),
-        updateOne: jest.fn()
-    };
-});
+import PerfilRepository from "../../repositories/PerfilRepository.js";
 
-let appAdmin;
+const mockUsuarioRepositoryBuscarPorId = jest.fn();
+
+jest.mock("../../repositories/PerfilRepository.js", () => ({
+  __esModule: true,
+  default: {
+    atualizar: jest.fn(),
+  },
+}));
+
+jest.mock("../../repositories/UsuarioRepository.js", () => ({
+  __esModule: true,
+  default: class MockUsuarioRepository {
+    buscarPorId(...args) {
+      return mockUsuarioRepositoryBuscarPorId(...args);
+    }
+  },
+}));
+
+let app;
+
+const bearer = (user) =>
+  `Bearer ${jwt.sign(
+    user,
+    process.env.JWT_SECRET_ACCESS_TOKEN,
+  )}`;
+
+const adminAuth = () => bearer(createAdminUser());
 
 beforeAll(async () => {
-    const { default: perfilRouter } = await import(
-        "../../routes/perfilRoutes.js"
-        );
+  const { default: perfilRouter } = await import(
+    "../../routes/perfilRoutes.js"
+  );
 
-    appAdmin = createControllerTestApp({
-        user: createRegularUser({ id: testIds.admin, perfil: "ADMINISTRADOR" }),
-        registerRoutes: (app) => {
-            app.use("/", perfilRouter);
-        },
-    });
+  app = express();
+  app.use(express.json());
+  app.use(perfilRouter);
+  app.use(errorHandler);
 });
 
-describe("Rotas de Perfil (Mock Nativo)", () => {
+beforeEach(() => {
+  PerfilRepository.atualizar.mockReset();
+  mockUsuarioRepositoryBuscarPorId.mockReset();
 
-    describe("PATCH /admin/usuarios/:id/perfil — gerenciarAcesso", () => {
-        test("valida a estrutura do endpoint e a comunicação com o Express", async () => {
-            const res = await request(appAdmin)
-                .patch(`/admin/usuarios/${testIds.usuario}/perfil`)
-                .send({ perfil: "ADMINISTRADOR" });
+  mockUsuarioRepositoryBuscarPorId.mockImplementation(
+    async (id) => ({
+      _id: id,
+      id,
+      perfil:
+        id === testIds.admin
+          ? "ADMINISTRADOR"
+          : "USUARIO",
+      situacao: "ATIVO",
+    }),
+  );
+});
 
-            expect(res.statusCode).toBeDefined();
+describe("Rotas de Perfil (Repository mockado)", () => {
+  test(
+    "PATCH /admin/usuarios/:id/perfil atualiza o acesso como administrador",
+    async () => {
+      PerfilRepository.atualizar.mockResolvedValue({
+        _id: testIds.usuario,
+        perfil: "ADMINISTRADOR",
+        situacao: "ATIVO",
+      });
+
+      const res = await request(app)
+        .patch(
+          `/admin/usuarios/${testIds.usuario}/perfil`,
+        )
+        .set("Authorization", adminAuth())
+        .send({
+          perfil: "ADMINISTRADOR",
         });
-    });
 
+      expect(res.statusCode).toBe(200);
+
+      expect(
+        PerfilRepository.atualizar,
+      ).toHaveBeenCalledWith(
+        testIds.usuario,
+        {
+          perfil: "ADMINISTRADOR",
+        },
+      );
+    },
+  );
+
+  test("deve exigir autenticacao", async () => {
+    const res = await request(app)
+      .patch(
+        `/admin/usuarios/${testIds.usuario}/perfil`,
+      )
+      .send({
+        perfil: "ADMINISTRADOR",
+      });
+
+    expect(res.statusCode).toBe(498);
+
+    expect(
+      PerfilRepository.atualizar,
+    ).not.toHaveBeenCalled();
+  });
+
+  test(
+    "deve impedir usuario comum de alterar perfil",
+    async () => {
+      const res = await request(app)
+        .patch(
+          `/admin/usuarios/${testIds.usuario}/perfil`,
+        )
+        .set(
+          "Authorization",
+          bearer(createRegularUser()),
+        )
+        .send({
+          perfil: "ADMINISTRADOR",
+        });
+
+      expect(res.statusCode).toBe(403);
+
+      expect(
+        PerfilRepository.atualizar,
+      ).not.toHaveBeenCalled();
+    },
+  );
 });

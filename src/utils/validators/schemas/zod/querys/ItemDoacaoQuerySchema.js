@@ -1,8 +1,8 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
-const isValidObjectId = (value) => !value || mongoose.Types.ObjectId.isValid(value);
+const isValidEntityId = (value) => !value || isEntityId(value);
 const periodoAdministrativo = {
     dataInicio: z.string().optional()
         .refine(isValidDate, { message: "dataInicio inválida" }),
@@ -18,13 +18,13 @@ export const itemDoacaoQuerySchema = z.object({
     //Busca textual e filtros combinados
     busca: z.string().optional(),
     categoria_id: z.string().optional()
-        .refine(isValidObjectId, { message: "categoria_id inválido" }),
+        .refine(isValidEntityId, { message: "categoria_id inválido" }),
     categoriaId: z.string().optional()
-        .refine(isValidObjectId, { message: "categoriaId inválido" }),
+        .refine(isValidEntityId, { message: "categoriaId inválido" }),
     usuario_id: z.string().optional()
-        .refine(isValidObjectId, { message: "usuario_id inválido" }),
+        .refine(isValidEntityId, { message: "usuario_id inválido" }),
     usuarioId: z.string().optional()
-        .refine(isValidObjectId, { message: "usuarioId inválido" }),
+        .refine(isValidEntityId, { message: "usuarioId inválido" }),
     cidade: z.string().optional(),
     uf: z.coerce.string().length(2).toUpperCase().optional(),
     status: z.enum(["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"]).optional(),

@@ -1,10 +1,9 @@
-import Usuario from '../models/Usuario.js';
-import BaseRepository from './base/BaseRepository.js';
+import BaseRepository from "./base/BaseRepository.js";
 
 class PerfilRepository extends BaseRepository {
-    constructor() {
-        super(Usuario);
-    }
+  constructor() {
+    super("usuario");
+  }
 }
 
 export default new PerfilRepository();

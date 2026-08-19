@@ -1,90 +1,89 @@
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import {
-    createControllerTestApp,
-    createRegularUser,
-    testIds,
+  createControllerTestApp,
+  createRegularUser,
+  testIds,
 } from "../test.js";
-import NotificacaoModel from "../../models/Notificacao.js";
+import NotificacaoRepository from "../../repositories/NotificacaoRepository.js";
 
-jest.mock("../../models/Notificacao.js", () => {
-    return {
-        paginate: jest.fn(),
-        countDocuments: jest.fn(),
-        findOneAndUpdate: jest.fn(),
-        updateMany: jest.fn(),
-    };
-});
+jest.mock("../../repositories/NotificacaoRepository.js", () => ({
+  __esModule: true,
+  default: {
+    listarDoUsuario: jest.fn(),
+    contarNaoLidas: jest.fn(),
+    marcarComoLida: jest.fn(),
+    marcarTodasComoLidas: jest.fn(),
+    criar: jest.fn(),
+    criarMuitas: jest.fn(),
+  },
+}));
 
 jest.mock("../../middlewares/AuthMiddleware.js", () => (
-    (_req, _res, next) => next()
+  (_req, _res, next) => next()
 ));
 
 let appUsuario;
 
 beforeAll(async () => {
-    const { default: notificacaoRouter } = await import(
-        "../../routes/notificacaoRoutes.js"
-        );
+  const { default: notificacaoRouter } = await import(
+    "../../routes/notificacaoRoutes.js"
+  );
 
-    appUsuario = createControllerTestApp({
-        user: createRegularUser({ id: testIds.usuario }),
-        registerRoutes: (app) => {
-            app.use("/", notificacaoRouter);
-        },
-    });
+  appUsuario = createControllerTestApp({
+    user: createRegularUser({ id: testIds.usuario }),
+    registerRoutes: (app) => {
+      app.use("/", notificacaoRouter);
+    },
+  });
 });
 
 beforeEach(() => {
-    Object.values(NotificacaoModel).forEach((mockFn) => mockFn.mockReset());
+  Object.values(NotificacaoRepository).forEach((mockFn) => {
+    if (typeof mockFn?.mockReset === "function") mockFn.mockReset();
+  });
 });
 
-describe("Rotas de Notificação (Mock Nativo)", () => {
+describe("Rotas de Notificação (Repository mockado)", () => {
+  test("GET /notificacoes retorna as notificações do usuário autenticado", async () => {
+    const payload = { docs: [{ _id: testIds.administracao }] };
+    NotificacaoRepository.listarDoUsuario.mockResolvedValue(payload);
 
-    describe("GET /notificacoes", () => {
-        test("retorna as notificações do usuário autenticado", async () => {
-            const payload = { docs: [{ _id: testIds.administracao }] };
-            NotificacaoModel.paginate.mockResolvedValue(payload);
+    const res = await request(appUsuario).get("/notificacoes?page=1&limit=10");
 
-            const res = await request(appUsuario).get("/notificacoes?page=1&limit=10");
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toEqual(payload);
+  });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.data).toEqual(payload);
-        });
+  test("GET /notificacoes/contador retorna a quantidade não lida", async () => {
+    NotificacaoRepository.contarNaoLidas.mockResolvedValue(2);
+
+    const res = await request(appUsuario).get("/notificacoes/contador");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toEqual({ nao_lidas: 2 });
+  });
+
+  test("PATCH /notificacoes/:id/ler marca como lida", async () => {
+    const payload = { _id: testIds.administracao, lida: true };
+    NotificacaoRepository.marcarComoLida.mockResolvedValue(payload);
+
+    const res = await request(appUsuario)
+      .patch(`/notificacoes/${testIds.administracao}/ler`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toEqual(payload);
+  });
+
+  test("POST /notificacoes/ler-tudo marca todas como lidas", async () => {
+    NotificacaoRepository.marcarTodasComoLidas.mockResolvedValue({
+      matchedCount: 2,
+      modifiedCount: 2,
     });
 
-    describe("GET /notificacoes/contador", () => {
-        test("retorna a quantidade de notificações não lidas", async () => {
-            NotificacaoModel.countDocuments.mockResolvedValue(2);
+    const res = await request(appUsuario).post("/notificacoes/ler-tudo");
 
-            const res = await request(appUsuario).get("/notificacoes/contador");
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.data).toEqual({ nao_lidas: 2 });
-        });
-    });
-
-    describe("PATCH /notificacoes/:id/ler", () => {
-        test("marca uma notificação do usuário como lida", async () => {
-            const payload = { _id: testIds.administracao, lida: true };
-            NotificacaoModel.findOneAndUpdate.mockResolvedValue(payload);
-
-            const res = await request(appUsuario)
-                .patch(`/notificacoes/${testIds.administracao}/ler`);
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.data).toEqual(payload);
-        });
-    });
-
-    describe("POST /notificacoes/ler-tudo", () => {
-        test("marca todas as notificações do usuário como lidas", async () => {
-            NotificacaoModel.updateMany.mockResolvedValue({ modifiedCount: 2 });
-
-            const res = await request(appUsuario).post("/notificacoes/ler-tudo");
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.data).toEqual({ mensagem: "Marcado como Lidas" });
-        });
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toEqual({ mensagem: "Marcado como Lidas" });
+  });
 });
