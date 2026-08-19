@@ -30,6 +30,25 @@ const createQueryChain = () => {
 };
 
 describe("Filtros e projeções de Administração, Interesse e Denúncia", () => {
+  test("AvaliacaoRepository deve restringir avaliações ao usuário informado", async () => {
+    const repository = new AvaliacaoRepository();
+    const listarSpy = jest.spyOn(repository, "listarComPaginacao").mockResolvedValue({});
+
+    await repository.listar({
+      filtros: { item_id: testIds.item },
+      usuarioId: testIds.usuario,
+    });
+
+    const [filtro] = listarSpy.mock.calls[0];
+    expect(filtro).toEqual({
+      item_id: testIds.item,
+      $or: [
+        { avaliador_id: testIds.usuario },
+        { avaliado_id: testIds.usuario },
+      ],
+    });
+  });
+
   test("AdministracaoRepository deve aplicar builder e projeções explícitas", async () => {
     const repository = new AdministracaoRepository();
     const listarSpy = jest.spyOn(repository, "listarComPaginacao").mockResolvedValue({});

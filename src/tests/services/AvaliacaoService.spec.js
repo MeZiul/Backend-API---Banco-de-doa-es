@@ -440,23 +440,24 @@ describe("AvaliacaoService", () => {
     });
   });
 
-  test("Deve listar avaliações com filtros e paginação padrão", async () => {
+  test("Deve limitar a listagem às avaliações relacionadas ao usuário comum", async () => {
     const mockResultado = { docs: [{ nota: 5 }], total: 1 };
     avaliacaoRepository.listar.mockResolvedValue(mockResultado);
 
     const resultado = await service.listarPorUsuario({
       filtros: { avaliado_id: testIds.doador },
-    });
+    }, createRegularUser({ id: testIds.interessado }));
 
     expect(avaliacaoRepository.listar).toHaveBeenCalledWith({
       filtros: { avaliado_id: testIds.doador },
       page: 1,
       limit: 20,
+      usuarioId: testIds.interessado,
     });
     expect(resultado).toEqual(mockResultado);
   });
 
-  test("Deve listar avaliações com paginação customizada", async () => {
+  test("Deve permitir listagem sem escopo para administrador", async () => {
     const mockResultado = { docs: [], total: 0 };
     avaliacaoRepository.listar.mockResolvedValue(mockResultado);
 
@@ -464,14 +465,24 @@ describe("AvaliacaoService", () => {
       filtros: {},
       page: 2,
       limit: 10,
-    });
+    }, createAdminUser({ id: testIds.admin }));
 
     expect(avaliacaoRepository.listar).toHaveBeenCalledWith({
       filtros: {},
       page: 2,
       limit: 10,
+      usuarioId: undefined,
     });
     expect(resultado).toEqual(mockResultado);
+  });
+
+  test("Deve rejeitar listagem sem usuário autenticado", async () => {
+    await expect(service.listarPorUsuario({ filtros: {} }, {})).rejects.toMatchObject({
+      statusCode: 401,
+      customMessage: "Usuário autenticado não informado.",
+    });
+
+    expect(avaliacaoRepository.listar).not.toHaveBeenCalled();
   });
 
   test("Deve impedir avaliação quando item não possui data_doacao", async () => {
