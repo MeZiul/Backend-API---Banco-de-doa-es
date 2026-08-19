@@ -1,6 +1,5 @@
 
 import "dotenv/config";
-import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import fakebr from "faker-br";
 import { fileURLToPath } from "url";
@@ -8,14 +7,17 @@ import { fileURLToPath } from "url";
 // ── Conexão ──────────────────────────────────────────────────────────────────
 import DbConect from "../config/DbConnect.js";
 
-// ── Models ───────────────────────────────────────────────────────────────────
-import Usuario     from "../models/Usuario.js";
-import Categoria   from "../models/Categoria.js";
-import ItemDoacao  from "../models/ItemDoacao.js";
-import Avaliacao   from "../models/Avaliacao.js";
-import Interesse   from "../models/Interesse.js";
-import Denuncia    from "../models/Denuncia.js";
-import Notificacao from "../models/Notificacao.js";
+// ── Prisma (adaptador de seed para preservar os builders legados) ──────────────
+import { getPrisma } from "../config/prisma.js";
+import { createLegacySeedModel } from "./prismaSeedModel.js";
+
+const Usuario = createLegacySeedModel("usuario");
+const Categoria = createLegacySeedModel("categoria");
+const ItemDoacao = createLegacySeedModel("itemDoacao");
+const Avaliacao = createLegacySeedModel("avaliacao");
+const Interesse = createLegacySeedModel("interesse");
+const Denuncia = createLegacySeedModel("denuncia");
+const Notificacao = createLegacySeedModel("notificacao");
 
 // ── Schemas de validação ──────────────────────────────────────────────────────
 import { UsuarioSeedSchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
@@ -773,7 +775,26 @@ async function seedNotificacoes(usuarios, itens) {
  * Popula o banco ja conectado (sem connect/disconnect).
  * Pode ser chamado em testes via beforeAll ou pelo script run().
  */
+async function limparBancoRelacional() {
+  const prisma = getPrisma();
+
+  // ItemDoacao e Interesse possuem uma referência circular opcional por causa
+  // do interesse aceito. Soltamos essa referência antes da limpeza.
+  await prisma.itemDoacao.updateMany({ data: { interesse_aceito_id: null } });
+  await prisma.administracao.deleteMany();
+  await prisma.notificacao.deleteMany();
+  await prisma.denuncia.deleteMany();
+  await prisma.avaliacao.deleteMany();
+  await prisma.interesse.deleteMany();
+  await prisma.fotoItemDoacao.deleteMany();
+  await prisma.itemDoacao.deleteMany();
+  await prisma.categoria.deleteMany();
+  await prisma.usuario.deleteMany();
+}
+
 export async function seedAll() {
+  await limparBancoRelacional();
+
   const categorias   = await seedCategorias();
   const usuarios     = await seedUsuarios();
   const itens        = await seedItens(usuarios, categorias);
@@ -818,7 +839,7 @@ async function run() {
   console.log("   Suspenso: roberto@email.com / Senha@123");
   console.log("   Inativo:  inativo@doai.com / Senha@123");
 
-  await mongoose.disconnect();
+  await DbConect.desconectar();
   process.exit(0);
 }
 

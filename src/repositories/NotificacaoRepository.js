@@ -1,45 +1,75 @@
-import Notificacao from '../models/Notificacao.js';
-import BaseRepository from './base/BaseRepository.js';
+import BaseRepository from "./base/BaseRepository.js";
+import { mapPrismaErrorToLegacy } from "./prisma/prismaUtils.js";
 
 class NotificacaoRepository extends BaseRepository {
-    constructor() {
-        super(Notificacao);
-    }
+  constructor() {
+    super("notificacao");
+  }
 
-    criarMuitas(notificacoes) {
-        return this.model.insertMany(notificacoes, { ordered: false });
-    }
+  async criarMuitas(notificacoes) {
+    if (!notificacoes.length) return [];
 
-    listarDoUsuario(usuarioId, options = { page: 1, limit: 20 }) {
-        const query = { usuario_id: usuarioId };
-
-        return this.listarComPaginacao(query, {
-            ...options,
-            sort: { data_criacao: -1 }
-        });
+    try {
+      return await this.client.$transaction(async (tx) => {
+        const created = [];
+        for (const dados of notificacoes) {
+          created.push(
+            await tx.notificacao.create({
+              data: this.normalizeData(dados),
+            }),
+          );
+        }
+        return created.map((record) => this.mapRecord(record));
+      });
+    } catch (error) {
+      throw mapPrismaErrorToLegacy(error);
     }
+  }
 
-    contarNaoLidas(usuarioId) {
-        return this.model.countDocuments({
-            usuario_id: usuarioId,
-            lida: false
-        });
-    }
+  listarDoUsuario(usuarioId, options = { page: 1, limit: 20 }) {
+    return this.listarComPaginacao(
+      { usuario_id: usuarioId },
+      {
+        ...options,
+        sort: { data_criacao: -1 },
+      },
+    );
+  }
 
-    marcarComoLida(notificacaoId, usuarioId) {
-        return this.model.findOneAndUpdate(
-            { _id: notificacaoId, usuario_id: usuarioId },
-            { lida: true },
-            { new: true }, //Retorna atualizado
-        );
-    }
+  contarNaoLidas(usuarioId) {
+    return this.delegate.count({
+      where: {
+        usuario_id: usuarioId,
+        lida: false,
+      },
+    });
+  }
 
-    marcarTodasComoLidas(usuarioId) {
-        return this.model.updateMany(
-            { usuario_id: usuarioId, lida: false },
-            { lida: true },
-        );
-    }
+  async marcarComoLida(notificacaoId, usuarioId) {
+    return this.client.$transaction(async (tx) => {
+      const result = await tx.notificacao.updateMany({
+        where: {
+          id: String(notificacaoId),
+          usuario_id: usuarioId,
+        },
+        data: { lida: true },
+      });
+      if (result.count === 0) return null;
+      return this.mapRecord(
+        await tx.notificacao.findUnique({
+          where: { id: String(notificacaoId) },
+        }),
+      );
+    });
+  }
+
+  async marcarTodasComoLidas(usuarioId) {
+    const result = await this.delegate.updateMany({
+      where: { usuario_id: usuarioId, lida: false },
+      data: { lida: true },
+    });
+    return { matchedCount: result.count, modifiedCount: result.count };
+  }
 }
 
 export default new NotificacaoRepository();

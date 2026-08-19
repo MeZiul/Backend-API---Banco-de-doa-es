@@ -1,26 +1,18 @@
-# Variante alpine para deixar mais leve.
 FROM node:24-alpine
 
-# Argumento de build
-# NODE_ENV afeta se as dependências de desenvolvimento serão instaladas ou não.
-# exemplo, se quiser imagem com ambiente de desenvolvimento, use:
-# docker build --build-arg NODE_ENV=development -t meu-app .
-ARG NODE_ENV=development
+ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
-# Define o diretório de trabalho dentro do container
 WORKDIR /node-app
 
-# Instalar as dependências do projeto,
-# Antes de tudo para aproveitar o cache do Docker
-COPY package.json package-lock.json ./
-RUN npm ci
+# Copiamos o schema antes das dependências porque @prisma/client pode executar
+# geração no postinstall em algumas versões.
+COPY package.json prisma.config.ts ./
+COPY prisma ./prisma
+RUN npm install --include=dev
+RUN npm run prisma:generate
 
-# Copia todo o projeto
 COPY . .
 
-# Utiliza o .env como valor padrão das variáveis de ambiente.
-RUN cp .env.example .env
-
-# Comando que será executado quando o container iniciar
-ENTRYPOINT ["npm", "start"]
+EXPOSE 7340
+CMD ["npm", "start"]

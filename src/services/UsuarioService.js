@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { CustomError } from "../utils/helpers/index.js";
-import { Admin } from "mongodb";
 
 class UsuarioService {
   constructor({

@@ -1,12 +1,12 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "./ObjectIdSchema.js";
 export { AvaliacaoIdSchema, AvaliacaoQuerySchema } from "./querys/AvaliacaoQuerySchema.js";
 
 const AvaliacaoSchema = z.object({
   item_id: z.string()
-    .refine((v) => mongoose.Types.ObjectId.isValid(v), { message: "item_id inválido" }),
+    .refine((v) => isEntityId(v), { message: "item_id inválido" }),
   avaliado_id: z.string()
-    .refine((v) => mongoose.Types.ObjectId.isValid(v), { message: "avaliado_id inválido" }),
+    .refine((v) => isEntityId(v), { message: "avaliado_id inválido" }),
   nota: z.number().int()
     .min(1, "Nota mínima é 1")
     .max(5, "Nota máxima é 5"),

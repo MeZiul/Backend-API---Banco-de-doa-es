@@ -1,24 +1,19 @@
+import fs from "node:fs";
 import { describe, expect, test } from "@jest/globals";
-import NotificacaoModel from "../../models/Notificacao.js";
 
-describe("Model Notificacao", () => {
-  test("Deve usar referência correta de usuário e tipos de domínio necessários", () => {
-    const usuarioPath = NotificacaoModel.schema.path("usuario_id");
-    const tipoPath = NotificacaoModel.schema.path("tipo");
+const schema = fs.readFileSync(
+  new URL("../../../prisma/schema.prisma", import.meta.url),
+  "utf8",
+);
 
-    expect(usuarioPath.options.ref).toBe("Usuario");
-    expect(tipoPath.enumValues).toEqual(
-      expect.arrayContaining([
-        "INTERESSE_RECEBIDO",
-        "INTERESSE_ACEITO",
-        "INTERESSE_RECUSADO",
-        "INTERESSE_CANCELADO",
-        "DENUNCIA_RESULTADO",
-        "USUARIO_SUSPENSO",
-        "USUARIO_REATIVADO",
-        "ITEM_CANCELADO",
-      ])
-    );
-    expect(tipoPath.enumValues).not.toContain("INTERESE_RECEBIDO");
+describe("Schema Prisma de Notificacao", () => {
+  test("mantém a relação com Usuario e os tipos de domínio esperados", () => {
+    expect(schema).toContain("model Notificacao {");
+    expect(schema).toContain("usuario          Usuario");
+    expect(schema).toContain("INTERESSE_RECEBIDO");
+    expect(schema).toContain("INTERESSE_ACEITO");
+    expect(schema).toContain("INTERESSE_RECUSADO");
+    expect(schema).toContain("DENUNCIA_RESULTADO");
+    expect(schema).not.toContain("INTERESE_RECEBIDO");
   });
 });

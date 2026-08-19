@@ -1,5 +1,8 @@
 # Rotas de Denúncia
 
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+
+
 Este documento descreve o contrato funcional das rotas de `denuncia` revisadas para a Milestone 3.
 
 Escopo considerado:

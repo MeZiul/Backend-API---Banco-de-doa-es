@@ -1,6 +1,5 @@
 import PerfilRepository from "../repositories/PerfilRepository.js";
 import { CustomError } from "../utils/helpers/index.js";
-import usuario from "../models/Usuario.js";
 
 class PerfilService {
     constructor(repository) {

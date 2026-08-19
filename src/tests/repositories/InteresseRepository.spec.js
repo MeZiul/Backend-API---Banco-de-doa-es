@@ -1,76 +1,78 @@
-import { afterEach, describe, expect, jest, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import InteresseRepository from "../../repositories/InteresseRepository.js";
 import { testIds } from "../test.js";
 
+function attachClient(repository, client) {
+  Object.defineProperty(repository, "client", { value: client, configurable: true });
+}
+
 describe("InteresseRepository", () => {
-  const repository = new InteresseRepository();
+  test("atualiza somente quando o status esperado ainda é atual", async () => {
+    const repository = new InteresseRepository();
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const findUnique = jest.fn().mockResolvedValue({
+      id: testIds.administracao,
+      status: "ACEITO",
+    });
+    const tx = { interesse: { updateMany, findUnique } };
+    attachClient(repository, { $transaction: (callback) => callback(tx) });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  test("Deve atualizar interesse somente quando o status esperado ainda for atual", () => {
-    const query = { exec: jest.fn() };
-    const spy = jest.spyOn(repository.model, "findOneAndUpdate").mockReturnValue(query);
-
-    const resultado = repository.atualizarSeStatus(
+    const resultado = await repository.atualizarSeStatus(
       testIds.administracao,
       "PENDENTE",
-      { status: "ACEITO" }
+      { status: "ACEITO" },
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      { _id: testIds.administracao, status: "PENDENTE" },
-      { $set: { status: "ACEITO" } },
-      { new: true, runValidators: true }
-    );
-    expect(resultado).toBe(query);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: testIds.administracao, status: "PENDENTE" },
+      data: { status: "ACEITO" },
+    });
+    expect(resultado).toMatchObject({ _id: testIds.administracao, status: "ACEITO" });
   });
 
-  test("Deve restaurar somente recusas realizadas pelo aceite que falhou", () => {
-    const query = { exec: jest.fn() };
+  test("restaura somente recusas produzidas pelo aceite que falhou", async () => {
+    const repository = new InteresseRepository();
+    const updateMany = jest.fn().mockResolvedValue({ count: 2 });
+    attachClient(repository, { interesse: { updateMany } });
     const dataResposta = new Date();
-    const spy = jest.spyOn(repository.model, "updateMany").mockReturnValue(query);
 
-    repository.restaurarRecusadosDoAceite(
+    const resultado = await repository.restaurarRecusadosDoAceite(
       testIds.item,
       testIds.administracao,
-      dataResposta
+      dataResposta,
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      {
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
         item_id: testIds.item,
         status: "RECUSADO",
         data_resposta: dataResposta,
-        _id: { $ne: testIds.administracao },
+        id: { not: testIds.administracao },
       },
-      {
-        $set: {
-          status: "PENDENTE",
-          data_resposta: null,
-        },
-      }
-    );
+      data: { status: "PENDENTE", data_resposta: null },
+    });
+    expect(resultado.modifiedCount).toBe(2);
   });
 
-  test("Deve listar somente recusas produzidas pelo aceite concluído", () => {
-    const query = { exec: jest.fn() };
+  test("lista somente recusas produzidas pelo aceite concluído", async () => {
+    const repository = new InteresseRepository();
     const dataResposta = new Date();
-    const spy = jest.spyOn(repository.model, "find").mockReturnValue(query);
+    const findMany = jest.fn().mockResolvedValue([]);
+    attachClient(repository, { interesse: { findMany } });
 
-    const resultado = repository.listarRecusadosDoAceite(
+    await repository.listarRecusadosDoAceite(
       testIds.item,
       testIds.administracao,
-      dataResposta
+      dataResposta,
     );
 
-    expect(spy).toHaveBeenCalledWith({
-      item_id: testIds.item,
-      status: "RECUSADO",
-      data_resposta: dataResposta,
-      _id: { $ne: testIds.administracao },
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        item_id: testIds.item,
+        status: "RECUSADO",
+        data_resposta: dataResposta,
+        id: { not: testIds.administracao },
+      },
     });
-    expect(resultado).toBe(query);
   });
 });

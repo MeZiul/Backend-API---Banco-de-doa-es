@@ -1,7 +1,7 @@
 // src/utils/validators/schemas/zod/querys/UsuarioQuerySchema.js
 
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
 const periodoAdministrativo = {
@@ -12,7 +12,7 @@ const periodoAdministrativo = {
 };
 
 export const UsuarioIdSchema = z.string().refine(
-  (id) => mongoose.Types.ObjectId.isValid(id),
+  (id) => isEntityId(id),
   { message: "ID inválido" }
 );
 

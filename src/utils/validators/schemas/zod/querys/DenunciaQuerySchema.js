@@ -1,19 +1,19 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
-const isValidObjectId = (value) => !value || mongoose.Types.ObjectId.isValid(value);
+const isValidEntityId = (value) => !value || isEntityId(value);
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
 
 export const DenunciaIdSchema = z.string().refine(
-  (id) => mongoose.Types.ObjectId.isValid(id),
+  (id) => isEntityId(id),
   { message: "ID inválido" }
 );
 
 export const DenunciaQuerySchema = z.object({
   denunciante_id: z.string().optional()
-    .refine(isValidObjectId, { message: "denunciante_id inválido" }),
+    .refine(isValidEntityId, { message: "denunciante_id inválido" }),
   denuncianteId: z.string().optional()
-    .refine(isValidObjectId, { message: "denuncianteId inválido" }),
+    .refine(isValidEntityId, { message: "denuncianteId inválido" }),
   tipo_alvo: z.string().optional()
     .refine((value) => !value || ["ITEM", "USUARIO"].includes(value), {
       message: "tipo_alvo inválido",
@@ -23,13 +23,13 @@ export const DenunciaQuerySchema = z.object({
       message: "tipoAlvo inválido",
     }),
   alvo_item_id: z.string().optional()
-    .refine(isValidObjectId, { message: "alvo_item_id inválido" }),
+    .refine(isValidEntityId, { message: "alvo_item_id inválido" }),
   alvoItemId: z.string().optional()
-    .refine(isValidObjectId, { message: "alvoItemId inválido" }),
+    .refine(isValidEntityId, { message: "alvoItemId inválido" }),
   alvo_usuario_id: z.string().optional()
-    .refine(isValidObjectId, { message: "alvo_usuario_id inválido" }),
+    .refine(isValidEntityId, { message: "alvo_usuario_id inválido" }),
   alvoUsuarioId: z.string().optional()
-    .refine(isValidObjectId, { message: "alvoUsuarioId inválido" }),
+    .refine(isValidEntityId, { message: "alvoUsuarioId inválido" }),
   motivo: z.string().optional()
     .refine((value) => !value || ["CONTEUDO_INAPROPRIADO", "ITEM_PROIBIDO", "FRAUDE", "ASSEDIO", "SPAM", "OUTRO"].includes(value), {
       message: "motivo inválido",
@@ -39,9 +39,9 @@ export const DenunciaQuerySchema = z.object({
       message: "status inválido",
     }),
   admin_id: z.string().optional()
-    .refine(isValidObjectId, { message: "admin_id inválido" }),
+    .refine(isValidEntityId, { message: "admin_id inválido" }),
   adminId: z.string().optional()
-    .refine(isValidObjectId, { message: "adminId inválido" }),
+    .refine(isValidEntityId, { message: "adminId inválido" }),
   dataInicio: z.string().optional()
     .refine(isValidDate, { message: "dataInicio inválida" }),
   dataFim: z.string().optional()

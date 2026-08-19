@@ -1,18 +1,18 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
 export const AvaliacaoIdSchema = z.string().refine(
-  (id) => mongoose.Types.ObjectId.isValid(id),
+  (id) => isEntityId(id),
   { message: "ID inválido" }
 );
 
 export const AvaliacaoQuerySchema = z.object({
   avaliado_id: z.string().optional()
-    .refine((v) => !v || mongoose.Types.ObjectId.isValid(v), { message: "avaliado_id inválido" }),
+    .refine((v) => !v || isEntityId(v), { message: "avaliado_id inválido" }),
   avaliador_id: z.string().optional()
-    .refine((v) => !v || mongoose.Types.ObjectId.isValid(v), { message: "avaliador_id inválido" }),
+    .refine((v) => !v || isEntityId(v), { message: "avaliador_id inválido" }),
   item_id: z.string().optional()
-    .refine((v) => !v || mongoose.Types.ObjectId.isValid(v), { message: "item_id inválido" }),
+    .refine((v) => !v || isEntityId(v), { message: "item_id inválido" }),
   tipo: z.string().optional()
     .refine((v) => !v || ["DOADOR_PARA_INTERESSADO", "INTERESSADO_PARA_DOADOR"].includes(v), {
       message: "tipo deve ser DOADOR_PARA_INTERESSADO ou INTERESSADO_PARA_DOADOR",

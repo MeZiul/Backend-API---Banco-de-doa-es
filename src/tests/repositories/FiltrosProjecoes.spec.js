@@ -20,14 +20,6 @@ import { testIds } from "../test.js";
 const dataInicio = "2026-01-01";
 const dataFim = "2026-01-31";
 
-const createQueryChain = () => {
-  const chain = {};
-  chain.select = jest.fn(() => chain);
-  chain.populate = jest.fn(() => chain);
-  chain.sort = jest.fn(() => chain);
-  chain.limit = jest.fn(() => chain);
-  return chain;
-};
 
 describe("Filtros e projeções de Administração, Interesse e Denúncia", () => {
   test("AdministracaoRepository deve aplicar builder e projeções explícitas", async () => {
@@ -62,8 +54,14 @@ describe("Filtros e projeções de Administração, Interesse e Denúncia", () =
     });
     expect(opcoes.populate).toEqual([
       expect.objectContaining({ path: "administrador_id", select: expect.any(String) }),
-      expect.objectContaining({ path: "alvo_id", select: expect.any(String) }),
     ]);
+    expect(opcoes.include).toEqual(
+      expect.objectContaining({
+        alvo_usuario: expect.any(Object),
+        alvo_item: expect.any(Object),
+        alvo_denuncia: expect.any(Object),
+      }),
+    );
   });
 
   test("DenunciaRepository deve aplicar todos os filtros e limitar os populates", async () => {
@@ -197,23 +195,27 @@ describe("Filtros e projeções de Administração, Interesse e Denúncia", () =
     expect(opcoes.select).not.toContain("interesse_aceito_id");
   });
 
-  test("Repositories devem limitar e projetar os históricos administrativos do usuário", async () => {
+  test("Repositories devem limitar os históricos administrativos do usuário no Prisma", async () => {
+    const attach = (repository, client) => {
+      Object.defineProperty(repository, "client", { value: client, configurable: true });
+    };
+
     const itemRepository = new ItemDoacaoRepository();
     const interesseRepository = new InteresseRepository();
     const avaliacaoRepository = new AvaliacaoRepository();
     const denunciaRepository = new DenunciaRepository();
-    const itemQuery = createQueryChain();
-    const itemIdsQuery = createQueryChain();
-    const interesseQuery = createQueryChain();
-    const avaliacaoQuery = createQueryChain();
-    const denunciaQuery = createQueryChain();
 
-    jest.spyOn(itemRepository.model, "find")
-      .mockReturnValueOnce(itemQuery)
-      .mockReturnValueOnce(itemIdsQuery);
-    jest.spyOn(interesseRepository.model, "find").mockReturnValue(interesseQuery);
-    jest.spyOn(avaliacaoRepository.model, "find").mockReturnValue(avaliacaoQuery);
-    jest.spyOn(denunciaRepository.model, "find").mockReturnValue(denunciaQuery);
+    const itemFindMany = jest.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const interesseFindMany = jest.fn().mockResolvedValue([]);
+    const avaliacaoFindMany = jest.fn().mockResolvedValue([]);
+    const denunciaFindMany = jest.fn().mockResolvedValue([]);
+
+    attach(itemRepository, { itemDoacao: { findMany: itemFindMany } });
+    attach(interesseRepository, { interesse: { findMany: interesseFindMany } });
+    attach(avaliacaoRepository, { avaliacao: { findMany: avaliacaoFindMany } });
+    attach(denunciaRepository, { denuncia: { findMany: denunciaFindMany } });
 
     await itemRepository.listarResumoPorUsuario(testIds.usuario, 10);
     await itemRepository.listarIdsPorUsuario(testIds.usuario);
@@ -221,35 +223,46 @@ describe("Filtros e projeções de Administração, Interesse e Denúncia", () =
     await avaliacaoRepository.listarResumoPorUsuario(testIds.usuario, 10);
     await denunciaRepository.listarResumoPorUsuario(testIds.usuario, [testIds.item], 10);
 
-    expect(itemRepository.model.find).toHaveBeenCalledWith({ usuario_id: testIds.usuario });
-    expect(itemIdsQuery.select).toHaveBeenCalledWith("_id");
-    expect(interesseRepository.model.find).toHaveBeenCalledWith({
-      $or: [
-        { usuario_interessado_id: testIds.usuario },
-        { usuario_doador_id: testIds.usuario },
-      ],
+    expect(itemFindMany.mock.calls[0][0]).toMatchObject({
+      where: { usuario_id: testIds.usuario },
+      take: 10,
+      orderBy: { data_cadastro: "desc" },
     });
-    expect(avaliacaoRepository.model.find).toHaveBeenCalledWith({
-      $or: [
-        { avaliador_id: testIds.usuario },
-        { avaliado_id: testIds.usuario },
-      ],
+    expect(itemFindMany.mock.calls[1][0]).toEqual({
+      where: { usuario_id: testIds.usuario },
+      select: { id: true },
     });
-    expect(denunciaRepository.model.find).toHaveBeenCalledWith({
-      $or: [
-        { denunciante_id: testIds.usuario },
-        { alvo_usuario_id: testIds.usuario },
-        { alvo_item_id: { $in: [testIds.item] } },
-      ],
+    expect(interesseFindMany.mock.calls[0][0]).toMatchObject({
+      where: {
+        OR: [
+          { usuario_interessado_id: testIds.usuario },
+          { usuario_doador_id: testIds.usuario },
+        ],
+      },
+      take: 10,
     });
-    [itemQuery, interesseQuery, avaliacaoQuery, denunciaQuery].forEach((query) => {
-      expect(query.select).toHaveBeenCalled();
-      expect(query.sort).toHaveBeenCalled();
-      expect(query.limit).toHaveBeenCalledWith(10);
+    expect(avaliacaoFindMany.mock.calls[0][0]).toMatchObject({
+      where: {
+        OR: [
+          { avaliador_id: testIds.usuario },
+          { avaliado_id: testIds.usuario },
+        ],
+      },
+      take: 10,
+    });
+    expect(denunciaFindMany.mock.calls[0][0]).toMatchObject({
+      where: {
+        OR: [
+          { denunciante_id: testIds.usuario },
+          { alvo_usuario_id: testIds.usuario },
+          { alvo_item_id: { in: [testIds.item] } },
+        ],
+      },
+      take: 10,
     });
   });
 
-  test("Schemas administrativos devem validar período e ObjectIds de item", () => {
+  test("Schemas administrativos devem validar período e IDs de entidade", () => {
     expect(AdministracaoUsuarioQuerySchema.parse({ dataInicio, dataFim })).toMatchObject({
       dataInicio,
       dataFim,

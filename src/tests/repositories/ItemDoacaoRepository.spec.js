@@ -1,62 +1,81 @@
-import { afterEach, describe, expect, jest, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import ItemDoacaoRepository from "../../repositories/ItemDoacaoRepository.js";
 import { testIds } from "../test.js";
 
+function attachClient(repository, client) {
+  Object.defineProperty(repository, "client", { value: client, configurable: true });
+}
+
+function makeTransactionRepository(record) {
+  const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+  const findUnique = jest.fn().mockResolvedValue(record);
+  const tx = { itemDoacao: { updateMany, findUnique } };
+  return {
+    client: { $transaction: (callback) => callback(tx) },
+    updateMany,
+    findUnique,
+  };
+}
+
 describe("ItemDoacaoRepository - consistência de interesse", () => {
-  const repository = new ItemDoacaoRepository();
+  test("reserva somente item disponível e sem interesse aceito", async () => {
+    const repository = new ItemDoacaoRepository();
+    const fake = makeTransactionRepository({
+      id: testIds.item,
+      status: "RESERVADO",
+      interesse_aceito_id: testIds.administracao,
+      fotos: [],
+    });
+    attachClient(repository, fake.client);
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  test("Deve reservar somente item ainda disponível e sem interesse aceito", () => {
-    const query = { exec: jest.fn() };
-    const spy = jest.spyOn(repository.model, "findOneAndUpdate").mockReturnValue(query);
-
-    const resultado = repository.reservarSeDisponivel(
+    const resultado = await repository.reservarSeDisponivel(
       testIds.item,
-      testIds.administracao
+      testIds.administracao,
     );
 
-    expect(spy).toHaveBeenCalledWith(
-      {
-        _id: testIds.item,
+    expect(fake.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: testIds.item,
         status: "DISPONIVEL",
-        $or: [
-          { interesse_aceito_id: null },
-          { interesse_aceito_id: { $exists: false } },
-        ],
+        interesse_aceito_id: null,
       },
-      {
-        $set: {
-          status: "RESERVADO",
-          interesse_aceito_id: testIds.administracao,
-        },
-      },
-      { new: true, runValidators: true }
-    );
-    expect(resultado).toBe(query);
-  });
-
-  test("Deve liberar somente a reserva vinculada ao interesse informado", () => {
-    const query = { exec: jest.fn() };
-    const spy = jest.spyOn(repository.model, "findOneAndUpdate").mockReturnValue(query);
-
-    repository.liberarReservaDoInteresse(testIds.item, testIds.administracao);
-
-    expect(spy).toHaveBeenCalledWith(
-      {
-        _id: testIds.item,
+      data: {
         status: "RESERVADO",
         interesse_aceito_id: testIds.administracao,
       },
-      {
-        $set: {
-          status: "DISPONIVEL",
-          interesse_aceito_id: null,
-        },
-      },
-      { new: true, runValidators: true }
+    });
+    expect(resultado).toMatchObject({
+      _id: testIds.item,
+      status: "RESERVADO",
+      interesse_aceito_id: testIds.administracao,
+    });
+  });
+
+  test("libera somente a reserva vinculada ao interesse informado", async () => {
+    const repository = new ItemDoacaoRepository();
+    const fake = makeTransactionRepository({
+      id: testIds.item,
+      status: "DISPONIVEL",
+      interesse_aceito_id: null,
+      fotos: [],
+    });
+    attachClient(repository, fake.client);
+
+    await repository.liberarReservaDoInteresse(
+      testIds.item,
+      testIds.administracao,
     );
+
+    expect(fake.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: testIds.item,
+        status: "RESERVADO",
+        interesse_aceito_id: testIds.administracao,
+      },
+      data: {
+        status: "DISPONIVEL",
+        interesse_aceito_id: null,
+      },
+    });
   });
 });

@@ -1,27 +1,27 @@
 import { z } from "zod";
-import mongoose from "mongoose";
+import { isEntityId } from "../ObjectIdSchema.js";
 
-const isValidObjectId = (value) => !value || mongoose.Types.ObjectId.isValid(value);
+const isValidEntityId = (value) => !value || isEntityId(value);
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());
 
 export const InteresseIdSchema = z.string().refine(
-  (id) => mongoose.Types.ObjectId.isValid(id),
+  (id) => isEntityId(id),
   { message: "ID inválido" }
 );
 
 export const InteresseQuerySchema = z.object({
   item_id: z.string().optional()
-    .refine(isValidObjectId, { message: "item_id inválido" }),
+    .refine(isValidEntityId, { message: "item_id inválido" }),
   itemId: z.string().optional()
-    .refine(isValidObjectId, { message: "itemId inválido" }),
+    .refine(isValidEntityId, { message: "itemId inválido" }),
   usuario_interessado_id: z.string().optional()
-    .refine(isValidObjectId, { message: "usuario_interessado_id inválido" }),
+    .refine(isValidEntityId, { message: "usuario_interessado_id inválido" }),
   usuarioInteressadoId: z.string().optional()
-    .refine(isValidObjectId, { message: "usuarioInteressadoId inválido" }),
+    .refine(isValidEntityId, { message: "usuarioInteressadoId inválido" }),
   usuario_doador_id: z.string().optional()
-    .refine(isValidObjectId, { message: "usuario_doador_id inválido" }),
+    .refine(isValidEntityId, { message: "usuario_doador_id inválido" }),
   usuarioDoadorId: z.string().optional()
-    .refine(isValidObjectId, { message: "usuarioDoadorId inválido" }),
+    .refine(isValidEntityId, { message: "usuarioDoadorId inválido" }),
   status: z.string().optional()
     .refine((value) => !value || ["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"].includes(value), {
       message: "status inválido",

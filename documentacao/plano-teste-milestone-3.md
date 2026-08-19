@@ -1,5 +1,8 @@
 # Plano de Teste - Milestone 3
 
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+
+
 ## 1. Objetivo
 
 Validar a API DoaI para a Milestone 3, incluindo testes unitarios e de endpoint, regras de negocio, autenticacao, autorizacao, consistencia, concorrencia e apresentacao pratica pelo Swagger.
