@@ -1,4 +1,4 @@
-import { getPrisma } from "../../config/prisma.js";
+import { getPrisma, runInTransaction } from "../../config/prisma.js";
 import {
   asLegacyDocument,
   buildInclude,
@@ -35,6 +35,10 @@ class BaseRepository {
 
   get delegate() {
     return this.client[this.delegateName];
+  }
+
+  withTransaction(operation, options = {}) {
+    return runInTransaction(operation, { client: this.client, ...options });
   }
 
   normalizeData(data) {

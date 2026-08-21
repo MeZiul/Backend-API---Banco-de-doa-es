@@ -10,7 +10,7 @@ class NotificacaoRepository extends BaseRepository {
     if (!notificacoes.length) return [];
 
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.withTransaction(async (tx) => {
         const created = [];
         for (const dados of notificacoes) {
           created.push(
@@ -46,7 +46,7 @@ class NotificacaoRepository extends BaseRepository {
   }
 
   async marcarComoLida(notificacaoId, usuarioId) {
-    return this.client.$transaction(async (tx) => {
+    return this.withTransaction(async (tx) => {
       const result = await tx.notificacao.updateMany({
         where: {
           id: String(notificacaoId),

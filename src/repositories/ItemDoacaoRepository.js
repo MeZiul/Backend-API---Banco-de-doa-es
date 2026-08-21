@@ -184,7 +184,7 @@ class ItemDoacaoRepository extends BaseRepository {
 
   async adicionarFotos(idItem, novasFotos) {
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.withTransaction(async (tx) => {
         const existing = await tx.itemDoacao.findUnique({
           where: { id: String(idItem) },
           select: { id: true },
@@ -217,7 +217,7 @@ class ItemDoacaoRepository extends BaseRepository {
   }
 
   async removerFoto(idItem, idFoto) {
-    return this.client.$transaction(async (tx) => {
+    return this.withTransaction(async (tx) => {
       const existing = await tx.itemDoacao.findUnique({
         where: { id: String(idItem) },
         select: { id: true },
@@ -315,7 +315,7 @@ class ItemDoacaoRepository extends BaseRepository {
       : statusEsperado;
 
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.withTransaction(async (tx) => {
         const result = await tx.itemDoacao.updateMany({
           where: {
             id: String(id),

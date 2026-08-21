@@ -83,7 +83,7 @@ class DenunciaRepository extends BaseRepository {
       : statusEsperado;
 
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.withTransaction(async (tx) => {
         const result = await tx.denuncia.updateMany({
           where: {
             id: String(id),
@@ -103,7 +103,7 @@ class DenunciaRepository extends BaseRepository {
   }
 
   async deletarSeEmAnalise(id, denuncianteId) {
-    return this.client.$transaction(async (tx) => {
+    return this.withTransaction(async (tx) => {
       const existing = await tx.denuncia.findFirst({
         where: {
           id: String(id),

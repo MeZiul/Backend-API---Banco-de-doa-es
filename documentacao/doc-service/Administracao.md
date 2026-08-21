@@ -10,7 +10,7 @@ Validar as regras de moderacao administrativa, autorizacao, auditoria, consisten
 
 - Testes unitarios do `AdministracaoService` com repositories mockados.
 - Testes de endpoint com o router real, JWT de teste, `AuthMiddleware`, `EnsureAdminMiddleware`, schemas Zod e Service mockado.
-- Testes de concorrencia, compensacao e integracao final fazem parte da suite atual.
+- Testes de concorrencia, transacao Prisma e integracao PostgreSQL fazem parte da suite atual.
 
 Arquivos:
 
@@ -32,7 +32,7 @@ src/tests/routes/administracao.spec.js
 - Recursos inexistentes retornam `404`.
 - Data de suspensao deve ser uma data e hora ISO 8601 valida.
 - Detalhe administrativo agrega os 10 registros mais recentes de itens, interesses, avaliacoes e denuncias relacionadas.
-- Operacoes concorrentes e falhas de auditoria devem ser tratadas sem deixar estado silenciosamente inconsistente.
+- Operacoes concorrentes usam compare-and-set; mutacao e auditoria confirmam ou fazem rollback juntas.
 
 ## 4. Cenarios Principais
 
@@ -68,4 +68,4 @@ npm.cmd run test:coverage -- --runInBand
 
 ## 7. Riscos e Pendencias
 
-- Compensacoes reduzem inconsistencias, mas uma queda do processo entre mutacao e auditoria ainda exige reconciliacao enquanto nao houver transacoes com replica set.
+- Notificacoes sao best-effort e acontecem depois do commit; sem outbox/retry duravel, uma falha pode causar perda do aviso sem desfazer a moderacao.

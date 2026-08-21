@@ -114,7 +114,7 @@ describe("UsuarioService.cadastrar", () => {
     await expect(
       service.cadastrar({
         email: "novo@email.com",
-        cpf: "111.111.111-11",
+        cpf: "123.456.789-09",
         senha: "Teste@123",
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
@@ -131,6 +131,8 @@ describe("UsuarioService.login", () => {
     perfil: "USUARIO",
     situacao: "ATIVO",
     senha: "$2b$10$hashedpassword",
+    token_redefinicao: "token-que-nao-pode-vazar",
+    token_redefinicao_expira: new Date("2026-12-31T23:59:59.000Z"),
     toObject: () => ({
       _id: "507f1f77bcf86cd799439012",
       nome: "Teste Silva",
@@ -138,10 +140,12 @@ describe("UsuarioService.login", () => {
       perfil: "USUARIO",
       situacao: "ATIVO",
       senha: "$2b$10$hashedpassword",
+      token_redefinicao: "token-que-nao-pode-vazar",
+      token_redefinicao_expira: new Date("2026-12-31T23:59:59.000Z"),
     }),
   };
 
-  test("deve retornar token, refreshToken e usuario sem senha — RF-002", async () => {
+  test("deve retornar tokens de autenticação sem credenciais internas do usuário — RF-002", async () => {
     mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuarioMock);
     bcrypt.compare.mockResolvedValue(true);
 
@@ -150,6 +154,8 @@ describe("UsuarioService.login", () => {
     expect(resultado.token).toBeDefined();
     expect(resultado.refreshToken).toBeDefined();
     expect(resultado.usuario.senha).toBeUndefined();
+    expect(resultado.usuario.token_redefinicao).toBeUndefined();
+    expect(resultado.usuario.token_redefinicao_expira).toBeUndefined();
   });
 
   test("deve lancar 401 se usuario nao encontrado — RN-USR-009", async () => {

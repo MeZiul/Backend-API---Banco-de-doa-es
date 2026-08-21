@@ -7,6 +7,7 @@ describe("InteresseService", () => {
   let itemDoacaoRepository;
   let usuarioRepository;
   let notificacaoService;
+  let transactionManager;
   let service;
 
   beforeEach(() => {
@@ -40,12 +41,16 @@ describe("InteresseService", () => {
     notificacaoService = {
       criarNotificacoesComSeguranca: jest.fn().mockResolvedValue([]),
     };
+    transactionManager = {
+      run: jest.fn(async (operation) => operation()),
+    };
 
     service = new InteresseService({
       interesseRepository,
       itemDoacaoRepository,
       usuarioRepository,
       notificacaoService,
+      transactionManager,
     });
   });
 
@@ -115,6 +120,7 @@ describe("InteresseService", () => {
       })
     );
     expect(itemDoacaoRepository.incrementarInteressesSeDisponivel).toHaveBeenCalledWith(testIds.item);
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
     expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
       expect.objectContaining({
         usuario_id: testIds.doador,
@@ -358,7 +364,7 @@ describe("InteresseService", () => {
     expect(itemDoacaoRepository.incrementarInteressesSeDisponivel).not.toHaveBeenCalled();
   });
 
-  test("Deve remover interesse criado se o item ficar indisponível durante a criação", async () => {
+  test("Deve abortar a transação se o item ficar indisponível durante a criação", async () => {
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.interessado,
       situacao: "ATIVO",
@@ -371,7 +377,6 @@ describe("InteresseService", () => {
     interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue(null);
     interesseRepository.criar.mockResolvedValue({ _id: testIds.administracao });
     itemDoacaoRepository.incrementarInteressesSeDisponivel.mockResolvedValue(null);
-    interesseRepository.deletar.mockResolvedValue({});
 
     await expect(
       service.criar(
@@ -383,7 +388,8 @@ describe("InteresseService", () => {
       customMessage: "O item não está mais disponível para receber interesses.",
     });
 
-    expect(interesseRepository.deletar).toHaveBeenCalledWith(testIds.administracao);
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(interesseRepository.deletar).not.toHaveBeenCalled();
   });
 
   test("Deve impedir dois aceites quando o item já foi reservado por outra operação", async () => {
@@ -413,7 +419,7 @@ describe("InteresseService", () => {
     expect(interesseRepository.atualizarSeStatus).not.toHaveBeenCalled();
   });
 
-  test("Deve compensar o aceite quando a recusa dos demais interesses falhar", async () => {
+  test("Deve abortar a transação de aceite quando a recusa dos demais interesses falhar", async () => {
     const falha = new Error("Falha ao recusar interesses pendentes");
     interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
       _id: testIds.administracao,
@@ -429,18 +435,11 @@ describe("InteresseService", () => {
       _id: testIds.item,
       status: "RESERVADO",
     });
-    interesseRepository.atualizarSeStatus
-      .mockResolvedValueOnce({
-        _id: testIds.administracao,
-        status: "ACEITO",
-      })
-      .mockResolvedValueOnce({
-        _id: testIds.administracao,
-        status: "PENDENTE",
-      });
+    interesseRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO",
+    });
     interesseRepository.recusarPendentesDoItem.mockRejectedValue(falha);
-    interesseRepository.restaurarRecusadosDoAceite.mockResolvedValue({});
-    itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({});
 
     await expect(
       service.aceitar(
@@ -450,23 +449,13 @@ describe("InteresseService", () => {
       )
     ).rejects.toBe(falha);
 
-    expect(interesseRepository.restaurarRecusadosDoAceite).toHaveBeenCalled();
-    expect(interesseRepository.atualizarSeStatus).toHaveBeenLastCalledWith(
-      testIds.administracao,
-      "ACEITO",
-      {
-        status: "PENDENTE",
-        data_resposta: null,
-        resposta_doador: null,
-      }
-    );
-    expect(itemDoacaoRepository.liberarReservaDoInteresse).toHaveBeenCalledWith(
-      testIds.item,
-      testIds.administracao
-    );
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(interesseRepository.restaurarRecusadosDoAceite).not.toHaveBeenCalled();
+    expect(interesseRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
+    expect(itemDoacaoRepository.liberarReservaDoInteresse).not.toHaveBeenCalled();
   });
 
-  test("Deve restaurar a reserva se o cancelamento aceito perder a corrida", async () => {
+  test("Deve abortar a transação se o cancelamento aceito perder a corrida", async () => {
     interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
       _id: testIds.administracao,
       status: "ACEITO",
@@ -478,10 +467,6 @@ describe("InteresseService", () => {
       status: "DISPONIVEL",
     });
     interesseRepository.atualizarSeStatus.mockResolvedValue(null);
-    itemDoacaoRepository.restaurarReservaSeDisponivel.mockResolvedValue({
-      _id: testIds.item,
-      status: "RESERVADO",
-    });
 
     await expect(
       service.cancelar(
@@ -493,63 +478,8 @@ describe("InteresseService", () => {
       customMessage: "O interesse não está mais aceito.",
     });
 
-    expect(itemDoacaoRepository.restaurarReservaSeDisponivel).toHaveBeenCalledWith(
-      testIds.item,
-      testIds.administracao
-    );
-  });
-
-  test("Deve sinalizar falha crítica quando não conseguir compensar interesse criado", async () => {
-    usuarioRepository.buscarPorId.mockResolvedValue({
-      _id: testIds.interessado,
-      situacao: "ATIVO",
-    });
-    itemDoacaoRepository.buscarPorId.mockResolvedValue({
-      _id: testIds.item,
-      status: "DISPONIVEL",
-      usuario_id: testIds.doador,
-    });
-    interesseRepository.buscarAtivoPorItemEInteressado.mockResolvedValue(null);
-    interesseRepository.criar.mockResolvedValue({ _id: testIds.administracao });
-    itemDoacaoRepository.incrementarInteressesSeDisponivel.mockResolvedValue(null);
-    interesseRepository.deletar.mockResolvedValue(null);
-
-    await expect(
-      service.criar(
-        { item_id: testIds.item },
-        createRegularUser({ id: testIds.interessado })
-      )
-    ).rejects.toThrow("Falha ao remover interesse criado durante compensação.");
-  });
-
-  test("Deve sinalizar falha crítica quando o rollback do aceite ficar incompleto", async () => {
-    const falha = new Error("Falha ao recusar interesses pendentes");
-    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
-      _id: testIds.administracao,
-      status: "PENDENTE",
-      item_id: { _id: testIds.item },
-    });
-    itemDoacaoRepository.buscarPorId.mockResolvedValue({
-      _id: testIds.item,
-      status: "DISPONIVEL",
-      usuario_id: testIds.doador,
-    });
-    itemDoacaoRepository.reservarSeDisponivel.mockResolvedValue({});
-    interesseRepository.atualizarSeStatus.mockResolvedValue({
-      _id: testIds.administracao,
-      status: "ACEITO",
-    });
-    interesseRepository.recusarPendentesDoItem.mockRejectedValue(falha);
-    interesseRepository.restaurarRecusadosDoAceite.mockResolvedValue({});
-    itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue(null);
-
-    await expect(
-      service.aceitar(
-        testIds.administracao,
-        {},
-        createRegularUser({ id: testIds.doador })
-      )
-    ).rejects.toThrow("Falha ao compensar aceite de interesse.");
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(itemDoacaoRepository.restaurarReservaSeDisponivel).not.toHaveBeenCalled();
   });
 
   test("Não deve restaurar reserva após cancelamento confirmado se falhar apenas a consulta detalhada", async () => {
@@ -828,7 +758,7 @@ describe("InteresseService", () => {
     expect(itemDoacaoRepository.liberarReservaDoInteresse).not.toHaveBeenCalled();
   });
 
-  test("Deve propagar falhas comuns de criacao e compensar falha no incremento", async () => {
+  test("Deve propagar falhas de criação e incremento para rollback transacional", async () => {
     const falhaCriacao = new Error("falha ao criar");
     const falhaIncremento = new Error("falha ao incrementar");
     usuarioRepository.buscarPorId.mockResolvedValue({
@@ -845,7 +775,6 @@ describe("InteresseService", () => {
       .mockRejectedValueOnce(falhaCriacao)
       .mockResolvedValueOnce({ _id: testIds.administracao });
     itemDoacaoRepository.incrementarInteressesSeDisponivel.mockRejectedValue(falhaIncremento);
-    interesseRepository.deletar.mockResolvedValue({});
 
     await expect(service.criar(
       { item_id: testIds.item },
@@ -856,10 +785,11 @@ describe("InteresseService", () => {
       createRegularUser({ id: testIds.interessado })
     )).rejects.toBe(falhaIncremento);
 
-    expect(interesseRepository.deletar).toHaveBeenCalledWith(testIds.administracao);
+    expect(transactionManager.run).toHaveBeenCalledTimes(2);
+    expect(interesseRepository.deletar).not.toHaveBeenCalled();
   });
 
-  test("Deve falhar quando nao conseguir restaurar reserva apos corrida no cancelamento", async () => {
+  test("Deve retornar conflito para corrida no cancelamento sem compensação manual", async () => {
     interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
       _id: testIds.administracao,
       status: "ACEITO",
@@ -868,12 +798,16 @@ describe("InteresseService", () => {
     });
     itemDoacaoRepository.liberarReservaDoInteresse.mockResolvedValue({});
     interesseRepository.atualizarSeStatus.mockResolvedValue(null);
-    itemDoacaoRepository.restaurarReservaSeDisponivel.mockResolvedValue(null);
 
     await expect(service.cancelar(
       testIds.administracao,
       createRegularUser({ id: testIds.interessado })
-    )).rejects.toThrow("Falha ao restaurar a reserva");
+    )).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "O interesse não está mais aceito.",
+    });
+
+    expect(itemDoacaoRepository.restaurarReservaSeDisponivel).not.toHaveBeenCalled();
   });
 
   test("Deve permitir ao administrador consultar qualquer interesse", async () => {

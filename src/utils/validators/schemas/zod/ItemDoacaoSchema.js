@@ -1,4 +1,5 @@
-import { z } from "zod"
+import { z } from "zod";
+import objectIdSchema from "./ObjectIdSchema.js";
 
 export const itemDoacaoSchema = z.object({
     titulo: z.string()
@@ -21,4 +22,43 @@ export const itemDoacaoSchema = z.object({
 
     condicoes_doacao: z.string().max(500).optional()
 
-})
+});
+
+const fotoItemDoacaoResponseSchema = z.object({
+  _id: objectIdSchema,
+  item_id: objectIdSchema,
+  url: z.string(),
+  ordem: z.number().int(),
+  nome_original: z.string().nullable().optional(),
+  tamanho: z.number().int().nullable().optional(),
+  mime_type: z.string().nullable().optional(),
+  data_upload: z.string().datetime(),
+}).strict();
+
+export const ItemDoacaoResponseSchema = z.object({
+  _id: objectIdSchema,
+  usuario_id: objectIdSchema,
+  categoria_id: objectIdSchema,
+  interesse_aceito_id: objectIdSchema.nullable().optional(),
+  titulo: z.string(),
+  descricao: z.string(),
+  condicao_item: z.enum(["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"]),
+  cidade: z.string(),
+  uf: z.string(),
+  bairro: z.string().nullable().optional(),
+  condicoes_doacao: z.string().nullable().optional(),
+  status: z.enum([
+    "DISPONIVEL",
+    "RESERVADO",
+    "AGUARDANDO_CONFIRMACAO",
+    "DOADO",
+    "CANCELADO",
+  ]),
+  motivo_cancelamento: z.string().nullable().optional(),
+  data_doacao: z.string().datetime().nullable().optional(),
+  visualizacoes: z.number().int(),
+  total_interesses: z.number().int(),
+  data_cadastro: z.string().datetime(),
+  data_atualizacao: z.string().datetime(),
+  fotos: z.array(fotoItemDoacaoResponseSchema),
+}).strict();

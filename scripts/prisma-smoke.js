@@ -1,25 +1,72 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { getPrisma, disconnectPrisma } from "../src/config/prisma.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  disconnectPrisma,
+  getDatabaseUrl,
+  getPrisma,
+  runInTransaction,
+} from "../src/config/prisma.js";
+import AdministracaoRepository from "../src/repositories/AdministracaoRepository.js";
+import AvaliacaoRepository from "../src/repositories/AvaliacaoRepository.js";
+import CategoriaRepository from "../src/repositories/CategoriaRepository.js";
+import DenunciaRepository from "../src/repositories/DenunciaRepository.js";
+import InteresseRepository from "../src/repositories/InteresseRepository.js";
+import ItemDoacaoRepository from "../src/repositories/ItemDoacaoRepository.js";
+import notificacaoRepository from "../src/repositories/NotificacaoRepository.js";
+import UsuarioRepository from "../src/repositories/UsuarioRepository.js";
 
 const ROLLBACK_MESSAGE = "ROLLBACK_SMOKE_TEST";
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function deployMigrations() {
+  const prismaCli = path.join(root, "node_modules", "prisma", "build", "index.js");
+  const result = spawnSync(process.execPath, [prismaCli, "migrate", "deploy"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      DATABASE_URL: getDatabaseUrl(),
+    },
+    stdio: "inherit",
+  });
+
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`prisma migrate deploy terminou com código ${result.status}.`);
+  }
+}
 
 async function run() {
+  deployMigrations();
+
   const prisma = getPrisma();
   await prisma.$queryRawUnsafe("SELECT 1");
 
+  const suffix = randomUUID().slice(0, 8);
+  const emailDoador = `smoke-doador-${suffix}@doai.local`;
+  const usuarioRepository = new UsuarioRepository();
+  const categoriaRepository = new CategoriaRepository();
+  const itemRepository = new ItemDoacaoRepository();
+  const interesseRepository = new InteresseRepository();
+  const avaliacaoRepository = new AvaliacaoRepository();
+  const denunciaRepository = new DenunciaRepository();
+  const administracaoRepository = new AdministracaoRepository();
+
   try {
-    await prisma.$transaction(async (tx) => {
-      const suffix = randomUUID().slice(0, 8);
+    await runInTransaction(async (tx) => {
       const doador = await tx.usuario.create({
         data: {
           nome: "Smoke Doador",
-          email: `smoke-doador-${suffix}@doai.local`,
+          email: emailDoador,
           cpf: `smoke-doador-${suffix}`,
           cidade: "Porto Velho",
           uf: "RO",
           senha: "hash-smoke",
+          token_redefinicao: "segredo-smoke",
+          token_redefinicao_expira: new Date(Date.now() + 60_000),
         },
       });
       const interessado = await tx.usuario.create({
@@ -32,57 +79,92 @@ async function run() {
           senha: "hash-smoke",
         },
       });
-      const categoria = await tx.categoria.create({
-        data: { nome: `Smoke ${suffix}`, ordem: 999 },
-      });
-      const item = await tx.itemDoacao.create({
+      const administrador = await tx.usuario.create({
         data: {
-          usuario_id: doador.id,
-          categoria_id: categoria.id,
-          titulo: "Item smoke",
-          descricao: "Registro temporário para validar o Prisma.",
-          condicao_item: "USADO_BOM",
+          nome: "Smoke Administrador",
+          email: `smoke-admin-${suffix}@doai.local`,
+          cpf: `smoke-admin-${suffix}`,
           cidade: "Porto Velho",
           uf: "RO",
-          status: "DISPONIVEL",
-          fotos: {
-            create: [{ url: "/uploads/smoke.jpg", ordem: 0 }],
-          },
-        },
-        include: { fotos: true },
-      });
-      const interesse = await tx.interesse.create({
-        data: {
-          item_id: item.id,
-          usuario_interessado_id: interessado.id,
-          usuario_doador_id: doador.id,
-          status: "ACEITO",
-        },
-      });
-      await tx.itemDoacao.update({
-        where: { id: item.id },
-        data: {
-          status: "RESERVADO",
-          interesse_aceito_id: interesse.id,
-          total_interesses: 1,
+          senha: "hash-smoke",
+          perfil: "ADMINISTRADOR",
         },
       });
 
-      const loaded = await tx.itemDoacao.findUnique({
-        where: { id: item.id },
-        include: {
-          usuario: true,
-          categoria: true,
-          fotos: true,
-          interesse_aceito: true,
-        },
+      const categoria = await categoriaRepository.criar({
+        nome: `Smoke ${suffix}`,
+        ordem: 999,
+      });
+      const item = await itemRepository.criar({
+        usuario_id: doador.id,
+        categoria_id: categoria._id,
+        titulo: "Item smoke",
+        descricao: "Registro temporário para validar os repositórios Prisma.",
+        condicao_item: "USADO_BOM",
+        cidade: "Porto Velho",
+        uf: "RO",
+        status: "DISPONIVEL",
+        fotos: [{ url: "/uploads/smoke.jpg", ordem: 0 }],
+      });
+      const interesse = await interesseRepository.criar({
+        item_id: item._id,
+        usuario_interessado_id: interessado.id,
+        usuario_doador_id: doador.id,
+        status: "PENDENTE",
       });
 
-      assert.equal(loaded?.usuario.id, doador.id);
-      assert.equal(loaded?.categoria.id, categoria.id);
-      assert.equal(loaded?.fotos.length, 1);
-      assert.equal(loaded?.interesse_aceito?.id, interesse.id);
-      assert.equal(loaded?.status, "RESERVADO");
+      assert.ok(await itemRepository.incrementarInteressesSeDisponivel(item._id));
+      assert.ok(await itemRepository.reservarSeDisponivel(item._id, interesse._id));
+      const interesseAceito = await interesseRepository.atualizarSeStatus(
+        interesse._id,
+        "PENDENTE",
+        { status: "ACEITO", data_resposta: new Date() },
+      );
+      const avaliacao = await avaliacaoRepository.criar({
+        item_id: item._id,
+        avaliador_id: interessado.id,
+        avaliado_id: doador.id,
+        nota: 5,
+        tipo: "INTERESSADO_PARA_DOADOR",
+      });
+      const denuncia = await denunciaRepository.criar({
+        denunciante_id: interessado.id,
+        tipo_alvo: "ITEM",
+        alvo_item_id: item._id,
+        motivo: "OUTRO",
+        descricao: "Denúncia temporária do smoke test.",
+      });
+      const administracao = await administracaoRepository.criar({
+        administrador_id: administrador.id,
+        tipo_acao: "BLOQUEIO_USUARIO",
+        tipo_alvo: "USUARIO",
+        alvo_id: doador.id,
+        justificativa: "Auditoria temporária do smoke test.",
+      });
+      const [notificacao] = await notificacaoRepository.criarMuitas([
+        {
+          usuario_id: doador.id,
+          tipo: "SISTEMA",
+          titulo: "Smoke test",
+          mensagem: "Notificação temporária.",
+        },
+      ]);
+      const notificacaoLida = await notificacaoRepository.marcarComoLida(
+        notificacao._id,
+        doador.id,
+      );
+      const usuarioComSenha = await usuarioRepository.buscarPorEmailComSenha(emailDoador);
+      const itemCarregado = await itemRepository.buscarPorId(item._id);
+
+      assert.equal(usuarioComSenha?.senha, "hash-smoke");
+      assert.equal(usuarioComSenha?.token_redefinicao, undefined);
+      assert.equal(usuarioComSenha?.token_redefinicao_expira, undefined);
+      assert.equal(itemCarregado?.fotos.length, 1);
+      assert.equal(interesseAceito?.status, "ACEITO");
+      assert.equal(avaliacao?.nota, 5);
+      assert.equal(denuncia?.status, "EM_ANALISE");
+      assert.equal(administracao?.alvo_id, doador.id);
+      assert.equal(notificacaoLida?.lida, true);
 
       throw new Error(ROLLBACK_MESSAGE);
     });
@@ -90,7 +172,14 @@ async function run() {
     if (error?.message !== ROLLBACK_MESSAGE) throw error;
   }
 
-  console.log("OK: conexão, CRUD, relações e transação Prisma/PostgreSQL validados.");
+  const residual = await prisma.usuario.findUnique({
+    where: { email: emailDoador },
+  });
+  assert.equal(residual, null);
+
+  console.log(
+    "OK: migrations, conexão, repositórios, relações e rollback Prisma/PostgreSQL validados.",
+  );
 }
 
 run()
