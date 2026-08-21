@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { CustomError } from "../utils/helpers/index.js";
+import validarCPF from "../utils/validators/validarCPF.js";
 
 class UsuarioService {
   constructor({
@@ -20,6 +21,14 @@ class UsuarioService {
         statusCode: 409,
         customMessage:
           "E-mail já cadastrado. Faça login ou recupere sua senha.",
+      });
+    }
+
+    const cpfValidado = await validarCPF(dados.cpf);
+    if (!cpfValidado) {
+      throw new CustomError({
+        statusCode: 400,
+        customMessage: "CPF inválido.",
       });
     }
 
