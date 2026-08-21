@@ -1,6 +1,6 @@
 # Plano de Teste - DenunciaService
 
-> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte o `README.md`.
 
 
 ## API DoaI - Banco de Doacoes | Milestone 3
@@ -74,4 +74,4 @@ npm.cmd run test:coverage -- --runInBand
 ## 7. Riscos e Pendencias
 
 - Antes de criar os indices unicos em banco existente, auditar denuncias duplicadas `EM_ANALISE`.
-- Sem transacoes MongoDB, queda do processo entre mutacao e auditoria pode exigir reconciliacao manual.
+- Resolucao, moderacao do alvo e auditoria usam uma transacao Prisma; notificacoes permanecem best-effort depois do commit.

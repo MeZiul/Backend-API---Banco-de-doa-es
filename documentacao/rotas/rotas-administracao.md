@@ -339,7 +339,7 @@ Endurecimentos implementados:
 - administrador nao pode bloquear, inativar ou suspender a si mesmo;
 - moderacoes usam atualizacoes condicionais para impedir duas operacoes concorrentes de vencerem;
 - bloqueio, desbloqueio, inativacao, cancelamento de item e resolucao geram auditoria;
-- falha de auditoria executa compensacao para restaurar o estado anterior quando possivel;
+- mutacao administrativa e auditoria compartilham uma transacao Prisma; falha em qualquer etapa desfaz todo o conjunto;
 - inativacao e bloqueada quando existem doacoes em andamento;
 - usuarios afetados e interessados em itens cancelados recebem notificacoes best-effort;
 - listagens administrativas usam filtros dedicados e projecoes que nao expoem senha, tokens ou outros campos indevidos.
@@ -349,7 +349,7 @@ Filtros adicionais da Milestone 3:
 - usuarios: `dataInicio` e `dataFim`;
 - itens: `dataInicio` e `dataFim`;
 - buscas textuais tratam caracteres especiais como texto literal;
-- IDs usados em filtros sao validados como ObjectId.
+- IDs usados em filtros aceitam UUID do Prisma e ObjectId legado durante a transicao.
 
 Respostas adicionais:
 

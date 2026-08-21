@@ -129,7 +129,7 @@ class InteresseRepository extends BaseRepository {
       : statusEsperado;
 
     try {
-      return await this.client.$transaction(async (tx) => {
+      return await this.withTransaction(async (tx) => {
         const result = await tx.interesse.updateMany({
           where: { id: String(id), status },
           data: this.normalizeData(dadosAtualizacao),

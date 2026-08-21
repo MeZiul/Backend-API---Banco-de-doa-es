@@ -10,7 +10,7 @@ Validar o ciclo completo de manifestacao de interesse, incluindo autorizacao, es
 
 - Testes unitarios do `InteresseService` com repositories e dependencias mockadas.
 - Testes de endpoint com router real, JWT, schemas Zod e Service mockado.
-- Validacao real descartavel para indice unico e corrida de aceite na branch funcional.
+- Validacao real descartavel no PostgreSQL de teste para indices, repositories e rollback transacional.
 
 Arquivos:
 
@@ -31,6 +31,7 @@ src/tests/routes/interesse.spec.js
 - Aceite reserva o item e recusa os demais pendentes.
 - Somente o interessado pode cancelar.
 - Cancelamento de interesse aceito reabre o item.
+- Criacao, aceite e cancelamento aceito atualizam interesse e item na mesma transacao Prisma.
 - Eventos relevantes geram notificacoes best-effort.
 - A consulta de interessados de um item exige usuario ativo e somente pode ser feita pelo doador proprietario.
 

@@ -94,6 +94,7 @@ URLs padrão:
 - Swagger: `http://localhost:7340/docs`
 - JSON Swagger: `http://localhost:7340/docs.json`
 - PostgreSQL: `localhost:5432`
+- PostgreSQL exclusivo de testes: `localhost:5433`
 
 Para acompanhar os logs:
 
@@ -115,23 +116,19 @@ docker compose down -v
 
 ## Opção B - PostgreSQL no Docker e API no host
 
-Suba somente o banco:
+Suba os bancos de desenvolvimento e de teste:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres postgres-test
 ```
 
 Instale as dependências:
 
 ```bash
-npm install
+npm ci
 ```
 
-Gere o Prisma Client:
-
-```bash
-npm run prisma:generate
-```
+Os scripts `dev`, `start`, `test`, `test:coverage` e `test:db` geram o Prisma Client antes de executar. O comando manual `npm run prisma:generate` continua disponível após alterações no schema.
 
 Aplique a migration inicial:
 
@@ -167,6 +164,8 @@ Credenciais padrão de desenvolvimento:
 - Usuário inativo: `inativo@doai.com` / `Senha@123`
 
 O seed **limpa e recria a massa local**. Não execute contra um banco que contenha dados que você queira preservar.
+
+A migração atual cria o schema PostgreSQL, mas não transfere registros de uma instalação MongoDB antiga. Para este projeto acadêmico, os dados locais são descartáveis e a massa oficial de desenvolvimento é recriada pelo seed.
 
 ## Prisma
 
@@ -222,15 +221,13 @@ Testes sem dependência externa da camada de compatibilidade Mongo -> Prisma:
 npm run test:compat
 ```
 
-Smoke test real do Prisma/PostgreSQL (exige banco ativo e migration aplicada):
+Smoke test real do Prisma/PostgreSQL (exige `postgres-test` ativo):
 
 ```bash
 npm run test:db
 ```
 
-O smoke test abre uma transação, cria registros relacionados, valida leitura/relacionamentos e força rollback ao final, portanto não deixa massa de teste no banco.
-
-Antes de enviar esta migração para uma branch compartilhada, veja também [`QA_MIGRACAO.md`](./QA_MIGRACAO.md), que registra os testes já executados e o gate de integração obrigatório.
+O smoke test exige `TEST_DATABASE_URL`, aplica as migrations somente nesse banco, percorre os repositórios reais, valida relações e força rollback ao final. Ele nunca usa `DATABASE_URL` como fallback e não deixa massa de teste persistida.
 
 ## Compatibilidade de IDs
 
@@ -259,7 +256,7 @@ Rotas:
 - [Avaliação](./documentacao/rotas/rotas-avaliacao.md)
 - [Usuário](./documentacao/rotas/rotas-usuario.md)
 
-Alguns documentos de milestone preservam referências históricas a MongoDB/Mongoose porque descrevem o estado anterior do projeto. Para configuração atual do ambiente, este README e `MIGRACAO_PRISMA.md` são a fonte de verdade.
+Alguns documentos de milestone preservam referências históricas a MongoDB/Mongoose porque descrevem o estado anterior do projeto. Para configuração e execução atuais, este README é a fonte operacional de verdade.
 
 ## Scripts
 

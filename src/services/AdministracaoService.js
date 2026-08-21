@@ -10,6 +10,7 @@ class AdministracaoService {
         interesseRepository,
         avaliacaoRepository,
         notificacaoService,
+        transactionManager,
     }) {
         this.repository = administracaoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -18,6 +19,7 @@ class AdministracaoService {
         this.interesseRepository = interesseRepository;
         this.avaliacaoRepository = avaliacaoRepository;
         this.notificacaoService = notificacaoService;
+        this.transactionManager = transactionManager;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -145,19 +147,6 @@ class AdministracaoService {
                 motivo_suspensao: justificativa,
                 suspensao_ate: suspensaoAte,
             }),
-            compensar: () => this.usuarioRepository.atualizarSeSituacao(
-                usuarioId,
-                "SUSPENSO",
-                {
-                    situacao: usuario.situacao,
-                    motivo_suspensao: usuario.motivo_suspensao ?? null,
-                    suspensao_ate: usuario.suspensao_ate ?? null,
-                },
-                {
-                    motivo_suspensao: justificativa,
-                    suspensao_ate: suspensaoAte,
-                }
-            ),
             auditoria: {
                 administrador_id: this.getActorId(usuarioAdmin),
                 tipo_acao: "BLOQUEIO_USUARIO",
@@ -169,7 +158,6 @@ class AdministracaoService {
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário suspenso.",
             },
             mensagemConflito: "A situação do usuário foi alterada por outra operação.",
-            mensagemCompensacao: "Falha ao compensar bloqueio sem registro de auditoria.",
         });
 
         await this.notificar([
@@ -204,19 +192,6 @@ class AdministracaoService {
                 motivo_suspensao: null,
                 suspensao_ate: null,
             }),
-            compensar: () => this.usuarioRepository.atualizarSeSituacao(
-                usuarioId,
-                "ATIVO",
-                {
-                    situacao: "SUSPENSO",
-                    motivo_suspensao: usuario.motivo_suspensao ?? null,
-                    suspensao_ate: usuario.suspensao_ate ?? null,
-                },
-                {
-                    motivo_suspensao: null,
-                    suspensao_ate: null,
-                }
-            ),
             auditoria: {
                 administrador_id: this.getActorId(usuarioAdmin),
                 tipo_acao: "DESBLOQUEIO_USUARIO",
@@ -226,7 +201,6 @@ class AdministracaoService {
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário reativado.",
             },
             mensagemConflito: "A situação do usuário foi alterada por outra operação.",
-            mensagemCompensacao: "Falha ao compensar desbloqueio sem registro de auditoria.",
         });
 
         await this.notificar([
@@ -263,11 +237,9 @@ class AdministracaoService {
         }
 
         const itensParaNotificar = await this.listarItensCancelaveisComInteresses(usuarioIdNormalizado);
-        const itensCancelados = await this.cancelarItensDisponiveisDoUsuario(usuarioIdNormalizado);
-        let usuarioAtualizado;
-
-        try {
-            usuarioAtualizado = await this.usuarioRepository.atualizarSeSituacao(
+        const usuarioAtualizado = await this.transactionManager.run(async () => {
+            await this.cancelarItensDisponiveisDoUsuario(usuarioIdNormalizado);
+            const usuarioInativado = await this.usuarioRepository.atualizarSeSituacao(
                 usuarioId,
                 usuario.situacao,
                 {
@@ -277,7 +249,7 @@ class AdministracaoService {
                 }
             );
 
-            if (!usuarioAtualizado) {
+            if (!usuarioInativado) {
                 throw this.createConflictError("A situação do usuário foi alterada por outra operação.");
             }
 
@@ -289,31 +261,9 @@ class AdministracaoService {
                 resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário inativado administrativamente.",
             });
-        } catch (error) {
-            const compensacoes = this.criarCompensacoesItens(itensCancelados);
 
-            if (usuarioAtualizado) {
-                compensacoes.push(() => this.usuarioRepository.atualizarSeSituacao(
-                    usuarioId,
-                    "INATIVO",
-                    {
-                        situacao: usuario.situacao,
-                        motivo_suspensao: usuario.motivo_suspensao ?? null,
-                        suspensao_ate: usuario.suspensao_ate ?? null,
-                    },
-                    {
-                        motivo_suspensao: null,
-                        suspensao_ate: null,
-                    }
-                ));
-            }
-
-            await this.executarCompensacoes(
-                compensacoes,
-                "Falha ao compensar inativação sem registro de auditoria."
-            );
-            throw error;
-        }
+            return usuarioInativado;
+        });
 
         for (const { item, interessesAtivos } of itensParaNotificar) {
             await this.notificarCancelamentoItem(item, interessesAtivos);
@@ -336,9 +286,6 @@ class AdministracaoService {
             executar: () => this.itemDoacaoRepository.atualizarSeStatus(itemId, item.status, {
                 status: "CANCELADO",
             }),
-            compensar: () => this.itemDoacaoRepository.atualizarSeStatus(itemId, "CANCELADO", {
-                status: item.status,
-            }),
             auditoria: {
                 administrador_id: this.getActorId(usuarioAdmin),
                 tipo_acao: "CANCELAMENTO_ITEM",
@@ -348,7 +295,6 @@ class AdministracaoService {
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Item cancelado administrativamente.",
             },
             mensagemConflito: "O status do item foi alterado por outra operação.",
-            mensagemCompensacao: "Falha ao compensar cancelamento sem registro de auditoria.",
         });
 
         await this.notificarCancelamentoItem(item, interessesAtivos);
@@ -391,27 +337,25 @@ class AdministracaoService {
         const actorId = this.getActorId(usuarioAdmin);
         const respostaAdmin = dados.resposta_administrativa ?? dados.respostaAdministrativa ?? dados.resposta_admin ?? dados.respostaAdmin ?? null;
         const acaoTomada = dados.acao_tomada ?? dados.acaoTomada ?? null;
-        const denunciaAtualizada = await this.denunciaRepository.atualizarSeStatus(
-            denunciaId,
-            "EM_ANALISE",
-            {
-                status: resultado,
-                admin_id: actorId,
-                resposta_admin: respostaAdmin,
-                acao_tomada: acaoTomada,
-                data_analise: new Date(),
+        const denunciaAtualizada = await this.transactionManager.run(async () => {
+            const denunciaResolvida = await this.denunciaRepository.atualizarSeStatus(
+                denunciaId,
+                "EM_ANALISE",
+                {
+                    status: resultado,
+                    admin_id: actorId,
+                    resposta_admin: respostaAdmin,
+                    acao_tomada: acaoTomada,
+                    data_analise: new Date(),
+                }
+            );
+
+            if (!denunciaResolvida) {
+                throw this.createConflictError("A denúncia não está mais em análise.");
             }
-        );
 
-        if (!denunciaAtualizada) {
-            throw this.createConflictError("A denúncia não está mais em análise.");
-        }
-
-        let compensacaoAlvo;
-
-        try {
             if (resultado === "PROCEDENTE") {
-                compensacaoAlvo = await this.aplicarAcaoProcedente(denuncia, dados);
+                await this.aplicarAcaoProcedente(denuncia, dados);
             }
 
             await this.registrarAcao({
@@ -423,32 +367,9 @@ class AdministracaoService {
                 resposta_administrativa: respostaAdmin,
                 acao_tomada: acaoTomada,
             });
-        } catch (error) {
-            const compensacoes = [
-                () => this.denunciaRepository.atualizarSeStatus(
-                    denunciaId,
-                    resultado,
-                    {
-                        status: "EM_ANALISE",
-                        admin_id: denuncia.admin_id?._id ?? denuncia.admin_id ?? null,
-                        resposta_admin: denuncia.resposta_admin ?? null,
-                        acao_tomada: denuncia.acao_tomada ?? null,
-                        data_analise: denuncia.data_analise ?? null,
-                    },
-                    { admin_id: actorId }
-                ),
-            ];
 
-            if (compensacaoAlvo) {
-                compensacoes.unshift(compensacaoAlvo);
-            }
-
-            await this.executarCompensacoes(
-                compensacoes,
-                "Falha ao compensar resolução de denúncia."
-            );
-            throw error;
-        }
+            return denunciaResolvida;
+        });
 
         await this.notificarResultadoDenuncia(denuncia, resultado);
 
@@ -478,11 +399,7 @@ class AdministracaoService {
                 throw this.createConflictError("O status do item denunciado foi alterado por outra operação.");
             }
 
-            return () => this.itemDoacaoRepository.atualizarSeStatus(
-                itemId,
-                "CANCELADO",
-                { status: item.status }
-            );
+            return itemAtualizado;
         }
 
         if (denuncia.tipo_alvo === "USUARIO") {
@@ -505,19 +422,7 @@ class AdministracaoService {
                 throw this.createConflictError("A situação do usuário denunciado foi alterada por outra operação.");
             }
 
-            return () => this.usuarioRepository.atualizarSeSituacao(
-                usuarioId,
-                "SUSPENSO",
-                {
-                    situacao: usuario.situacao,
-                    motivo_suspensao: usuario.motivo_suspensao ?? null,
-                    suspensao_ate: usuario.suspensao_ate ?? null,
-                },
-                {
-                    motivo_suspensao: motivoSuspensao,
-                    suspensao_ate: suspensaoAte,
-                }
-            );
+            return usuarioAtualizado;
         }
 
         return null;
@@ -527,83 +432,41 @@ class AdministracaoService {
         const itens = await this.itemDoacaoRepository.listarDisponiveisPorUsuario(usuarioId);
         const itensCancelados = [];
 
-        try {
-            for (const item of itens) {
-                const itemId = this.getEntityId(item);
-                const itemAtualizado = await this.itemDoacaoRepository.atualizarSeStatus(
-                    itemId,
-                    "DISPONIVEL",
-                    { status: "CANCELADO" }
-                );
-
-                if (!itemAtualizado) {
-                    throw this.createConflictError(
-                        "Um item do usuário mudou de status durante a inativação."
-                    );
-                }
-
-                itensCancelados.push({
-                    id: itemId,
-                    statusOriginal: "DISPONIVEL",
-                });
-            }
-        } catch (error) {
-            await this.executarCompensacoes(
-                this.criarCompensacoesItens(itensCancelados),
-                "Falha ao compensar cancelamento parcial dos itens do usuário."
+        for (const item of itens) {
+            const itemId = this.getEntityId(item);
+            const itemAtualizado = await this.itemDoacaoRepository.atualizarSeStatus(
+                itemId,
+                "DISPONIVEL",
+                { status: "CANCELADO" }
             );
-            throw error;
+
+            if (!itemAtualizado) {
+                throw this.createConflictError(
+                    "Um item do usuário mudou de status durante a inativação."
+                );
+            }
+
+            itensCancelados.push(itemAtualizado);
         }
 
         return itensCancelados;
     }
 
-    criarCompensacoesItens(itensCancelados) {
-        return itensCancelados.map(({ id, statusOriginal }) => {
-            return () => this.itemDoacaoRepository.atualizarSeStatus(
-                id,
-                "CANCELADO",
-                { status: statusOriginal }
-            );
-        });
-    }
-
     async executarAcaoAuditavel({
         executar,
-        compensar,
         auditoria,
         mensagemConflito,
-        mensagemCompensacao,
     }) {
-        const resultado = await executar();
+        return this.transactionManager.run(async () => {
+            const resultado = await executar();
 
-        if (!resultado) {
-            throw this.createConflictError(mensagemConflito);
-        }
+            if (!resultado) {
+                throw this.createConflictError(mensagemConflito);
+            }
 
-        try {
             await this.registrarAcao(auditoria);
-        } catch (error) {
-            await this.executarCompensacoes([compensar], mensagemCompensacao);
-            throw error;
-        }
-
-        return resultado;
-    }
-
-    async executarCompensacoes(compensacoes, mensagemFalha) {
-        if (compensacoes.length === 0) {
-            return;
-        }
-
-        const resultados = await Promise.allSettled(compensacoes.map((compensar) => compensar()));
-        const compensacaoIncompleta = resultados.some((resultado) => {
-            return resultado.status === "rejected" || resultado.value == null;
+            return resultado;
         });
-
-        if (compensacaoIncompleta) {
-            throw new Error(mensagemFalha);
-        }
     }
 
     async registrarAcao(dados) {

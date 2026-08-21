@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { CustomError } from "../utils/helpers/index.js";
-import validarCPF from "../utils/validators/validarCPF.js";
+import { validarCPF } from "../utils/verificarCPF.js";
 
 class UsuarioService {
   constructor({
@@ -106,6 +106,8 @@ class UsuarioService {
 
     const removerSenha = usuario.toObject();
     delete removerSenha.senha;
+    delete removerSenha.token_redefinicao;
+    delete removerSenha.token_redefinicao_expira;
 
     return { token, refreshToken, usuario: removerSenha };
   }

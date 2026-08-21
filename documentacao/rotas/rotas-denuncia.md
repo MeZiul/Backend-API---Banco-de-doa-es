@@ -1,6 +1,6 @@
 # Rotas de Denúncia
 
-> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte o `README.md`.
 
 
 Este documento descreve o contrato funcional das rotas de `denuncia` revisadas para a Milestone 3.
@@ -176,7 +176,7 @@ Endurecimentos implementados:
 - atualizacao e remocao usam operacoes condicionais que exigem status `EM_ANALISE`;
 - resolucao administrativa foi centralizada no modulo de Administracao para sempre gerar auditoria;
 - somente uma resolucao concorrente pode vencer;
-- denuncia procedente aplica moderacao condicional e compensacao em caso de falha de auditoria;
+- denuncia procedente aplica moderacao condicional e auditoria na mesma transacao Prisma;
 - denunciante e alvo afetado recebem notificacoes de resultado;
 - respostas usam projecoes explicitas para limitar dados do denunciante, alvo, item e administrador.
 
@@ -188,8 +188,8 @@ Respostas adicionais:
 
 Riscos de deploy:
 
-- antes de criar os indices unicos, devem ser auditadas denuncias duplicadas `EM_ANALISE`;
-- sem transacoes MongoDB, uma queda entre moderacao e auditoria pode exigir reconciliacao manual.
+- migrations devem ser aplicadas antes de iniciar a API;
+- notificacoes permanecem best-effort e podem exigir reenvio manual se a integracao falhar depois do commit.
 
 Evidencia automatizada:
 

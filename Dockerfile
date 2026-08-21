@@ -5,11 +5,13 @@ ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /node-app
 
-# Copiamos o schema antes das dependências porque @prisma/client pode executar
-# geração no postinstall em algumas versões.
-COPY package.json prisma.config.ts ./
+# Esta camada só muda quando as dependências mudam, permitindo rebuild offline
+# do código e do schema quando a imagem já foi preparada anteriormente.
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev
+
+COPY prisma.config.ts ./
 COPY prisma ./prisma
-RUN npm install --include=dev
 RUN npm run prisma:generate
 
 COPY . .

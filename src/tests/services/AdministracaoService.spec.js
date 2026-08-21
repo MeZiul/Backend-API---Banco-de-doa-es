@@ -10,6 +10,7 @@ describe("AdministracaoService", () => {
   let interesseRepository;
   let avaliacaoRepository;
   let notificacaoService;
+  let transactionManager;
   let service;
 
   beforeEach(() => {
@@ -60,6 +61,9 @@ describe("AdministracaoService", () => {
     notificacaoService = {
       criarNotificacoesComSeguranca: jest.fn().mockResolvedValue([]),
     };
+    transactionManager = {
+      run: jest.fn(async (operation) => operation()),
+    };
 
     service = new AdministracaoService({
       administracaoRepository,
@@ -69,6 +73,7 @@ describe("AdministracaoService", () => {
       interesseRepository,
       avaliacaoRepository,
       notificacaoService,
+      transactionManager,
     });
   });
 
@@ -115,7 +120,7 @@ describe("AdministracaoService", () => {
     expect(resultado).toMatchObject({ situacao: "SUSPENSO" });
   });
 
-  test("Deve compensar bloqueio quando o registro de auditoria falhar", async () => {
+  test("Deve abortar a transação de bloqueio quando o registro de auditoria falhar", async () => {
     const erroAuditoria = new Error("auditoria indisponível");
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
@@ -123,9 +128,10 @@ describe("AdministracaoService", () => {
       motivo_suspensao: null,
       suspensao_ate: null,
     });
-    usuarioRepository.atualizarSeSituacao
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" })
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "SUSPENSO",
+    });
     administracaoRepository.criar.mockRejectedValue(erroAuditoria);
 
     await expect(
@@ -136,20 +142,8 @@ describe("AdministracaoService", () => {
       )
     ).rejects.toBe(erroAuditoria);
 
-    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenNthCalledWith(
-      2,
-      testIds.usuario,
-      "SUSPENSO",
-      {
-        situacao: "ATIVO",
-        motivo_suspensao: null,
-        suspensao_ate: null,
-      },
-      {
-        motivo_suspensao: "Violação das regras",
-        suspensao_ate: null,
-      }
-    );
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenCalledTimes(1);
   });
 
   test("Deve impedir listagem para usuário sem perfil administrativo", async () => {
@@ -357,7 +351,7 @@ describe("AdministracaoService", () => {
     expect(administracaoRepository.criar).not.toHaveBeenCalled();
   });
 
-  test("Deve compensar alvo e denúncia quando auditoria da resolução falhar", async () => {
+  test("Deve abortar a transação da resolução quando a auditoria falhar", async () => {
     const erroAuditoria = new Error("auditoria indisponível");
     denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
       _id: testIds.denuncia,
@@ -369,16 +363,18 @@ describe("AdministracaoService", () => {
       acao_tomada: null,
       data_analise: null,
     });
-    denunciaRepository.atualizarSeStatus
-      .mockResolvedValueOnce({ _id: testIds.denuncia, status: "PROCEDENTE" })
-      .mockResolvedValueOnce({ _id: testIds.denuncia, status: "EM_ANALISE" });
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "PROCEDENTE",
+    });
     itemDoacaoRepository.buscarPorId.mockResolvedValue({
       _id: testIds.item,
       status: "DISPONIVEL",
     });
-    itemDoacaoRepository.atualizarSeStatus
-      .mockResolvedValueOnce({ _id: testIds.item, status: "CANCELADO" })
-      .mockResolvedValueOnce({ _id: testIds.item, status: "DISPONIVEL" });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
     administracaoRepository.criar.mockRejectedValue(erroAuditoria);
 
     await expect(
@@ -389,22 +385,9 @@ describe("AdministracaoService", () => {
       )
     ).rejects.toBe(erroAuditoria);
 
-    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenNthCalledWith(
-      2,
-      testIds.item,
-      "CANCELADO",
-      { status: "DISPONIVEL" }
-    );
-    expect(denunciaRepository.atualizarSeStatus).toHaveBeenNthCalledWith(
-      2,
-      testIds.denuncia,
-      "PROCEDENTE",
-      expect.objectContaining({
-        status: "EM_ANALISE",
-        admin_id: null,
-      }),
-      { admin_id: testIds.admin }
-    );
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
   });
 
   test("Deve bloquear inativação automática quando existem doações em andamento", async () => {
@@ -475,7 +458,7 @@ describe("AdministracaoService", () => {
     expect(resultado).toMatchObject({ situacao: "INATIVO" });
   });
 
-  test("Deve compensar usuário e itens quando auditoria da inativação falhar", async () => {
+  test("Deve abortar a transação de inativação quando a auditoria falhar", async () => {
     const erroAuditoria = new Error("auditoria indisponível");
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
@@ -487,38 +470,23 @@ describe("AdministracaoService", () => {
     itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([
       { _id: testIds.item, status: "DISPONIVEL" },
     ]);
-    itemDoacaoRepository.atualizarSeStatus
-      .mockResolvedValueOnce({ _id: testIds.item, status: "CANCELADO" })
-      .mockResolvedValueOnce({ _id: testIds.item, status: "DISPONIVEL" });
-    usuarioRepository.atualizarSeSituacao
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "INATIVO" })
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "ATIVO" });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "INATIVO",
+    });
     administracaoRepository.criar.mockRejectedValue(erroAuditoria);
 
     await expect(
       service.inativarUsuario(testIds.usuario, {}, createAdminUser())
     ).rejects.toBe(erroAuditoria);
 
-    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenNthCalledWith(
-      2,
-      testIds.item,
-      "CANCELADO",
-      { status: "DISPONIVEL" }
-    );
-    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenNthCalledWith(
-      2,
-      testIds.usuario,
-      "INATIVO",
-      {
-        situacao: "ATIVO",
-        motivo_suspensao: null,
-        suspensao_ate: null,
-      },
-      {
-        motivo_suspensao: null,
-        suspensao_ate: null,
-      }
-    );
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
+    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenCalledTimes(1);
   });
 
   test("Deve bloquear operação administrativa de administrador suspenso", async () => {
@@ -842,15 +810,14 @@ describe("AdministracaoService", () => {
     )).rejects.toMatchObject({ statusCode: 400 });
   });
 
-  test("Deve rejeitar corrida de bloqueio e falha de compensacao", async () => {
+  test("Deve rejeitar corrida de bloqueio e propagar falha de auditoria", async () => {
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
       situacao: "ATIVO",
     });
     usuarioRepository.atualizarSeSituacao
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" })
-      .mockResolvedValueOnce(null);
+      .mockResolvedValueOnce({ _id: testIds.usuario, situacao: "SUSPENSO" });
 
     await expect(service.bloquearUsuario(
       testIds.usuario,
@@ -864,10 +831,12 @@ describe("AdministracaoService", () => {
       testIds.usuario,
       { justificativa: "Segunda tentativa" },
       createAdminUser()
-    )).rejects.toThrow("Falha ao compensar bloqueio sem registro de auditoria.");
+    )).rejects.toThrow("auditoria indisponivel");
+
+    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenCalledTimes(2);
   });
 
-  test("Deve compensar itens quando a inativacao perder a corrida", async () => {
+  test("Deve abortar a transação quando a inativação perder a corrida", async () => {
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
       situacao: "ATIVO",
@@ -876,20 +845,17 @@ describe("AdministracaoService", () => {
     itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([
       { _id: testIds.item, status: "DISPONIVEL" },
     ]);
-    itemDoacaoRepository.atualizarSeStatus
-      .mockResolvedValueOnce({ _id: testIds.item, status: "CANCELADO" })
-      .mockResolvedValueOnce({ _id: testIds.item, status: "DISPONIVEL" });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
     usuarioRepository.atualizarSeSituacao.mockResolvedValue(null);
 
     await expect(service.inativarUsuario(testIds.usuario, {}, createAdminUser()))
       .rejects.toMatchObject({ statusCode: 409 });
 
-    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenNthCalledWith(
-      2,
-      testIds.item,
-      "CANCELADO",
-      { status: "DISPONIVEL" }
-    );
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
   });
 
   test("Deve resolver denuncia sem repetir moderacao de alvo ja tratado", async () => {

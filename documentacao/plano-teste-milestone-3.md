@@ -1,6 +1,6 @@
 # Plano de Teste - Milestone 3
 
-> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte `README.md` e `MIGRACAO_PRISMA.md`.
+> **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte o `README.md`.
 
 
 ## 1. Objetivo
@@ -26,7 +26,7 @@ Camadas e comportamentos validados:
 - repositories, filtros e projecoes;
 - models e indices de consistencia;
 - notificacoes de eventos relevantes;
-- concorrencia, compare-and-set e compensacoes;
+- concorrencia, compare-and-set e transacoes Prisma;
 - documentacao Markdown e Swagger.
 
 ## 3. Estrategia
@@ -62,7 +62,7 @@ Eles validam:
 
 ### 3.3 Validacoes de consistencia
 
-As branches funcionais incluem validacoes com MongoDB descartavel para:
+O projeto inclui validacao descartavel com PostgreSQL exclusivo de testes para:
 
 - indice unico parcial de interesse aceito;
 - somente uma reserva concorrente;
@@ -70,6 +70,7 @@ As branches funcionais incluem validacoes com MongoDB descartavel para:
 - somente uma resolucao administrativa concorrente;
 - compare-and-set de usuario e item;
 - filtros e projecoes sem exposicao indevida.
+- repositories reais e rollback transacional sem persistir massa de teste.
 
 ## 4. Fluxo Principal Associado as Regras
 
@@ -139,6 +140,13 @@ Endpoints alvo:
 npm.cmd test -- --runInBand src/tests/routes/administracao.spec.js src/tests/routes/interesse.spec.js src/tests/routes/denuncia.spec.js
 ```
 
+Integracao real isolada:
+
+```powershell
+docker compose up -d postgres-test
+npm.cmd run test:db
+```
+
 ## 8. Evidencia para Apresentacao
 
 Demonstrar:
@@ -156,8 +164,8 @@ Demonstrar:
 
 ## 9. Riscos Conhecidos
 
-- Auditar dados existentes antes de criar indices unicos de Interesse e Denuncia.
-- Compensacoes nao substituem completamente transacoes MongoDB em caso de queda abrupta do processo.
+- A migration nao transporta dados de uma instalacao MongoDB antiga; a massa academica e recriada pelo seed.
+- `TEST_DATABASE_URL` deve apontar para o banco exclusivo de testes na porta 5433.
 - Notificacoes podem ser perdidas sem outbox ou retry duravel.
 - Os historicos administrativos retornam os 10 registros mais recentes por categoria para manter a resposta resumida.
 

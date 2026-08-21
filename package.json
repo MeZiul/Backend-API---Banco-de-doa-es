@@ -5,9 +5,13 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
+    "predev": "npm run prisma:generate",
     "dev": "nodemon server.js",
+    "prestart": "npm run prisma:generate",
     "start": "node server.js",
+    "pretest": "npm run prisma:generate",
     "test": "cross-env NODE_ENV=test jest --detectOpenHandles",
+    "pretest:coverage": "npm run prisma:generate",
     "test:coverage": "cross-env NODE_ENV=test jest --coverage --detectOpenHandles",
     "prisma:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
@@ -18,7 +22,8 @@
     "db:format": "prisma format",
     "seed": "node src/seeds/seedDoaI.js",
     "check:migration": "node scripts/validate-migration-static.mjs",
-    "test:db": "node scripts/prisma-smoke.js",
+    "pretest:db": "npm run prisma:generate",
+    "test:db": "cross-env NODE_ENV=test node scripts/prisma-smoke.js",
     "test:compat": "node --test scripts/prisma-compat.test.mjs"
   },
   "repository": {

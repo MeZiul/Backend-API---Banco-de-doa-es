@@ -6,6 +6,7 @@ import InteresseRepository from "../repositories/InteresseRepository.js";
 import AvaliacaoRepository from "../repositories/AvaliacaoRepository.js";
 import AdministracaoService from "../services/AdministracaoService.js";
 import notificacaoService from "../services/NotificacaoService.js";
+import prismaTransactionManager from "../infra/PrismaTransactionManager.js";
 
 const administracaoRepository = new AdministracaoRepository();
 const usuarioRepository = new UsuarioRepository();
@@ -22,6 +23,7 @@ const administracaoService = new AdministracaoService({
     interesseRepository,
     avaliacaoRepository,
     notificacaoService,
+    transactionManager: prismaTransactionManager,
 });
 
 export { administracaoService };
