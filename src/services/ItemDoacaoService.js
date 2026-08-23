@@ -122,7 +122,7 @@ class ItemDoacaoService {
       });
     }
 
-    return await this.repository.deletar(id);
+    return await this.repository.atualizar(id, { status: "CANCELADO" });
   }
 
   async confirmarEntrega(idItem, usuarioAutenticadoId) {

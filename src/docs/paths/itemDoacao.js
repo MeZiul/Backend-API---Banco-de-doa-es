@@ -97,17 +97,17 @@ Regras de negócio:
         },
         delete: {
             tags: ["Itens de Doação"],
-            summary: "Excluir um item",
-            description: `Remove fisicamente o item da base de dados.
+            summary: "Cancelar um item",
+            description: `Altera o status do item para CANCELADO, preservando seu histórico na base de dados.
 
 Regras de negócio:
 - A rota exige autenticação válida.
-- Apenas o usuário doador (criador do item) pode excluir.
-- Trava de segurança: Itens com o status RESERVADO ou AGUARDANDO_CONFIRMACAO não podem ser excluídos, pois existe um processo de doação em andamento.`,
+- Apenas o usuário doador (criador do item) pode cancelar.
+- Trava de segurança: Itens com o status RESERVADO ou AGUARDANDO_CONFIRMACAO não podem ser cancelados, pois existe um processo de doação em andamento.`,
             security: [{ bearerAuth: [] }],
             parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
             responses: {
-                204: { description: "Item excluído com sucesso (No Content)" },
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes", "Item cancelado com sucesso."),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
