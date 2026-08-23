@@ -84,8 +84,12 @@ class AvaliacaoService {
     return { message: "Avaliação removida com sucesso." };
   }
 
-  async listarPorUsuario({ filtros = {}, page = 1, limit = 20 }) {
-    return this.repository.listar({ filtros, page, limit });
+  async listarPorUsuario({ filtros = {}, page = 1, limit = 20 }, usuario) {
+    const usuarioId = usuario?.perfil === "ADMINISTRADOR"
+      ? undefined
+      : this.getActorId(usuario);
+
+    return this.repository.listar({ filtros, page, limit, usuarioId });
   }
 
   async buscarPorId(id) {

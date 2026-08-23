@@ -75,14 +75,23 @@ class AvaliacaoRepository extends BaseRepository {
     );
   }
 
-  listar({ filtros = {}, page = 1, limit = 15 }) {
+  listar({ filtros = {}, page = 1, limit = 15, usuarioId }) {
     const builder = new AvaliacaoFilterBuilder()
       .comAvaliador(filtros.avaliador_id)
       .comAvaliado(filtros.avaliado_id)
       .comItem(filtros.item_id)
       .comTipo(filtros.tipo);
 
-    return this.listarComPaginacao(builder.build(), {
+    const filtro = builder.build();
+
+    if (usuarioId) {
+      filtro.$or = [
+        { avaliador_id: usuarioId },
+        { avaliado_id: usuarioId },
+      ];
+    }
+
+    return this.listarComPaginacao(filtro, {
       page,
       limit,
       sort: { data_avaliacao: -1 },
