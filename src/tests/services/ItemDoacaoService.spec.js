@@ -340,13 +340,15 @@ describe("ItemDoacaoService", () => {
         });
     });
 
-    describe("deletar", () => {
-        test("deve deletar item com sucesso se for o dono", async () => {
+        describe("deletar", () => {
+        test("deve cancelar item com sucesso se for o dono, sem removê-lo", async () => {
             mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "DISPONIVEL" });
-            mockItemRepository.deletar.mockResolvedValue({ _id: "i1" });
+            mockItemRepository.atualizar.mockResolvedValue({ _id: "i1", status: "CANCELADO" });
 
             const res = await service.deletar("i1", "u1");
-            expect(mockItemRepository.deletar).toHaveBeenCalledWith("i1");
+            expect(res.status).toBe("CANCELADO");
+            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", { status: "CANCELADO" });
+            expect(mockItemRepository.deletar).not.toHaveBeenCalled();
         });
 
         test("deve lançar 404 se item nao encontrado ao deletar", async () => {
@@ -356,7 +358,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.deletar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
         });
 
         test("deve lançar 403 se usuario nao for o dono ao deletar", async () => {
@@ -366,7 +368,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 403,
                 customMessage: "Você não tem permissão para excluir este item.",
             });
-            expect(mockItemRepository.deletar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item está RESERVADO ao deletar", async () => {
@@ -376,7 +378,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível excluir um item que está em processo de doação.",
             });
-            expect(mockItemRepository.deletar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item está AGUARDANDO_CONFIRMACAO ao deletar", async () => {
@@ -386,7 +388,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível excluir um item que está em processo de doação.",
             });
-            expect(mockItemRepository.deletar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
         });
     });
 
