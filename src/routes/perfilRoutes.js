@@ -1,17 +1,14 @@
-import express from "express";
-import PerfilController from "../controllers/PerfilController.js";
+import express from 'express';
+import PerfilController from '../controllers/PerfilController.js';
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
-import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import EnsureAdminMiddleware from "../middlewares/EnsureAdminMiddleware.js";
+import { asyncWrapper } from "../utils/helpers/index.js";
 
 const router = express.Router();
-
-router.patch(
-  "/admin/usuarios/:id/perfil",
-  AuthMiddleware,
-  EnsureActiveUserMiddleware,
-  EnsureAdminMiddleware,
-  PerfilController.gerenciarAcesso
-);
+router
+    .get("/perfil", AuthMiddleware, asyncWrapper(PerfilController.buscar))
+    .put("/perfil", AuthMiddleware, asyncWrapper(PerfilController.atualizar))
+    .delete("/perfil", AuthMiddleware, asyncWrapper(PerfilController.desativar))
+    .patch("/admin/usuarios/:id/perfil", AuthMiddleware, EnsureAdminMiddleware, PerfilController.gerenciarAcesso);
 
 export default router;

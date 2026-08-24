@@ -1,6 +1,54 @@
 import commonResponses from "../schemas/swaggerCommonResponses.js";
 
 const perfilPaths = {
+    "/perfil": {
+        get: {
+            tags: ["Perfil"],
+            summary: "Consultar o próprio perfil",
+            security: [{ bearerAuth: [] }],
+            responses: {
+                200: commonResponses[200](),
+                401: commonResponses[401](),
+                404: commonResponses[404](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+        put: {
+            tags: ["Perfil"],
+            summary: "Atualizar o próprio perfil",
+            security: [{ bearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/PerfilAtualizarRequisicao" },
+                    },
+                },
+            },
+            responses: {
+                200: commonResponses[200](),
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                409: commonResponses[409](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+        delete: {
+            tags: ["Perfil"],
+            summary: "Desativar a própria conta",
+            description: "Altera a situação da conta para INATIVO e preserva o histórico.",
+            security: [{ bearerAuth: [] }],
+            responses: {
+                204: { description: "Conta desativada com sucesso." },
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
     "/admin/usuarios/{id}/perfil": {
         patch: {
             tags: ["Perfil"],
