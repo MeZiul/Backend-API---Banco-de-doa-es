@@ -39,8 +39,8 @@ Regras de negócio:
 Regras de negócio:
 - O e-mail é obrigatório e deve ter formato válido.
 - A resposta não deve confirmar se o e-mail existe ou não na base.
-- Quando o usuário existe, um token temporário de redefinição é gerado.
-- Em ambiente de desenvolvimento, o token pode ser retornado para facilitar testes.`,
+- Quando o usuário existe, um link temporário de redefinição é enviado ao e-mail cadastrado.
+- O token nunca é retornado no corpo da resposta.`,
             security: [],
             requestBody: {
                 required: true,

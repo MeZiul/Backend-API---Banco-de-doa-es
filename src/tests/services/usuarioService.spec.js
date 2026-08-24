@@ -27,12 +27,17 @@ const mockAvaliacaoRepository = {
   listar: jest.fn(),
 };
 
+const mockMailService = {
+  enviarLinkRecuperacao: jest.fn(),
+};
+
 let service;
 
 beforeEach(() => {
   Object.values(mockUsuarioRepository).forEach((fn) => fn.mockReset());
   Object.values(mockItemDoacaoRepository).forEach((fn) => fn.mockReset());
   Object.values(mockAvaliacaoRepository).forEach((fn) => fn.mockReset());
+  mockMailService.enviarLinkRecuperacao.mockReset();
 
   bcrypt.compare.mockReset();
   bcrypt.hash.mockReset();
@@ -43,6 +48,7 @@ beforeEach(() => {
     usuarioRepository: mockUsuarioRepository,
     itemDoacaoRepository: mockItemDoacaoRepository,
     avaliacaoRepository: mockAvaliacaoRepository,
+    mailService: mockMailService,
   });
 });
 
@@ -203,7 +209,7 @@ describe("UsuarioService.login", () => {
 });
 
 describe("UsuarioService.esqueciSenha", () => {
-  test("deve gerar token quando o email existe", async () => {
+  test("deve enviar o token sem retorná-lo na resposta", async () => {
     mockUsuarioRepository.buscarPorEmail.mockResolvedValue({
       _id: "507f1f77bcf86cd799439012",
       email: "teste@email.com",
@@ -212,8 +218,16 @@ describe("UsuarioService.esqueciSenha", () => {
 
     const resultado = await service.esqueciSenha("teste@email.com");
 
-    expect(resultado.token).toBeDefined();
+    expect(resultado).toEqual({
+      message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
+    });
+    expect(resultado.token).toBeUndefined();
     expect(mockUsuarioRepository.atualizar).toHaveBeenCalledTimes(1);
+    expect(mockUsuarioRepository.atualizar.mock.calls[0][1].token_redefinicao).toMatch(/^[a-f0-9]{64}$/);
+    expect(mockMailService.enviarLinkRecuperacao).toHaveBeenCalledWith({
+      email: "teste@email.com",
+      token: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
   });
 
   test("nao deve revelar se o email existe (anti-enumeracao)", async () => {

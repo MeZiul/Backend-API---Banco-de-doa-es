@@ -2,16 +2,20 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { CustomError } from "../utils/helpers/index.js";
 import { validarCPF } from "../utils/verificarCPF.js";
+import crypto from "crypto";
+import MailService from "../infra/MailService.js";
 
 class UsuarioService {
   constructor({
     usuarioRepository,
     itemDoacaoRepository,
     avaliacaoRepository,
+    mailService = new MailService(),
   }) {
     this.repository = usuarioRepository;
     this.itemDoacaoRepository = itemDoacaoRepository;
     this.avaliacaoRepository = avaliacaoRepository;
+    this.mailService = mailService;
   }
 
   async cadastrar(dados) {
@@ -121,18 +125,22 @@ class UsuarioService {
       };
     }
 
-    const crypto = await import("crypto");
     const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const expira = new Date(Date.now() + 60 * 60 * 1000);
 
     await this.repository.atualizar(usuario._id, {
-      token_redefinicao: token,
+      token_redefinicao: tokenHash,
       token_redefinicao_expira: expira,
+    });
+
+    await this.mailService.enviarLinkRecuperacao({
+      email: usuario.email,
+      token,
     });
 
     return {
       message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
-      token,
     };
   }
 
@@ -191,7 +199,8 @@ class UsuarioService {
   }
 
   async redefinirSenha(token, novaSenha) {
-    const usuario = await this.repository.buscarPorTokenRedefinicao(token);
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const usuario = await this.repository.buscarPorTokenRedefinicao(tokenHash);
 
     if (!usuario) {
       throw new CustomError({
