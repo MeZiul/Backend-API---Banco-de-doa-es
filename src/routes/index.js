@@ -19,7 +19,6 @@ import qrCodes from './qrCodeRoutes.js';
 import auditorias from './auditoriaRoutes.js';
 import landingPage from './landingPageRoutes.js';
 import dashboard from './dashboardRoutes.js'; */
-import example from "./exampleRoutes.js";
 import usuario from "./usuarioRoutes.js";
 import categoria from "./categoriaRoutes.js";
 import avaliacao from "./avaliacaoRoutes.js";

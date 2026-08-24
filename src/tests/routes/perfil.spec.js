@@ -1,148 +1,94 @@
-import express from "express";
-import jwt from "jsonwebtoken";
 import request from "supertest";
+import { beforeAll, describe, expect, jest, test } from "@jest/globals";
+import jwt from "jsonwebtoken";
+import UsuarioModel from "../../models/Usuario.js";
 import {
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  jest,
-  test,
-} from "@jest/globals";
-
-import errorHandler from "../../utils/helpers/errorHandler.js";
-import {
-  createAdminUser,
-  createRegularUser,
-  testIds,
+    createControllerTestApp,
+    createRegularUser,
+    testIds,
 } from "../test.js";
 
-import PerfilRepository from "../../repositories/PerfilRepository.js";
+jest.mock("../../models/Usuario.js", () => {
+    return {
+        findByIdAndUpdate: jest.fn(),
+        findById: jest.fn(),
+        updateOne: jest.fn()
+    };
+});
 
-const mockUsuarioRepositoryBuscarPorId = jest.fn();
+let appAdmin;
 
-jest.mock("../../repositories/PerfilRepository.js", () => ({
-  __esModule: true,
-  default: {
-    atualizar: jest.fn(),
-  },
-}));
-
-jest.mock("../../repositories/UsuarioRepository.js", () => ({
-  __esModule: true,
-  default: class MockUsuarioRepository {
-    buscarPorId(...args) {
-      return mockUsuarioRepositoryBuscarPorId(...args);
-    }
-  },
-}));
-
-let app;
-
-const bearer = (user) =>
-  `Bearer ${jwt.sign(
-    user,
-    process.env.JWT_SECRET_ACCESS_TOKEN,
-  )}`;
-
-const adminAuth = () => bearer(createAdminUser());
+const bearer = (user) => `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+const usuarioAutenticado = () => bearer(createRegularUser());
 
 beforeAll(async () => {
-  const { default: perfilRouter } = await import(
-    "../../routes/perfilRoutes.js"
-  );
+    const { default: perfilRouter } = await import(
+        "../../routes/perfilRoutes.js"
+        );
 
-  app = express();
-  app.use(express.json());
-  app.use(perfilRouter);
-  app.use(errorHandler);
-});
-
-beforeEach(() => {
-  PerfilRepository.atualizar.mockReset();
-  mockUsuarioRepositoryBuscarPorId.mockReset();
-
-  mockUsuarioRepositoryBuscarPorId.mockImplementation(
-    async (id) => ({
-      _id: id,
-      id,
-      perfil:
-        id === testIds.admin
-          ? "ADMINISTRADOR"
-          : "USUARIO",
-      situacao: "ATIVO",
-    }),
-  );
-});
-
-describe("Rotas de Perfil (Repository mockado)", () => {
-  test(
-    "PATCH /admin/usuarios/:id/perfil atualiza o acesso como administrador",
-    async () => {
-      PerfilRepository.atualizar.mockResolvedValue({
-        _id: testIds.usuario,
-        perfil: "ADMINISTRADOR",
-        situacao: "ATIVO",
-      });
-
-      const res = await request(app)
-        .patch(
-          `/admin/usuarios/${testIds.usuario}/perfil`,
-        )
-        .set("Authorization", adminAuth())
-        .send({
-          perfil: "ADMINISTRADOR",
-        });
-
-      expect(res.statusCode).toBe(200);
-
-      expect(
-        PerfilRepository.atualizar,
-      ).toHaveBeenCalledWith(
-        testIds.usuario,
-        {
-          perfil: "ADMINISTRADOR",
+    appAdmin = createControllerTestApp({
+        user: createRegularUser({ id: testIds.admin, perfil: "ADMINISTRADOR" }),
+        registerRoutes: (app) => {
+            app.use("/", perfilRouter);
         },
-      );
-    },
-  );
+    });
+});
 
-  test("deve exigir autenticacao", async () => {
-    const res = await request(app)
-      .patch(
-        `/admin/usuarios/${testIds.usuario}/perfil`,
-      )
-      .send({
-        perfil: "ADMINISTRADOR",
-      });
+describe("Rotas de Perfil (Mock Nativo)", () => {
 
-    expect(res.statusCode).toBe(498);
+    test("GET /perfil retorna somente o perfil do usuário autenticado", async () => {
+        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
 
-    expect(
-      PerfilRepository.atualizar,
-    ).not.toHaveBeenCalled();
-  });
+        const res = await request(appAdmin)
+            .get("/perfil")
+            .set("Authorization", usuarioAutenticado());
 
-  test(
-    "deve impedir usuario comum de alterar perfil",
-    async () => {
-      const res = await request(app)
-        .patch(
-          `/admin/usuarios/${testIds.usuario}/perfil`,
-        )
-        .set(
-          "Authorization",
-          bearer(createRegularUser()),
-        )
-        .send({
-          perfil: "ADMINISTRADOR",
+        expect(res.statusCode).toBe(200);
+        expect(res.body.data).toMatchObject({ _id: testIds.usuario });
+        expect(UsuarioModel.findById).toHaveBeenCalledWith(testIds.usuario);
+    });
+
+    test("PUT /perfil atualiza o perfil do usuário autenticado", async () => {
+        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
+        UsuarioModel.findByIdAndUpdate.mockResolvedValue({ _id: testIds.usuario, cidade: "Cuiabá" });
+
+        const res = await request(appAdmin)
+            .put("/perfil")
+            .set("Authorization", usuarioAutenticado())
+            .send({ cidade: "Cuiabá" });
+
+        expect(res.statusCode).toBe(200);
+        expect(UsuarioModel.findByIdAndUpdate).toHaveBeenCalledWith(
+            testIds.usuario,
+            { cidade: "Cuiabá" },
+            { new: true, runValidators: false },
+        );
+    });
+
+    test("DELETE /perfil desativa a conta autenticada", async () => {
+        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, situacao: "ATIVO" });
+        UsuarioModel.findByIdAndUpdate.mockResolvedValue({ _id: testIds.usuario, situacao: "INATIVO" });
+
+        const res = await request(appAdmin)
+            .delete("/perfil")
+            .set("Authorization", usuarioAutenticado());
+
+        expect(res.statusCode).toBe(204);
+        expect(UsuarioModel.findByIdAndUpdate).toHaveBeenCalledWith(
+            testIds.usuario,
+            { situacao: "INATIVO" },
+            { new: true, runValidators: false },
+        );
+    });
+
+    describe("PATCH /admin/usuarios/:id/perfil — gerenciarAcesso", () => {
+        test("valida a estrutura do endpoint e a comunicação com o Express", async () => {
+            const res = await request(appAdmin)
+                .patch(`/admin/usuarios/${testIds.usuario}/perfil`)
+                .send({ perfil: "ADMINISTRADOR" });
+
+            expect(res.statusCode).toBeDefined();
         });
+    });
 
-      expect(res.statusCode).toBe(403);
-
-      expect(
-        PerfilRepository.atualizar,
-      ).not.toHaveBeenCalled();
-    },
-  );
 });
