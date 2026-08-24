@@ -1,9 +1,14 @@
 // src/app.js
 import dotenv from 'dotenv';
 dotenv.config()
+
 import express from 'express';
 import routes from './routes/index.js';
 import compression from 'compression';
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+
 import DbConnect from './config/DbConnect.js';
 import errorHandler from './utils/helpers/errorHandler.js';
 import logger from './utils/logger.js';
@@ -22,9 +27,30 @@ DbConnect.conectar()
         process.exit(1); // Encerra o processo se a conexão falhar.
     });
 
+/* ───────────── Segurança ───────────── */
+app.use(helmet());
 
+app.use(
+    cors({
+        origin: process.env.FRONTEND_URL,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true
+    })
+);
 
+// Rate limit geral da API
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+        message: "Muitas requisições. Tente novamente mais tarde."
+    }
+});
 
+app.use(apiLimiter);
 
 /* ───────────── 2.1 Bloqueio de indexação (SEO) ───────────── */
 // Impede que buscadores indexem a API
@@ -39,21 +65,20 @@ app.get('/robots.txt', (req, res) => {
     res.send('User-agent: *\nDisallow: /\n');
 });
 
-
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
+// Deixa a pasta 'uploads' pública para a internet conseguir ver as imagens
+app.use('/uploads', express.static('uploads'));
+
 
 /* ───────────── 4. Rotas ───────────── */
 routes(app);
 
+
 /* ───────────── 5. 404 – rota não encontrada ───────────── */
-
-// Deixa a pasta 'uploads' pública para a internet conseguir ver as imagens
-app.use('/uploads', express.static('uploads'));
-
 app.use((req, res) => {
     return CommonResponse.error(
         res,
@@ -77,6 +102,4 @@ process.on('uncaughtException', (error) => {
 });
 
 /* ───────────── 7. Middleware central de erros ───────────── */
-
-
 export default app;
