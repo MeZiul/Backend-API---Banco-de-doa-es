@@ -134,6 +134,13 @@ async function run() {
         motivo: "OUTRO",
         descricao: "Denúncia temporária do smoke test.",
       });
+      const denunciaRemovivel = await denunciaRepository.criar({
+        denunciante_id: interessado.id,
+        tipo_alvo: "USUARIO",
+        alvo_usuario_id: doador.id,
+        motivo: "OUTRO",
+        descricao: "Denúncia removível do smoke test.",
+      });
       const administracao = await administracaoRepository.criar({
         administrador_id: administrador.id,
         tipo_acao: "BLOQUEIO_USUARIO",
@@ -154,15 +161,36 @@ async function run() {
         doador.id,
       );
       const usuarioComSenha = await usuarioRepository.buscarPorEmailComSenha(emailDoador);
+      const administradoresAtivos = await usuarioRepository.listarAdministradoresAtivos();
       const itemCarregado = await itemRepository.buscarPorId(item._id);
+      const denunciaResolvida = await denunciaRepository.atualizarSeStatus(
+        denuncia._id,
+        "EM_ANALISE",
+        { status: "PROCEDENTE", data_analise: new Date() },
+      );
+      const exclusaoResolvida = await denunciaRepository.deletarSeEmAnalise(
+        denuncia._id,
+        interessado.id,
+      );
+      const denunciaRemovida = await denunciaRepository.deletarSeEmAnalise(
+        denunciaRemovivel._id,
+        interessado.id,
+      );
 
       assert.equal(usuarioComSenha?.senha, "hash-smoke");
       assert.equal(usuarioComSenha?.token_redefinicao, undefined);
       assert.equal(usuarioComSenha?.token_redefinicao_expira, undefined);
+      assert.ok(administradoresAtivos.some((usuario) => usuario._id === administrador.id));
       assert.equal(itemCarregado?.fotos.length, 1);
       assert.equal(interesseAceito?.status, "ACEITO");
       assert.equal(avaliacao?.nota, 5);
-      assert.equal(denuncia?.status, "EM_ANALISE");
+      assert.equal(denunciaResolvida?.status, "PROCEDENTE");
+      assert.equal(exclusaoResolvida, null);
+      assert.equal(denunciaRemovida?._id, denunciaRemovivel._id);
+      assert.equal(
+        await tx.denuncia.findUnique({ where: { id: denunciaRemovivel._id } }),
+        null,
+      );
       assert.equal(administracao?.alvo_id, doador.id);
       assert.equal(notificacaoLida?.lida, true);
 

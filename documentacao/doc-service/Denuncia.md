@@ -28,9 +28,10 @@ src/tests/routes/denuncia.spec.js
 - Alvo deve ser item ou usuario existente.
 - Usuario nao pode denunciar a si mesmo.
 - Nao pode haver denuncia duplicada `EM_ANALISE` do mesmo denunciante para o mesmo alvo.
+- Administradores ativos recebem notificacao best-effort depois da criacao.
 - Usuario comum visualiza somente as proprias denuncias.
 - Somente o autor pode atualizar ou remover.
-- Atualizacao e remocao exigem status `EM_ANALISE`.
+- Atualizacao e remocao exigem status `EM_ANALISE`; a remocao condiciona atomicamente ID, autor e status.
 - Resolucao administrativa ocorre uma unica vez e gera auditoria.
 - Denuncia procedente pode cancelar item ou suspender usuario.
 - Resultado e notificacoes sao enviados aos envolvidos.
@@ -40,9 +41,9 @@ src/tests/routes/denuncia.spec.js
 | Grupo | Cenarios validados |
 | --- | --- |
 | Listagens e consulta | isolamento por denunciante, consulta do autor/admin e terceiro bloqueado |
-| Criacao | item, usuario, alvo invalido/inexistente, usuario inativo e duplicidade |
+| Criacao | item, usuario, alvo invalido/inexistente, usuario inativo, duplicidade e notificacao administrativa |
 | Atualizacao | sucesso, preservacao de campos, terceiro bloqueado e estado final |
-| Remocao | sucesso, terceiro bloqueado e estado final |
+| Remocao | sucesso, terceiro bloqueado, estado final e corrida com resolucao administrativa |
 | Resolucao | procedente contra item, procedente contra usuario, improcedente, resultado invalido e concorrencia |
 | Contrato HTTP | autenticacao, query/body/ID invalidos, aliases, status e propagacao de erros |
 
@@ -56,12 +57,11 @@ Branch de consistencia `133-admin-denuncia-consistencia-auditoria`:
 
 Validacao integrada final:
 
-- suite conjunta dos tres Services: **68 testes aprovados**;
-- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
-
-- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
+- recorte focado dos tres modulos, incluindo Services, endpoints e repositories alterados: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **100% de funcoes**, **97,50% de linhas** e **85,35% de branches**;
 - Controllers e routers alvo com **100% de linhas**.
-- suite completa: **26 suites e 226 testes aprovados**.
+- smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
+- suite global: **335 de 339 testes aprovados**; as 4 falhas restantes estao fora destes modulos, em Usuario, Perfil e Item de Doacao.
 
 ## 6. Comandos
 

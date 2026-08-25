@@ -52,7 +52,7 @@ Regra de negócio:
 - o mesmo usuário não pode denunciar o mesmo alvo novamente enquanto houver denúncia `EM_ANALISE`
 - a denúncia deve ser criada com status `EM_ANALISE`
 - a data do registro deve ser persistida
-- a administração pode ser notificada para análise posterior
+- os administradores ativos recebem uma notificação best-effort para análise posterior
 
 Resposta esperada:
 - `201 Created` com a denúncia criada
@@ -158,6 +158,7 @@ Regra de negócio:
 - a exclusão só pode ocorrer enquanto a denúncia estiver `EM_ANALISE`
 - denúncias `PROCEDENTE` e `IMPROCEDENTE` não podem ser removidas pelo usuário
 - a remoção deve ser bloqueada se a administração já tiver iniciado ou concluído a análise
+- a condição de ID, autor e status é verificada atomicamente na exclusão
 
 Resposta esperada:
 - `200 OK` com confirmação da remoção
@@ -174,6 +175,7 @@ Endurecimentos implementados:
 - usuario nao pode denunciar a si mesmo;
 - indices unicos parciais impedem denuncia duplicada `EM_ANALISE` do mesmo denunciante contra o mesmo item ou usuario;
 - atualizacao e remocao usam operacoes condicionais que exigem status `EM_ANALISE`;
+- nova denuncia gera notificacao best-effort para cada administrador ativo;
 - resolucao administrativa foi centralizada no modulo de Administracao para sempre gerar auditoria;
 - somente uma resolucao concorrente pode vencer;
 - denuncia procedente aplica moderacao condicional e auditoria na mesma transacao Prisma;
@@ -194,7 +196,8 @@ Riscos de deploy:
 Evidencia automatizada:
 
 - validacao real confirmou indice unico e somente uma resolucao concorrente;
-- testes unitarios conjuntos dos tres Services: **68 testes aprovados**;
-- testes de endpoint conjuntos dos tres modulos: **48 testes aprovados**;
-- suite integrada do projeto: **26 suites e 226 testes aprovados**;
+- recorte focado de Administracao, Interesse e Denuncia: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **85,35% de branches**, **100% de funcoes** e **97,50% de linhas**;
+- smoke PostgreSQL aprovou migrations, conexao, repositories, relacoes e rollback;
+- suite global: **335 de 339 testes aprovados**; as 4 falhas restantes estao fora destes modulos, em Usuario, Perfil e Item de Doacao;
 - Controller e router de Denuncia: **100% das linhas** na cobertura focada da branch de endpoints.

@@ -107,11 +107,12 @@ O projeto inclui validacao descartavel com PostgreSQL exclusivo de testes para:
 
 Validacao integrada final da `dev`:
 
-- testes unitarios dos tres Services: `3` suites e `68` testes aprovados;
-- testes de endpoint dos tres modulos: `3` suites e `48` testes aprovados;
-- suite completa atual: `26` suites e `226` testes aprovados;
-- cobertura focada dos Services: `96,16%` statements, `84,67%` branches, `97,16%` funcoes e `96,30%` linhas;
-- cobertura global: `78,19%` statements, `64,89%` branches, `74,21%` funcoes e `78,63%` linhas;
+- recorte focado de Administracao, Interesse e Denuncia: `8` suites e `123` testes aprovados;
+- cobertura focada dos Services: `97,51%` statements, `85,35%` branches, `100%` funcoes e `97,50%` linhas;
+- Controllers e routers dos tres modulos: `100%` de linhas;
+- smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
+- suite global: `335` de `339` testes aprovados; as 4 falhas restantes pertencem a Usuario, Perfil e Item de Doacao;
+- cobertura global gerada nessa execucao: `75,08%` statements, `61,13%` branches, `73,63%` funcoes e `77,18%` linhas;
 - importacao das fontes Swagger de Administracao, Interesse e Denuncia aprovada.
 
 ## 7. Comandos

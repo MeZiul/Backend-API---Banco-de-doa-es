@@ -221,7 +221,9 @@ Autorização:
 Regra de negócio:
 - a remoção administrativa deve ser preferencialmente lógica
 - o usuário deve passar para situação `INATIVO`
-- itens ativos do usuário devem ser cancelados
+- itens `DISPONIVEL` do usuário devem ser cancelados
+- a operação deve ser bloqueada se houver item `RESERVADO` ou `AGUARDANDO_CONFIRMACAO`
+- cancelamentos, revalidação, inativação e auditoria devem confirmar ou reverter juntos
 - o histórico pode ser preservado para auditoria
 - em casos necessários, dados pessoais podem ser anonimizados
 
@@ -340,7 +342,8 @@ Endurecimentos implementados:
 - moderacoes usam atualizacoes condicionais para impedir duas operacoes concorrentes de vencerem;
 - bloqueio, desbloqueio, inativacao, cancelamento de item e resolucao geram auditoria;
 - mutacao administrativa e auditoria compartilham uma transacao Prisma; falha em qualquer etapa desfaz todo o conjunto;
-- inativacao e bloqueada quando existem doacoes em andamento;
+- inativacao usa isolamento serializavel e revalida doacoes em andamento dentro da transacao;
+- destinatarios de itens cancelados sao consultados depois do commit, evitando perder interesses concorrentes;
 - usuarios afetados e interessados em itens cancelados recebem notificacoes best-effort;
 - listagens administrativas usam filtros dedicados e projecoes que nao expoem senha, tokens ou outros campos indevidos.
 
@@ -359,7 +362,8 @@ Respostas adicionais:
 
 Evidencia automatizada:
 
-- testes unitarios conjuntos dos tres Services: **68 testes aprovados**;
-- testes de endpoint conjuntos dos tres modulos: **48 testes aprovados**;
-- suite integrada do projeto: **26 suites e 226 testes aprovados**;
+- recorte focado de Administracao, Interesse e Denuncia: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **85,35% de branches**, **100% de funcoes** e **97,50% de linhas**;
+- smoke PostgreSQL aprovou migrations, conexao, repositories, relacoes e rollback;
+- suite global: **335 de 339 testes aprovados**; as 4 falhas restantes estao fora destes modulos, em Usuario, Perfil e Item de Doacao;
 - Controller e router de Administracao: **100% das linhas** na cobertura focada da branch de endpoints.

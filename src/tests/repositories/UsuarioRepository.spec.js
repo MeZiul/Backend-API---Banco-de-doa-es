@@ -28,4 +28,27 @@ describe("UsuarioRepository", () => {
     expect(usuario.toObject()).not.toHaveProperty("token_redefinicao");
     expect(usuario.toObject()).not.toHaveProperty("token_redefinicao_expira");
   });
+
+  test("listarAdministradoresAtivos retorna somente IDs elegíveis para notificação", async () => {
+    const findMany = jest.fn().mockResolvedValue([
+      { id: "fb55a3c6-dc66-4d46-aeb0-7fca9b3beab7" },
+    ]);
+    const repository = new UsuarioRepository();
+
+    Object.defineProperty(repository, "client", {
+      value: { usuario: { findMany } },
+    });
+
+    const administradores = await repository.listarAdministradoresAtivos();
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        perfil: "ADMINISTRADOR",
+        situacao: "ATIVO",
+      },
+      select: { id: true },
+    });
+    expect(administradores).toHaveLength(1);
+    expect(administradores[0]._id).toBe("fb55a3c6-dc66-4d46-aeb0-7fca9b3beab7");
+  });
 });
