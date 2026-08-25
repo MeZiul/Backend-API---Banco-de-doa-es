@@ -182,7 +182,7 @@ vite.config.ts.timestamp-*
 
 # Ignore documents html api
 Especificacao_API_REST_DoaI.html
-
+analise-banco-de-doacoes.html
 
 # Ignore documents markdown AI context
 AGENTS.md

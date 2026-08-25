@@ -88,6 +88,8 @@ docker compose up --build -d
 
 O container da API aguarda o PostgreSQL ficar saudável, aplica as migrations com `prisma migrate deploy` e inicia o servidor.
 
+O Compose publica a porta interna `7340` na porta definida por `API_HOST_PORT`. O valor padrão do exemplo é `7340`, portanto o desenvolvimento local continua usando `http://localhost:7340`.
+
 URLs padrão:
 
 - API: `http://localhost:7340`
@@ -95,6 +97,14 @@ URLs padrão:
 - JSON Swagger: `http://localhost:7340/docs.json`
 - PostgreSQL: `localhost:5432`
 - PostgreSQL exclusivo de testes: `localhost:5433`
+
+Em uma VM que recebe HTTP somente pela porta 80, configure `API_HOST_PORT=80` no `.env` da própria VM e recrie o serviço:
+
+```bash
+docker compose up --build -d
+```
+
+Nesse cenário, o mapeamento efetivo é `80:7340`: a porta 80 do host encaminha as requisições para a porta 7340 onde o Node.js escuta dentro do container. Não use `80:80` sem também alterar a porta interna da aplicação.
 
 Para acompanhar os logs:
 

@@ -6,6 +6,7 @@ describe("DenunciaService", () => {
   let denunciaRepository;
   let itemDoacaoRepository;
   let usuarioRepository;
+  let notificacaoService;
   let service;
 
   beforeEach(() => {
@@ -22,16 +23,22 @@ describe("DenunciaService", () => {
 
     usuarioRepository = {
       buscarPorId: jest.fn(),
+      listarAdministradoresAtivos: jest.fn().mockResolvedValue([]),
     };
 
     itemDoacaoRepository = {
       buscarPorId: jest.fn(),
     };
 
+    notificacaoService = {
+      criarNotificacoesComSeguranca: jest.fn().mockResolvedValue([]),
+    };
+
     service = new DenunciaService({
       denunciaRepository,
       itemDoacaoRepository,
       usuarioRepository,
+      notificacaoService,
     });
   });
 
@@ -97,6 +104,71 @@ describe("DenunciaService", () => {
       })
     );
     expect(resultado).toMatchObject({ status: "EM_ANALISE" });
+  });
+
+  test("Deve notificar administradores ativos após criar a denúncia", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    usuarioRepository.listarAdministradoresAtivos.mockResolvedValue([
+      { _id: testIds.admin },
+    ]);
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      status: "DISPONIVEL",
+    });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
+    denunciaRepository.criar.mockResolvedValue({ _id: testIds.denuncia });
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      tipo_alvo: "ITEM",
+      status: "EM_ANALISE",
+    });
+
+    await service.criar(
+      {
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+        motivo: "FRAUDE",
+      },
+      createRegularUser({ id: testIds.usuario }),
+    );
+
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.admin,
+        tipo: "SISTEMA",
+        referencia_tipo: "DENUNCIA",
+        referencia_id: testIds.denuncia,
+      }),
+    ]);
+  });
+
+  test("Falha ao localizar administradores não deve invalidar a denúncia criada", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    usuarioRepository.listarAdministradoresAtivos.mockRejectedValue(
+      new Error("consulta de administradores indisponível"),
+    );
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({ _id: testIds.item });
+    denunciaRepository.buscarEmAnalisePorItemEDenunciante.mockResolvedValue(null);
+    denunciaRepository.criar.mockResolvedValue({ _id: testIds.denuncia });
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.denuncia,
+      status: "EM_ANALISE",
+    });
+
+    await expect(service.criar(
+      {
+        tipo_alvo: "ITEM",
+        alvo_item_id: testIds.item,
+        motivo: "FRAUDE",
+      },
+      createRegularUser(),
+    )).resolves.toMatchObject({ status: "EM_ANALISE" });
   });
 
   test("Deve converter corrida de denúncia duplicada em conflito", async () => {

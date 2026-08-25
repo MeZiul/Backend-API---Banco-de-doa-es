@@ -46,7 +46,7 @@ services:
       DATABASE_URL: postgresql://doai:doai_local@postgres:5432/doai?schema=public
       NODE_ENV: production
     ports:
-      - "7340:7340"
+      - "${API_HOST_PORT:-7340}:7340"
     depends_on:
       postgres:
         condition: service_healthy

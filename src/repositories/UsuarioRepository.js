@@ -151,6 +151,18 @@ class UsuarioRepository extends BaseRepository {
   buscarPorIdParaAdministracao(id) {
     return this.buscarPorId(id, { select: ADMIN_DETAIL_SELECT });
   }
+
+  async listarAdministradoresAtivos() {
+    const records = await this.delegate.findMany({
+      where: {
+        perfil: "ADMINISTRADOR",
+        situacao: "ATIVO",
+      },
+      select: { id: true },
+    });
+
+    return records.map((record) => this.mapRecord(record));
+  }
 }
 
 export default UsuarioRepository;
