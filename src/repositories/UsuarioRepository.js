@@ -69,9 +69,9 @@ class UsuarioRepository extends BaseRepository {
     return this.mapRecord(recordComSenha, { includeHidden: true });
   }
 
-  async buscarPorTokenRedefinicao(token) {
+  async buscarPorTokenRedefinicao(tokenHash) {
     const record = await this.delegate.findFirst({
-      where: { token_redefinicao: token },
+      where: { token_redefinicao: tokenHash },
     });
     return this.mapRecord(record, { includeHidden: true });
   }
