@@ -1,8 +1,36 @@
 import PerfilService from "../services/PerfilService.js";
 import CommonResponse from "../utils/helpers/CommonResponse.js";
-import { gerenciarPerfilSchema } from "../utils/validators/schemas/zod/GerenciarPerfilSchema.js";
+import { atualizarPerfilSchema, gerenciarPerfilSchema } from "../utils/validators/schemas/zod/GerenciarPerfilSchema.js";
 
 class PerfilController {
+
+    buscar = async (req, res, next) => {
+        try {
+            const usuario = await PerfilService.buscarPerfil(req.user.id);
+            return CommonResponse.success(res, usuario);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    atualizar = async (req, res, next) => {
+        try {
+            const dados = atualizarPerfilSchema.parse(req.body);
+            const usuario = await PerfilService.atualizarPerfil(req.user.id, dados);
+            return CommonResponse.success(res, usuario);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    desativar = async (req, res, next) => {
+        try {
+            await PerfilService.desativarPerfil(req.user.id);
+            return res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    }
 
     gerenciarAcesso = async (req, res) => {
         try {
