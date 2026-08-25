@@ -56,7 +56,7 @@ Validacao integrada final:
 - Services alvo: **97,51% de statements**, **100% de funcoes**, **97,50% de linhas** e **85,35% de branches**;
 - Controllers e routers dos tres modulos: **100% de linhas**;
 - smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
-- suite global: **335 de 339 testes aprovados**; as 4 falhas restantes estao fora destes modulos, em Usuario, Perfil e Item de Doacao.
+- suite global: **343 de 345 testes aprovados**; as 2 falhas restantes estao fora destes modulos, em Usuario e Perfil.
 
 ## 6. Comandos
 

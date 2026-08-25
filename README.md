@@ -98,13 +98,15 @@ URLs padrão:
 - PostgreSQL: `localhost:5432`
 - PostgreSQL exclusivo de testes: `localhost:5433`
 
-Em uma VM que recebe HTTP somente pela porta 80, configure `API_HOST_PORT=80` no `.env` da própria VM e recrie o serviço:
+Em uma VM que recebe HTTP somente pela porta 80 e fica atrás de um gateway reverso, configure `API_HOST_PORT=80` e `TRUST_PROXY_HOPS=1` no `.env` da própria VM e recrie o serviço:
 
 ```bash
 docker compose up --build -d
 ```
 
 Nesse cenário, o mapeamento efetivo é `80:7340`: a porta 80 do host encaminha as requisições para a porta 7340 onde o Node.js escuta dentro do container. Não use `80:80` sem também alterar a porta interna da aplicação.
+
+`TRUST_PROXY_HOPS=1` informa ao Express que existe um proxy reverso entre o cliente e a API. Isso permite que os rate limiters usem o IP encaminhado pelo gateway. Mantenha `0` quando a aplicação for acessada diretamente, sem proxy confiável.
 
 Para acompanhar os logs:
 

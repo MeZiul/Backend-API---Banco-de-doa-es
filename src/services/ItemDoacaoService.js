@@ -154,7 +154,14 @@ class ItemDoacaoService {
   }
 
   async confirmarRecebimento(idItem, interessadoAutenticadoId) {
-    const item = await this.repository.buscarPorId(idItem);
+    const item = await this.repository.buscarPorId(idItem, {
+      populate: [
+        {
+          path: "interesse_aceito_id",
+          select: "usuario_interessado_id",
+        },
+      ],
+    });
 
     if (!item) {
       throw new CustomError({
@@ -163,7 +170,11 @@ class ItemDoacaoService {
       });
     }
 
-    if (item.interessado_id !== interessadoAutenticadoId) {
+    const interessadoId =
+      item.interesse_aceito_id?.usuario_interessado_id?._id?.toString?.()
+      ?? item.interesse_aceito_id?.usuario_interessado_id?.toString?.();
+
+    if (interessadoId !== interessadoAutenticadoId) {
       throw new CustomError({
         statusCode: 403,
         customMessage:
