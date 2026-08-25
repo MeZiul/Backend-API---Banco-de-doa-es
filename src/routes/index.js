@@ -3,6 +3,7 @@
 // BIBLIOTECAS
 import express from "express";
 import swaggerJsDoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
 import getSwaggerOptions from "../docs/config/head.js";
 import dotenv from "dotenv";
 
@@ -59,6 +60,33 @@ const routes = (app) => {
   });
 
   const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
+  const swaggerUiOptions = {
+    customSiteTitle: "API Banco de Doações DoaÍ - Documentação",
+    customRobots: "noindex, nofollow, noarchive, nosnippet",
+    customJs: "/docs/download-json.js",
+    customCss: `
+      .download-json-btn {
+        position: fixed;
+        top: 10px;
+        right: 20px;
+        z-index: 9999;
+        background-color: #49cc90;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-family: sans-serif;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .download-json-btn:hover { background-color: #3db47e; }
+    `,
+    swaggerOptions: {
+      deepLinking: true,
+      persistAuthorization: true,
+    },
+  };
 
   app.get("/docs.json", (req, res) => {
     const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
@@ -71,66 +99,32 @@ const routes = (app) => {
     res.json(docs);
   });
 
-  app.get("/docs", (req, res) => {
-    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
-    const html = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Banco de Doações DoaÍ - Documentação</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
-    <style>
-        .download-json-btn {
-            position: fixed;
-            top: 10px;
-            right: 20px;
-            z-index: 9999;
-            background-color: #49cc90;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-family: sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: background-color 0.2s;
-        }
-        .download-json-btn:hover {
-            background-color: #3db47e;
-        }
-    </style>
-</head>
-<body>
-    <a href="/docs.json" class="download-json-btn" download>Download JSON</a>
-    <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
-    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
-    <script>
-        window.onload = function() {
-            SwaggerUIBundle({
-                spec: ${JSON.stringify(docs)},
-                dom_id: '#swagger-ui',
-                deepLinking: true,
-                presets: [
-                    SwaggerUIBundle.presets.apis,
-                    SwaggerUIStandalonePreset
-                ],
-                plugins: [
-                    SwaggerUIBundle.plugins.DownloadUrl
-                ],
-                layout: "StandaloneLayout",
-                persistAuthorization: true
-            });
+  app.get("/docs/download-json.js", (_req, res) => {
+    res.type("application/javascript").send(`
+      (() => {
+        const addDownloadButton = () => {
+          if (document.querySelector(".download-json-btn")) return;
+
+          const link = document.createElement("a");
+          link.href = "/docs.json";
+          link.className = "download-json-btn";
+          link.download = "doai-api-docs.json";
+          link.textContent = "Download JSON";
+          document.body.appendChild(link);
         };
-    </script>
-</body>
-</html>`;
-    res.setHeader("Content-Type", "text/html");
-    res.send(html);
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", addDownloadButton);
+        } else {
+          addDownloadButton();
+        }
+      })();
+    `);
   });
+
+  // Assets e inicialização locais mantêm o Swagger compatível com a CSP do Helmet.
+  app.use("/docs", swaggerUi.serveFiles(swaggerDocs, swaggerUiOptions));
+  app.get("/docs", swaggerUi.setup(swaggerDocs, swaggerUiOptions));
 
   // ── Registro das rotas da API ──────────────────────
   app.use(express.json());
