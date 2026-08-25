@@ -133,7 +133,7 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "pm.test('API publica respondeu 200', function () { pm.expect(pm.response.code).to.eql(200); });",
-                  "pm.test('documento OpenAPI carregado', function () { pm.expect(json?.openapi).to.match(/^3\\\\./); });"
+                  "pm.test('documento OpenAPI carregado', function () { pm.expect(json?.openapi).to.match(/^3\\./); });"
                 ]
               }
             }
@@ -236,8 +236,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const brinquedos = docs.find((categoria) => String(categoria?.nome || '').toLowerCase().includes('brinqu'));",
                   "const categoria = brinquedos || docs.find((item) => item?.ativo !== false) || docs[0];",
                   "if (categoria?._id) pm.collectionVariables.set('categoriaId', categoria._id);",
@@ -407,8 +407,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const currentItemId = pm.collectionVariables.get('itemId');",
                   "const match = docs.find((item) => String(item?._id) === String(currentItemId));",
                   "pm.test('busca retornou o item criado', function () { pm.expect(match).to.be.ok; });",
@@ -524,8 +524,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const currentItemId = pm.collectionVariables.get('itemId');",
                   "const match = docs.find((i) => String(i.item_id?._id || i.item_id) === String(currentItemId));",
                   "if (match?._id) pm.collectionVariables.set('interesseId', match._id);",
@@ -623,8 +623,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const referenceId = pm.collectionVariables.get('interesseId');",
                   "const match = docs.find((notificacao) => {",
                   "  const id = notificacao?.referencia_id?._id || notificacao?.referencia_id;",
@@ -645,8 +645,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const currentItemId = pm.collectionVariables.get('itemId');",
                   "const match = docs.find((i) => String(i.item_id?._id || i.item_id) === String(currentItemId)) || docs[0];",
                   "if (match?._id) pm.collectionVariables.set('interesseId', match._id);",
@@ -805,8 +805,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const referenceId = pm.collectionVariables.get('interesseId');",
                   "const match = docs.find((notificacao) => {",
                   "  const id = notificacao?.referencia_id?._id || notificacao?.referencia_id;",
@@ -1256,8 +1256,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const denunciaId = pm.collectionVariables.get('denunciaId');",
                   "const match = docs.find((notificacao) => {",
                   "  const id = notificacao?.referencia_id?._id || notificacao?.referencia_id;",
@@ -1280,8 +1280,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const currentDenunciaId = pm.collectionVariables.get('denunciaId');",
                   "const match = docs.find((d) => String(d._id) === String(currentDenunciaId)) || docs[0];",
                   "if (match?._id) pm.collectionVariables.set('denunciaId', match._id);",
@@ -1441,8 +1441,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const referenceId = pm.collectionVariables.get('denunciaId');",
                   "const match = docs.find((notificacao) => {",
                   "  const id = notificacao?.referencia_id?._id || notificacao?.referencia_id;",
@@ -1499,8 +1499,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "const data = json?.data;",
-                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const responseData = json?.data;",
+                  "const docs = Array.isArray(responseData) ? responseData : (responseData?.docs || []);",
                   "const referenceId = pm.collectionVariables.get('denunciaId');",
                   "const match = docs.find((notificacao) => {",
                   "  const id = notificacao?.referencia_id?._id || notificacao?.referencia_id;",

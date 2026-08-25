@@ -111,7 +111,7 @@ Validacao integrada final da `dev`:
 - cobertura focada dos Services: `97,51%` statements, `85,35%` branches, `100%` funcoes e `97,50%` linhas;
 - Controllers e routers dos tres modulos: `100%` de linhas;
 - smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
-- suite global: `335` de `339` testes aprovados; as 4 falhas restantes pertencem a Usuario, Perfil e Item de Doacao;
+- suite global: `343` de `345` testes aprovados; as 2 falhas restantes pertencem a Usuario e Perfil;
 - cobertura global gerada nessa execucao: `75,08%` statements, `61,13%` branches, `73,63%` funcoes e `77,18%` linhas;
 - importacao das fontes Swagger de Administracao, Interesse e Denuncia aprovada.
 

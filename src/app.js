@@ -13,11 +13,15 @@ import DbConnect from './config/DbConnect.js';
 import errorHandler from './utils/helpers/errorHandler.js';
 import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
+import { configureTrustProxy } from './config/trustProxy.js';
 //import fileUpload from 'express-fileupload';
 //import path, { dirname } from 'path';
 //import { fileURLToPath } from 'url';
 
 const app = express();
+
+// Deve ser configurado antes dos rate limiters para que req.ip represente o cliente.
+configureTrustProxy(app);
 
 // Conexão com o banco de dados.
 DbConnect.conectar()

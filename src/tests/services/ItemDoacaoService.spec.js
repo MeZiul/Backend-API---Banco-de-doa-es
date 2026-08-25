@@ -234,10 +234,26 @@ describe("ItemDoacaoService", () => {
 
     describe("confirmarRecebimento", () => {
         test("deve atualizar status para DOADO", async () => {
-            mockItemRepository.buscarPorId.mockResolvedValue({ _id: "i1", usuario_id: "u1", status: "AGUARDANDO_CONFIRMACAO" });
+            mockItemRepository.buscarPorId.mockResolvedValue({
+                _id: "i1",
+                usuario_id: "u1",
+                status: "AGUARDANDO_CONFIRMACAO",
+                interesse_aceito_id: {
+                    _id: "interesse1",
+                    usuario_interessado_id: "interessado1",
+                },
+            });
             mockItemRepository.atualizar.mockResolvedValue({ status: "DOADO" });
 
             const res = await service.confirmarRecebimento("i1", "interessado1");
+            expect(mockItemRepository.buscarPorId).toHaveBeenCalledWith("i1", {
+                populate: [
+                    {
+                        path: "interesse_aceito_id",
+                        select: "usuario_interessado_id",
+                    },
+                ],
+            });
             expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", expect.objectContaining({
                 status: "DOADO",
             }));
@@ -255,11 +271,37 @@ describe("ItemDoacaoService", () => {
         });
 
         test("deve lançar 400 se item nao está AGUARDANDO_CONFIRMACAO", async () => {
-            mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "RESERVADO" });
+            mockItemRepository.buscarPorId.mockResolvedValue({
+                usuario_id: "u1",
+                status: "RESERVADO",
+                interesse_aceito_id: {
+                    _id: "interesse1",
+                    usuario_interessado_id: "u1",
+                },
+            });
 
             await expect(service.confirmarRecebimento("i1", "u1")).rejects.toMatchObject({
                 statusCode: 400,
                 customMessage: "Este item não está aguardando confirmação de recebimento.",
+            });
+            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+        });
+
+        test("deve lançar 403 se usuario nao for o interessado aceito", async () => {
+            mockItemRepository.buscarPorId.mockResolvedValue({
+                usuario_id: "doador1",
+                status: "AGUARDANDO_CONFIRMACAO",
+                interesse_aceito_id: {
+                    _id: "interesse1",
+                    usuario_interessado_id: "interessado1",
+                },
+            });
+
+            await expect(
+                service.confirmarRecebimento("i1", "outroUsuario")
+            ).rejects.toMatchObject({
+                statusCode: 403,
+                customMessage: "Você não tem permissão para confirmar o recebimento deste item.",
             });
             expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
         });
