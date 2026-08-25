@@ -162,9 +162,11 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O usuário alvo passa para situação INATIVO.
-- Itens ativos vinculados ao usuário podem ser alterados para CANCELADO.
+- Itens DISPONIVEL vinculados ao usuário passam para CANCELADO.
+- A inativação é bloqueada se houver item RESERVADO ou AGUARDANDO_CONFIRMACAO.
 - O administrador não pode inativar a si mesmo.
-- A ação usa atualização condicional e deve gerar registro administrativo.`,
+- Cancelamentos, revalidação, inativação e auditoria usam uma transação serializável.
+- Interessados são consultados e notificados somente depois do commit.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -263,7 +265,7 @@ Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O item alvo passa para status CANCELADO.
 - A ação usa atualização condicional e deve ser registrada administrativamente.
-- Usuários afetados são notificados em modo best-effort.`,
+- Após o commit, os interesses ativos são consultados e seus usuários são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -355,9 +357,11 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O usuário alvo passa para situação INATIVO.
-- Itens ativos vinculados ao usuário podem ser alterados para CANCELADO.
+- Itens DISPONIVEL vinculados ao usuário passam para CANCELADO.
+- A inativação é bloqueada se houver item RESERVADO ou AGUARDANDO_CONFIRMACAO.
 - O administrador não pode inativar a si mesmo.
-- A ação usa atualização condicional e deve gerar registro administrativo.`,
+- Cancelamentos, revalidação, inativação e auditoria usam uma transação serializável.
+- Interessados são consultados e notificados somente depois do commit.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -389,7 +393,7 @@ Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
 - O item alvo passa para status CANCELADO.
 - A ação usa atualização condicional e deve ser registrada administrativamente.
-- Usuários afetados são notificados em modo best-effort.`,
+- Após o commit, os interesses ativos são consultados e seus usuários são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -425,7 +429,8 @@ Regras de negócio:
 - A resolução é condicional: somente uma operação concorrente pode vencer.
 - O administrador não pode aplicar auto-suspensão por meio da resolução.
 - A análise registra o administrador responsável, a resposta, a ação tomada e a data.
-- Denunciante e alvo afetado são notificados em modo best-effort.`,
+- Denunciante e alvo afetado são notificados em modo best-effort.
+- Se um item for cancelado, seus interessados são consultados somente depois do commit e também são notificados.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },

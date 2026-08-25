@@ -43,8 +43,8 @@ describe("DenunciaRepository - consistência", () => {
       status: "EM_ANALISE",
     };
     const findFirst = jest.fn().mockResolvedValue(existing);
-    const deleteFn = jest.fn().mockResolvedValue(existing);
-    const tx = { denuncia: { findFirst, delete: deleteFn } };
+    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+    const tx = { denuncia: { findFirst, deleteMany } };
     attachClient(repository, { $transaction: (callback) => callback(tx) });
 
     const resultado = await repository.deletarSeEmAnalise(
@@ -59,7 +59,29 @@ describe("DenunciaRepository - consistência", () => {
         status: "EM_ANALISE",
       },
     });
-    expect(deleteFn).toHaveBeenCalledWith({ where: { id: testIds.denuncia } });
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: testIds.denuncia,
+        denunciante_id: testIds.usuario,
+        status: "EM_ANALISE",
+      },
+    });
     expect(resultado._id).toBe(testIds.denuncia);
+  });
+
+  test("não remove denúncia resolvida entre a leitura e a exclusão condicional", async () => {
+    const repository = new DenunciaRepository();
+    const findFirst = jest.fn().mockResolvedValue({
+      id: testIds.denuncia,
+      denunciante_id: testIds.usuario,
+      status: "EM_ANALISE",
+    });
+    const deleteMany = jest.fn().mockResolvedValue({ count: 0 });
+    const tx = { denuncia: { findFirst, deleteMany } };
+    attachClient(repository, { $transaction: (callback) => callback(tx) });
+
+    await expect(
+      repository.deletarSeEmAnalise(testIds.denuncia, testIds.usuario),
+    ).resolves.toBeNull();
   });
 });

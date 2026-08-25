@@ -1,10 +1,17 @@
 import { CustomError, messages } from "../utils/helpers/index.js";
+import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class DenunciaService {
-    constructor({ denunciaRepository, usuarioRepository, itemDoacaoRepository }) {
+    constructor({
+        denunciaRepository,
+        usuarioRepository,
+        itemDoacaoRepository,
+        notificacaoService,
+    }) {
         this.repository = denunciaRepository;
         this.usuarioRepository = usuarioRepository;
         this.itemDoacaoRepository = itemDoacaoRepository;
+        this.notificacaoService = notificacaoService;
     }
 
     async listar({ filtros = {}, page = 1, limit = 15 }, usuario) {
@@ -141,7 +148,10 @@ class DenunciaService {
             throw error;
         }
 
-        return this.repository.buscarPorIdDetalhado(denuncia._id);
+        const denunciaDetalhada = await this.repository.buscarPorIdDetalhado(denuncia._id);
+        await this.notificarAdministradoresNovaDenuncia(denunciaDetalhada ?? denuncia);
+
+        return denunciaDetalhada;
     }
 
     async atualizar(id, dados, usuario) {
@@ -296,6 +306,26 @@ class DenunciaService {
             statusCode: 409,
             customMessage,
         });
+    }
+
+    async notificarAdministradoresNovaDenuncia(denuncia) {
+        try {
+            const administradores = await this.usuarioRepository.listarAdministradoresAtivos();
+            const denunciaId = this.getEntityId(denuncia);
+
+            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(
+                administradores.map((administrador) => ({
+                    usuario_id: this.getEntityId(administrador),
+                    tipo: TIPOS_NOTIFICACAO.SISTEMA,
+                    titulo: "Nova denúncia recebida",
+                    mensagem: "Uma nova denúncia aguarda análise administrativa.",
+                    referencia_tipo: REFERENCIAS_NOTIFICACAO.DENUNCIA,
+                    referencia_id: denunciaId,
+                }))
+            ) ?? [];
+        } catch {
+            return [];
+        }
     }
 
     ensureActorAtivo(usuario) {

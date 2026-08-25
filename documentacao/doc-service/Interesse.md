@@ -56,12 +56,11 @@ Branch de consistencia `132-interesse-consistencia-concorrencia`:
 
 Validacao integrada final:
 
-- suite conjunta dos tres Services: **68 testes aprovados**;
-- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
-
-- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
+- recorte focado dos tres modulos, incluindo Services, endpoints e repositories alterados: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **100% de funcoes**, **97,50% de linhas** e **85,35% de branches**;
 - Controllers e routers alvo com **100% de linhas**.
-- suite completa: **26 suites e 226 testes aprovados**.
+- smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
+- suite global: **343 de 345 testes aprovados**; as 2 falhas restantes estao fora destes modulos, em Usuario e Perfil.
 
 ## 6. Comandos
 

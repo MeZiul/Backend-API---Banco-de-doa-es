@@ -69,9 +69,9 @@ class UsuarioRepository extends BaseRepository {
     return this.mapRecord(recordComSenha, { includeHidden: true });
   }
 
-  async buscarPorTokenRedefinicao(token) {
+  async buscarPorTokenRedefinicao(tokenHash) {
     const record = await this.delegate.findFirst({
-      where: { token_redefinicao: token },
+      where: { token_redefinicao: tokenHash },
     });
     return this.mapRecord(record, { includeHidden: true });
   }
@@ -150,6 +150,18 @@ class UsuarioRepository extends BaseRepository {
 
   buscarPorIdParaAdministracao(id) {
     return this.buscarPorId(id, { select: ADMIN_DETAIL_SELECT });
+  }
+
+  async listarAdministradoresAtivos() {
+    const records = await this.delegate.findMany({
+      where: {
+        perfil: "ADMINISTRADOR",
+        situacao: "ATIVO",
+      },
+      select: { id: true },
+    });
+
+    return records.map((record) => this.mapRecord(record));
   }
 }
 

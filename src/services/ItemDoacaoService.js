@@ -9,7 +9,7 @@ class ItemDoacaoService {
   }
 
   async criar(dadosItem, usuarioAutenticado) {
-    
+
     if (usuarioAutenticado.situacao !== "ATIVO") {
       throw new CustomError({
         statusCode: 403,
@@ -154,12 +154,33 @@ class ItemDoacaoService {
   }
 
   async confirmarRecebimento(idItem, interessadoAutenticadoId) {
-    const item = await this.repository.buscarPorId(idItem);
-    if (!item)
+    const item = await this.repository.buscarPorId(idItem, {
+      populate: [
+        {
+          path: "interesse_aceito_id",
+          select: "usuario_interessado_id",
+        },
+      ],
+    });
+
+    if (!item) {
       throw new CustomError({
         statusCode: 404,
         customMessage: "Item não encontrado.",
       });
+    }
+
+    const interessadoId =
+      item.interesse_aceito_id?.usuario_interessado_id?._id?.toString?.()
+      ?? item.interesse_aceito_id?.usuario_interessado_id?.toString?.();
+
+    if (interessadoId !== interessadoAutenticadoId) {
+      throw new CustomError({
+        statusCode: 403,
+        customMessage:
+          "Você não tem permissão para confirmar o recebimento deste item.",
+      });
+    }
 
     if (item.status !== "AGUARDANDO_CONFIRMACAO") {
       throw new CustomError({
@@ -171,7 +192,7 @@ class ItemDoacaoService {
 
     return await this.repository.atualizar(idItem, {
       status: "DOADO",
-      data_doacao: new Date(), // Registra o momento exato do sucesso
+      data_doacao: new Date(),
     });
   }
 

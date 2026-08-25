@@ -239,7 +239,8 @@ Risco de deploy:
 Evidencia automatizada:
 
 - validacao real confirmou somente uma reserva concorrente;
-- testes unitarios conjuntos dos tres Services: **68 testes aprovados**;
-- testes de endpoint conjuntos dos tres modulos: **48 testes aprovados**;
-- suite integrada do projeto: **26 suites e 226 testes aprovados**;
+- recorte focado de Administracao, Interesse e Denuncia: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **85,35% de branches**, **100% de funcoes** e **97,50% de linhas**;
+- smoke PostgreSQL aprovou migrations, conexao, repositories, relacoes e rollback;
+- suite global: **343 de 345 testes aprovados**; as 2 falhas restantes estao fora destes modulos, em Usuario e Perfil;
 - Controller e router de Interesse: **100% das linhas** na cobertura focada da branch de endpoints.

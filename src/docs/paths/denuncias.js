@@ -12,7 +12,8 @@ Regras de negócio:
 - A denúncia deve ter alvo válido: ITEM ou USUARIO.
 - O usuário não pode denunciar a si mesmo.
 - O motivo é obrigatório e deve usar valores padronizados.
-- Não é permitido denunciar o mesmo alvo mais de uma vez enquanto houver denúncia EM_ANALISE para ele.`,
+- Não é permitido denunciar o mesmo alvo mais de uma vez enquanto houver denúncia EM_ANALISE para ele.
+- Após a criação, os administradores ativos recebem uma notificação best-effort para iniciar a análise.`,
             security: [{ bearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -125,7 +126,7 @@ Regras de negócio:
 - Apenas o autor da denúncia pode remover.
 - Apenas denúncias com status EM_ANALISE podem ser removidas.
 - Denúncias PROCEDENTE ou IMPROCEDENTE permanecem no histórico e não podem ser excluídas pelo usuário.
-- A remoção é condicional e pode falhar se a denúncia for concluída concorrentemente.`,
+- A remoção usa uma condição atômica de ID, autor e status, impedindo excluir uma denúncia concluída concorrentemente.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },

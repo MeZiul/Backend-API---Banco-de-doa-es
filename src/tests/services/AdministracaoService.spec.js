@@ -456,6 +456,47 @@ describe("AdministracaoService", () => {
       })
     );
     expect(resultado).toMatchObject({ situacao: "INATIVO" });
+    expect(transactionManager.run).toHaveBeenCalledWith(
+      expect.any(Function),
+      { isolationLevel: "Serializable" },
+    );
+  });
+
+  test("Deve abortar se uma doação entrar em andamento dentro da transação", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarEmAndamentoPorUsuario
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ _id: testIds.item, status: "RESERVADO" }]);
+    itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([]);
+
+    await expect(
+      service.inativarUsuario(testIds.usuario, {}, createAdminUser()),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "O usuário possui doações em andamento e não pode ser inativado automaticamente.",
+    });
+
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).not.toHaveBeenCalled();
+  });
+
+  test("Deve converter conflito serializável da inativação em resposta de domínio", async () => {
+    usuarioRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.usuario,
+      situacao: "ATIVO",
+    });
+    itemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
+    transactionManager.run.mockRejectedValue({ code: "P2034" });
+
+    await expect(
+      service.inativarUsuario(testIds.usuario, {}, createAdminUser()),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      customMessage: "O estado do usuário ou de suas doações mudou durante a inativação. Tente novamente.",
+    });
   });
 
   test("Deve abortar a transação de inativação quando a auditoria falhar", async () => {
@@ -606,6 +647,8 @@ describe("AdministracaoService", () => {
         referencia_id: testIds.item,
       }),
     ]);
+    expect(interesseRepository.listarAtivosPorItem.mock.invocationCallOrder[0])
+      .toBeGreaterThan(administracaoRepository.criar.mock.invocationCallOrder[0]);
   });
 
   test("Falha ao consultar destinatários não deve impedir cancelamento administrativo", async () => {
@@ -637,13 +680,6 @@ describe("AdministracaoService", () => {
       _id: testIds.usuario,
       situacao: "INATIVO",
     });
-    itemDoacaoRepository.listarPorUsuario.mockResolvedValue([
-      {
-        _id: testIds.item,
-        titulo: "Cadeira",
-        status: "DISPONIVEL",
-      },
-    ]);
     itemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
     itemDoacaoRepository.listarDisponiveisPorUsuario.mockResolvedValue([
       {
@@ -677,6 +713,8 @@ describe("AdministracaoService", () => {
         referencia_id: testIds.item,
       }),
     ]);
+    expect(interesseRepository.listarAtivosPorItem.mock.invocationCallOrder[0])
+      .toBeGreaterThan(administracaoRepository.criar.mock.invocationCallOrder[0]);
   });
 
   test("Deve impedir auto-suspensão ao resolver denúncia contra o próprio administrador", async () => {

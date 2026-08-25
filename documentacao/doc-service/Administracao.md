@@ -26,6 +26,7 @@ src/tests/routes/administracao.spec.js
 - Bloqueio exige justificativa e registra auditoria.
 - Somente usuario suspenso pode ser desbloqueado.
 - Inativacao e cancelamento de item geram registro administrativo.
+- Inativacao cancela itens disponiveis, revalida doacoes em andamento dentro da transacao serializavel e bloqueia conflitos.
 - Denuncia somente pode ser resolvida enquanto estiver `EM_ANALISE`.
 - Resultado da denuncia deve ser `PROCEDENTE` ou `IMPROCEDENTE`.
 - Denuncia procedente pode cancelar item ou suspender usuario.
@@ -33,6 +34,7 @@ src/tests/routes/administracao.spec.js
 - Data de suspensao deve ser uma data e hora ISO 8601 valida.
 - Detalhe administrativo agrega os 10 registros mais recentes de itens, interesses, avaliacoes e denuncias relacionadas.
 - Operacoes concorrentes usam compare-and-set; mutacao e auditoria confirmam ou fazem rollback juntas.
+- Destinatarios de cancelamentos sao consultados depois do commit da moderacao.
 
 ## 4. Cenarios Principais
 
@@ -40,7 +42,7 @@ src/tests/routes/administracao.spec.js
 | --- | --- |
 | Autorizacao | usuario comum bloqueado; administrador por perfil ou papel permitido |
 | Consultas | acoes, alvo, administrador, usuarios, itens e denuncias |
-| Moderacao de usuario | bloquear, exigir justificativa, desbloquear, inativar |
+| Moderacao de usuario | bloquear, exigir justificativa, desbloquear, inativar, revalidar andamento e tratar conflito serializavel |
 | Moderacao de item | cancelar item e registrar auditoria |
 | Resolucao de denuncia | procedente contra item, procedente contra usuario, improcedente e estados invalidos |
 | Erros | IDs invalidos, recursos inexistentes, conflitos e falhas operacionais |
@@ -50,13 +52,11 @@ src/tests/routes/administracao.spec.js
 
 Validacao integrada final:
 
-- suite conjunta dos tres Services: **68 testes aprovados**;
-- Services alvo: **96,16% de statements**, **97,16% de funcoes**, **96,30% de linhas** e **84,67% de branches**.
-
-- suite conjunta dos tres modulos: **48 testes de endpoint aprovados**;
+- recorte focado dos tres modulos, incluindo Services, endpoints e repositories alterados: **8 suites e 123 testes aprovados**;
+- Services alvo: **97,51% de statements**, **100% de funcoes**, **97,50% de linhas** e **85,35% de branches**;
 - Controllers e routers dos tres modulos: **100% de linhas**;
-- recorte completo dos testes de endpoint: **84,28% de statements**, **71,54% de branches**, **77,77% de funcoes** e **84,04% de linhas**.
-- suite completa: **26 suites e 226 testes aprovados**.
+- smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
+- suite global: **343 de 345 testes aprovados**; as 2 falhas restantes estao fora destes modulos, em Usuario e Perfil.
 
 ## 6. Comandos
 

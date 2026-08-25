@@ -236,48 +236,73 @@ class AdministracaoService {
             );
         }
 
-        const itensParaNotificar = await this.listarItensCancelaveisComInteresses(usuarioIdNormalizado);
-        const usuarioAtualizado = await this.transactionManager.run(async () => {
-            await this.cancelarItensDisponiveisDoUsuario(usuarioIdNormalizado);
-            const usuarioInativado = await this.usuarioRepository.atualizarSeSituacao(
-                usuarioId,
-                usuario.situacao,
-                {
-                    situacao: "INATIVO",
-                    motivo_suspensao: null,
-                    suspensao_ate: null,
-                }
-            );
+        let resultadoTransacao;
 
-            if (!usuarioInativado) {
-                throw this.createConflictError("A situação do usuário foi alterada por outra operação.");
+        try {
+            resultadoTransacao = await this.transactionManager.run(async () => {
+                const itensCancelados = await this.cancelarItensDisponiveisDoUsuario(
+                    usuarioIdNormalizado
+                );
+                const itensEmAndamentoNaTransacao = await this.itemDoacaoRepository
+                    .buscarEmAndamentoPorUsuario(usuarioIdNormalizado);
+
+                if (itensEmAndamentoNaTransacao.length > 0) {
+                    throw this.createConflictError(
+                        "O usuário possui doações em andamento e não pode ser inativado automaticamente."
+                    );
+                }
+
+                const usuarioInativado = await this.usuarioRepository.atualizarSeSituacao(
+                    usuarioId,
+                    usuario.situacao,
+                    {
+                        situacao: "INATIVO",
+                        motivo_suspensao: null,
+                        suspensao_ate: null,
+                    }
+                );
+
+                if (!usuarioInativado) {
+                    throw this.createConflictError(
+                        "A situação do usuário foi alterada por outra operação."
+                    );
+                }
+
+                await this.registrarAcao({
+                    administrador_id: this.getActorId(usuarioAdmin),
+                    tipo_acao: "INATIVACAO_USUARIO",
+                    tipo_alvo: "USUARIO",
+                    alvo_id: usuarioIdNormalizado,
+                    resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
+                    acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário inativado administrativamente.",
+                });
+
+                return { usuarioInativado, itensCancelados };
+            }, { isolationLevel: "Serializable" });
+        } catch (error) {
+            if (error?.code === "P2034") {
+                throw this.createConflictError(
+                    "O estado do usuário ou de suas doações mudou durante a inativação. Tente novamente."
+                );
             }
 
-            await this.registrarAcao({
-                administrador_id: this.getActorId(usuarioAdmin),
-                tipo_acao: "INATIVACAO_USUARIO",
-                tipo_alvo: "USUARIO",
-                alvo_id: usuarioIdNormalizado,
-                resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
-                acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Usuário inativado administrativamente.",
-            });
+            throw error;
+        }
 
-            return usuarioInativado;
-        });
-
-        for (const { item, interessesAtivos } of itensParaNotificar) {
+        for (const item of resultadoTransacao.itensCancelados) {
+            const interessesAtivos = await this.listarInteressesAtivosDoItem(
+                this.getEntityId(item)
+            );
             await this.notificarCancelamentoItem(item, interessesAtivos);
         }
 
-        return usuarioAtualizado;
+        return resultadoTransacao.usuarioInativado;
     }
 
     async cancelarItem(itemId, dados = {}, usuarioAdmin) {
         this.ensureAdmin(usuarioAdmin);
 
         const item = await this.ensureItemExists(itemId);
-        const interessesAtivos = await this.listarInteressesAtivosDoItem(itemId);
-
         if (item.status === "CANCELADO") {
             throw this.createConflictError("O item já está cancelado.");
         }
@@ -297,6 +322,7 @@ class AdministracaoService {
             mensagemConflito: "O status do item foi alterado por outra operação.",
         });
 
+        const interessesAtivos = await this.listarInteressesAtivosDoItem(itemId);
         await this.notificarCancelamentoItem(item, interessesAtivos);
 
         return itemAtualizado;
@@ -321,10 +347,6 @@ class AdministracaoService {
                 customMessage: "O resultado da denúncia deve ser PROCEDENTE ou IMPROCEDENTE.",
             });
         }
-
-        const interessesAtivos = resultado === "PROCEDENTE" && denuncia.tipo_alvo === "ITEM"
-            ? await this.listarInteressesAtivosDoItem(this.getEntityId(denuncia.alvo_item_id))
-            : [];
 
         if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "USUARIO") {
             this.ensureAlvoDiferenteDoAtor(
@@ -374,6 +396,9 @@ class AdministracaoService {
         await this.notificarResultadoDenuncia(denuncia, resultado);
 
         if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "ITEM") {
+            const interessesAtivos = await this.listarInteressesAtivosDoItem(
+                this.getEntityId(denuncia.alvo_item_id)
+            );
             await this.notificarCancelamentoItem(denuncia.alvo_item_id, interessesAtivos);
         }
 
@@ -594,33 +619,6 @@ class AdministracaoService {
         } catch {
             return [];
         }
-    }
-
-    async listarItensCancelaveisComInteresses(usuarioId) {
-        if (!this.itemDoacaoRepository?.listarPorUsuario) {
-            return [];
-        }
-
-        const statusCancelaveis = new Set([
-            "DISPONIVEL",
-            "RESERVADO",
-            "AGUARDANDO_CONFIRMACAO",
-        ]);
-        let itens;
-
-        try {
-            itens = await this.itemDoacaoRepository.listarPorUsuario(usuarioId);
-        } catch {
-            return [];
-        }
-        const itensCancelaveis = itens.filter((item) => statusCancelaveis.has(item.status));
-
-        return Promise.all(
-            itensCancelaveis.map(async (item) => ({
-                item,
-                interessesAtivos: await this.listarInteressesAtivosDoItem(this.getEntityId(item)),
-            }))
-        );
     }
 
     async notificarCancelamentoItem(item, interessesAtivos) {

@@ -64,12 +64,6 @@ const authSchemas = {
                 type: "string",
                 example: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
             },
-            token: {
-                type: "string",
-                nullable: true,
-                example: "6f3d7ac5d0b1e9f2c8a4...",
-                description: "Retornado apenas em ambiente de desenvolvimento/teste quando aplicável.",
-            },
         },
     },
     AuthRefreshTokenResponse: {

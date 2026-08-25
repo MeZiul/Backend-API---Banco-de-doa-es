@@ -104,15 +104,19 @@ class DenunciaRepository extends BaseRepository {
 
   async deletarSeEmAnalise(id, denuncianteId) {
     return this.withTransaction(async (tx) => {
+      const where = {
+        id: String(id),
+        denunciante_id: denuncianteId,
+        status: "EM_ANALISE",
+      };
       const existing = await tx.denuncia.findFirst({
-        where: {
-          id: String(id),
-          denunciante_id: denuncianteId,
-          status: "EM_ANALISE",
-        },
+        where,
       });
       if (!existing) return null;
-      await tx.denuncia.delete({ where: { id: String(id) } });
+
+      const result = await tx.denuncia.deleteMany({ where });
+      if (result.count === 0) return null;
+
       return this.mapRecord(existing);
     });
   }
