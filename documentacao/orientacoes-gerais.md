@@ -751,7 +751,7 @@ Confirme imports e spreads do schema/path em `src/docs/config/head.js` e reinici
 
 ### Swagger não abre totalmente offline
 
-O HTML atual busca assets do Swagger UI em CDN. O endpoint `/docs.json` continua local; se a interface visual for obrigatória sem internet, os assets precisam ter sido empacotados antes.
+O Swagger UI usa os assets locais da dependência `swagger-ui-express`, sem depender de CDN. Se `/docs.json` funcionar e `/docs` ficar vazio, confirme que `npm ci` foi executado, que os arquivos `/docs/swagger-ui-bundle.js`, `/docs/swagger-ui.css` e `/docs/swagger-ui-init.js` respondem com HTTP 200 e que a política CSP não foi alterada para bloquear scripts da própria API.
 
 ## 19. Checklist final de uma rota completa
 
