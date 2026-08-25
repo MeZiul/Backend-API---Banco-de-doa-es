@@ -180,13 +180,20 @@ class UsuarioService {
       });
     }
 
-    delete dados.cpf;
-    delete dados.perfil;
-    delete dados.situacao;
-    delete dados.senha;
+    const { senha, cpf, perfil, situacao, ...dadosPermitidos } = dados;
 
-    if (dados.email) {
-      const emailExiste = await this.repository.buscarPorEmail(dados.email);
+    if (senha) {
+      if (senha.length < 8) {
+        throw new CustomError({
+          statusCode: 400,
+          customMessage: "A senha deve ter no mínimo 8 caracteres.",
+        });
+      }
+      dadosPermitidos.senha = await bcrypt.hash(senha, 10);
+    }
+
+    if (dadosPermitidos.email) {
+      const emailExiste = await this.repository.buscarPorEmail(dadosPermitidos.email);
       if (emailExiste && emailExiste._id.toString() !== id) {
         throw new CustomError({
           statusCode: 409,
@@ -195,7 +202,7 @@ class UsuarioService {
       }
     }
 
-    return this.repository.atualizar(id, dados);
+    return this.repository.atualizar(id, dadosPermitidos);
   }
 
   async redefinirSenha(token, novaSenha) {
