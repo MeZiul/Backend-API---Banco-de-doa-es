@@ -1,37 +1,23 @@
 # Rotas de Autenticação
 
-Este documento descreve o contrato funcional das rotas de `autenticação` previstas para a Milestone 2.
+Este documento descreve o contrato público de autenticação da API DoaI após a migração para Better Auth 1.7, Prisma e PostgreSQL.
 
-Escopo considerado:
-- branches de rota de `autenticação` mergeadas na `dev`
-- autenticação via Bearer Token JWT nas rotas protegidas
-- regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
+## Visão geral
 
-## Visão Geral
+- Credenciais locais: `Account`, com hash bcrypt em `password`.
+- Sessões revogáveis: `Session`, com token opaco e expiração.
+- Recuperação de senha: `Verification`, com token temporário de uso único.
+- Transporte: `Authorization: Bearer <token>`.
+- O bearer é um token de sessão opaco, não um JWT.
+- O estado e o perfil atuais do usuário são consultados no banco a cada operação protegida.
 
-Domínio responsável por:
-- autenticar usuários cadastrados
-- gerar token JWT para acesso às rotas protegidas
-- encerrar sessão invalidando o token atual
-- renovar token de usuário autenticado
-- iniciar e concluir o fluxo de recuperação de senha
+Os endpoints nativos do Better Auth que poderiam alterar identidade ou credenciais estão bloqueados no handler `/api/auth/*`. Cadastro, login, recuperação, atualização e exclusão devem passar pelas rotas do DoaI para preservar Zod, CPF, permissões e regras de situação.
 
-Rotas do módulo:
-- `POST /auth/login`
-- `POST /auth/logout`
-- `POST /auth/refresh-token`
-- `POST /auth/esqueci-senha`
-- `PUT /auth/redefinir-senha`
+## `POST /auth/login`
 
-## POST /auth/login
+Autentica um usuário cadastrado e cria uma sessão persistida.
 
-Objetivo:
-Autenticar um usuário cadastrado e retornar um token JWT.
-
-Autorização:
-- rota pública
-
-Body esperado:
+Autorização: rota pública.
 
 ```json
 {
@@ -40,94 +26,81 @@ Body esperado:
 }
 ```
 
-Regra de negócio:
-- o usuário deve informar `email` e `senha`
-- o e-mail deve possuir formato válido
-- o sistema deve validar a senha usando comparação com hash armazenado
-- credenciais inválidas devem retornar erro genérico sem indicar se o e-mail ou a senha falhou
-- usuários com situação `SUSPENSO` não podem autenticar
-- usuários com situação `INATIVO` não podem autenticar
-- em caso de sucesso, o sistema deve gerar token JWT contendo os dados essenciais do usuário
-- a resposta não deve expor a senha ou hash de senha
+Regras de negócio:
 
-Resposta esperada:
-- `200 OK` com `token` e dados do usuário autenticado
+- e-mail e senha são obrigatórios;
+- credenciais inválidas retornam mensagem genérica;
+- `SUSPENSO` e `INATIVO` não podem autenticar;
+- se o Better Auth criar uma sessão antes de detectar uma situação inválida, a sessão é removida;
+- o hash e os dados internos de autenticação nunca são retornados.
 
-Erros comuns:
-- `400 Bad Request` para body inválido
-- `401 Unauthorized` para e-mail ou senha incorretos
-- `403 Forbidden` para conta suspensa ou inativa
-- `500 Internal Server Error` para erro inesperado
+Resposta `200`:
 
-## POST /auth/logout
-
-Objetivo:
-Encerrar a sessão do usuário autenticado invalidando o token atual.
-
-Autorização:
-- usuário autenticado
-
-Headers esperados:
-
-```http
-Authorization: Bearer <token>
+```json
+{
+  "message": "Requisição bem-sucedida.",
+  "data": {
+    "token": "token-opaco-da-sessao",
+    "usuario": {
+      "_id": "uuid-do-usuario",
+      "email": "carlos@email.com",
+      "situacao": "ATIVO"
+    }
+  },
+  "errors": []
+}
 ```
 
-Regra de negócio:
-- a rota exige autenticação
-- o token enviado no header deve ser extraído da requisição
-- o token deve ser colocado em blacklist
-- após logout, o mesmo token não deve ser aceito em novas requisições protegidas
-- a operação não remove o usuário nem altera seus dados cadastrais
+Erros: `400` body inválido, `401` credenciais inválidas, `403` conta suspensa/inativa e `500` falha inesperada.
 
-Resposta esperada:
-- `200 OK` com mensagem de logout realizado
+## `POST /auth/logout`
 
-Erros comuns:
-- `401 Unauthorized` para ausência de autenticação
-- `498 Invalid Token` para token inválido ou expirado
-- `500 Internal Server Error` para erro inesperado
-
-## POST /auth/refresh-token
-
-Objetivo:
-Gerar um novo token JWT para o usuário autenticado.
-
-Autorização:
-- usuário autenticado
-
-Headers esperados:
+Revoga no PostgreSQL a sessão identificada pelo bearer atual.
 
 ```http
-Authorization: Bearer <token>
+Authorization: Bearer <token-opaco-da-sessao>
 ```
 
-Regra de negócio:
-- a rota exige token válido
-- o usuário identificado no token deve existir na base
-- apenas usuários com situação `ATIVO` podem renovar token
-- contas suspensas ou inativas devem ser bloqueadas
-- o novo token deve preservar os dados essenciais de identificação e perfil
-- o token antigo pode continuar válido até expirar, salvo se estiver em blacklist
+Regras de negócio:
 
-Resposta esperada:
-- `200 OK` com novo `token`
+- exige uma sessão existente;
+- também permite encerrar a sessão de conta que se tornou inativa;
+- remove a sessão persistida, sem blacklist em memória;
+- o mesmo token é recusado após o logout e após reinicializações da API.
 
-Erros comuns:
-- `401 Unauthorized` para usuário não encontrado ou autenticação ausente
-- `403 Forbidden` para conta inativa ou suspensa
-- `498 Invalid Token` para token inválido ou expirado
-- `500 Internal Server Error` para erro inesperado
+Erros: `498` sessão ausente, inválida ou expirada e `500` falha inesperada.
 
-## POST /auth/esqueci-senha
+## `POST /auth/refresh-token`
 
-Objetivo:
-Iniciar o fluxo de recuperação de senha para um e-mail cadastrado.
+Rotaciona o token da sessão atual.
 
-Autorização:
-- rota pública
+```http
+Authorization: Bearer <token-atual>
+```
 
-Body esperado:
+Regras de negócio:
+
+- exige usuário atual com situação `ATIVO`;
+- a atualização usa como condição o token, o usuário e a expiração;
+- o token antigo é substituído e invalidado imediatamente;
+- somente uma chamada concorrente com o mesmo token pode vencer;
+- a nova sessão recebe o prazo configurado no Better Auth.
+
+Resposta `200`:
+
+```json
+{
+  "message": "Requisição bem-sucedida.",
+  "data": { "token": "novo-token-opaco" },
+  "errors": []
+}
+```
+
+Erros: `401` sessão não rotacionável, `403` conta não ativa e `498` bearer inválido/expirado.
+
+## `POST /auth/esqueci-senha`
+
+Inicia a recuperação sem revelar se o e-mail existe.
 
 ```json
 {
@@ -135,50 +108,48 @@ Body esperado:
 }
 ```
 
-Regra de negócio:
-- o e-mail é obrigatório e deve possuir formato válido
-- a resposta não deve confirmar se o e-mail existe na base, para evitar enumeração de contas
-- quando o e-mail pertence a um usuário cadastrado, o sistema deve gerar token temporário de redefinição
-- o token deve possuir prazo de expiração
-- em ambiente de desenvolvimento, o token pode ser retornado na resposta para facilitar testes
-- em ambiente com serviço de e-mail ativo, as instruções devem ser enviadas ao endereço cadastrado
+Regras de negócio:
 
-Resposta esperada:
-- `200 OK` com mensagem genérica de instruções enviadas
+- o e-mail deve ser válido;
+- a resposta é sempre genérica para evitar enumeração de contas;
+- quando o usuário existe, o Better Auth grava uma verificação temporária;
+- o token não é retornado no body;
+- o `MailService` envia o link quando o e-mail está habilitado.
 
-Erros comuns:
-- `400 Bad Request` para e-mail inválido
-- `500 Internal Server Error` para erro inesperado
+## `PUT /auth/redefinir-senha`
 
-## PUT /auth/redefinir-senha
-
-Objetivo:
-Redefinir a senha do usuário usando o token temporário de recuperação.
-
-Autorização:
-- rota pública
-
-Body esperado:
+Consome a verificação temporária e substitui a credencial.
 
 ```json
 {
-  "token": "6f3d7ac5d0b1e9f2c8a4",
+  "token": "token-temporario-de-recuperacao",
   "novaSenha": "NovaSenha@123"
 }
 ```
 
-Regra de negócio:
-- o token é obrigatório
-- a nova senha é obrigatória
-- a nova senha deve ter pelo menos 8 caracteres
-- a nova senha deve conter letra maiúscula, letra minúscula, número e caractere especial
-- o token deve existir e não pode estar expirado
-- a nova senha deve ser armazenada com hash bcrypt
-- após a redefinição, o token de recuperação não deve ser reutilizado
+Regras de negócio:
 
-Resposta esperada:
-- `200 OK` com mensagem de senha redefinida
+- a senha deve cumprir o schema do DoaI;
+- o token deve existir, estar válido e não expirado;
+- o novo valor é armazenado somente como hash bcrypt;
+- a verificação não pode ser reutilizada;
+- as sessões anteriores são revogadas após a redefinição.
 
-Erros comuns:
-- `400 Bad Request` para token inválido, token expirado ou senha fora do padrão
-- `500 Internal Server Error` para erro inesperado
+## Validação manual
+
+1. Execute `POST /auth/login`.
+2. Copie somente `data.token` para o botão **Authorize** do Swagger.
+3. Consulte uma rota protegida.
+4. Execute `POST /auth/refresh-token` e substitua o token autorizado.
+5. Confirme que o token anterior falha.
+6. Execute `POST /auth/logout` e confirme que o token novo também falha.
+
+Validação automatizada real:
+
+```bash
+docker compose up -d postgres-test
+npm run test:db
+npm run test:auth:migration
+npm run test:auth
+npm run test:auth:http
+```

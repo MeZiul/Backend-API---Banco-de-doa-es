@@ -126,10 +126,7 @@ const routes = (app) => {
   app.get("/docs", swaggerUi.setup(swaggerDocs, swaggerUiOptions));
 
   // ── Registro das rotas da API ──────────────────────
-  app.use(express.json());
   app.use(auth);
-
-  app.use(example);
 
   app.use(usuario);
 

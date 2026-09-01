@@ -123,8 +123,7 @@ function usuarioBase(overrides = {}) {
     bio:                      null,
     motivo_suspensao:         null,
     suspensao_ate:            null,
-    token_redefinicao:        null,
-    token_redefinicao_expira: null,
+    email_verificado:         false,
     media_avaliacoes:         0,
     total_avaliacoes:         0,
     total_doacoes:            0,
@@ -288,22 +287,49 @@ async function seedUsuarios() {
   }
 
   if (limpo) {
-    const result = await Usuario.insertMany(todos);
+    const result = await Usuario.insertMany(
+      todos.map(({ senha: _senha, ...usuario }) => usuario),
+    );
+    await seedContasCredenciais(result, todos);
     console.log(`[OK] ${result.length} Usuarios inseridos (${fixos.length} fixos + ${aleatorios.length} aleatorios)`);
     return result;
   }
 
   for (const u of fixos) {
-    await Usuario.findOneAndUpdate({ cpf: u.cpf }, { $set: u }, { upsert: true, new: true });
+    const { senha: _senha, ...usuario } = u;
+    await Usuario.findOneAndUpdate({ cpf: u.cpf }, { $set: usuario }, { upsert: true, new: true });
   }
   try {
-    await Usuario.insertMany(aleatorios, { ordered: false });
+    await Usuario.insertMany(
+      aleatorios.map(({ senha: _senha, ...usuario }) => usuario),
+      { ordered: false },
+    );
   } catch (err) {
     if (err.code !== 11000) throw err;
   }
   const all = await Usuario.find();
+  await seedContasCredenciais(all, todos);
   console.log(`[OK] ${all.length} Usuarios upserted/inseridos`);
   return all;
+}
+
+async function seedContasCredenciais(usuarios, dadosOriginais) {
+  const senhaPorEmail = new Map(
+    dadosOriginais.map((usuario) => [usuario.email.toLowerCase(), usuario.senha]),
+  );
+
+  const contas = usuarios
+    .map((usuario) => ({
+      id: `credential:${usuario._id}`,
+      issuer: "local:credential",
+      accountId: String(usuario._id),
+      providerId: "credential",
+      userId: String(usuario._id),
+      password: senhaPorEmail.get(usuario.email.toLowerCase()),
+    }))
+    .filter((conta) => conta.password);
+
+  await getPrisma().account.createMany({ data: contas, skipDuplicates: true });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -789,6 +815,9 @@ async function limparBancoRelacional() {
   await prisma.fotoItemDoacao.deleteMany();
   await prisma.itemDoacao.deleteMany();
   await prisma.categoria.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.verification.deleteMany();
   await prisma.usuario.deleteMany();
 }
 

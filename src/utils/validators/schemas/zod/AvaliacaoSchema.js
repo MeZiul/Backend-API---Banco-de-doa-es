@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod-v3";
 import { isEntityId } from "./ObjectIdSchema.js";
 export { AvaliacaoIdSchema, AvaliacaoQuerySchema } from "./querys/AvaliacaoQuerySchema.js";
 

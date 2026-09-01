@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod-v3";
 import { isEntityId } from "../ObjectIdSchema.js";
 
 export const AvaliacaoIdSchema = z.string().refine(

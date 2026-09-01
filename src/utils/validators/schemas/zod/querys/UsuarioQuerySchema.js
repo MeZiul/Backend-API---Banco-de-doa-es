@@ -1,6 +1,6 @@
 // src/utils/validators/schemas/zod/querys/UsuarioQuerySchema.js
 
-import { z } from "zod";
+import { z } from "zod-v3";
 import { isEntityId } from "../ObjectIdSchema.js";
 
 const isValidDate = (value) => !value || !Number.isNaN(new Date(value).getTime());

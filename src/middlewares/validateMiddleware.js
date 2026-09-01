@@ -1,5 +1,5 @@
 import CommonResponse from "../utils/helpers/CommonResponse.js";
-import { ZodError } from "zod";
+import { ZodError } from "zod-v3";
 
 export const validate = (schema, source = 'body') => (req, res, next) => {
     // ... dentro do validateMiddleware.js

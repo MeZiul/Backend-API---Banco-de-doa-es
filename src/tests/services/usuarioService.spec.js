@@ -1,19 +1,11 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import bcrypt from "bcryptjs";
 import UsuarioService from "../../services/UsuarioService.js";
-import CustomError from "../../utils/helpers/CustomError.js";
-
-jest.mock("bcryptjs");
 
 const mockUsuarioRepository = {
   buscarPorEmail: jest.fn(),
   buscarPorCpf: jest.fn(),
-  buscarPorEmailComSenha: jest.fn(),
   buscarPorId: jest.fn(),
-  buscarPorTokenRedefinicao: jest.fn(),
-  criar: jest.fn(),
   atualizar: jest.fn(),
-  atualizarSenha: jest.fn(),
   listar: jest.fn(),
 };
 
@@ -27,8 +19,15 @@ const mockAvaliacaoRepository = {
   listar: jest.fn(),
 };
 
-const mockMailService = {
-  enviarLinkRecuperacao: jest.fn(),
+const mockAutenticacaoService = {
+  cadastrar: jest.fn(),
+  verificarSenhaUsuario: jest.fn(),
+  atualizarSenhaUsuario: jest.fn(),
+  revogarSessoesUsuario: jest.fn(),
+};
+
+const mockTransactionManager = {
+  run: jest.fn((operation) => operation()),
 };
 
 let service;
@@ -37,18 +36,16 @@ beforeEach(() => {
   Object.values(mockUsuarioRepository).forEach((fn) => fn.mockReset());
   Object.values(mockItemDoacaoRepository).forEach((fn) => fn.mockReset());
   Object.values(mockAvaliacaoRepository).forEach((fn) => fn.mockReset());
-  mockMailService.enviarLinkRecuperacao.mockReset();
-
-  bcrypt.compare.mockReset();
-  bcrypt.hash.mockReset();
-  // padrao: hash retorna um valor "fake" diferente da senha original
-  bcrypt.hash.mockResolvedValue("$2b$10$hashfake");
+  Object.values(mockAutenticacaoService).forEach((fn) => fn.mockReset());
+  mockTransactionManager.run.mockClear();
+  mockTransactionManager.run.mockImplementation((operation) => operation());
 
   service = new UsuarioService({
     usuarioRepository: mockUsuarioRepository,
     itemDoacaoRepository: mockItemDoacaoRepository,
     avaliacaoRepository: mockAvaliacaoRepository,
-    mailService: mockMailService,
+    autenticacaoService: mockAutenticacaoService,
+    transactionManager: mockTransactionManager,
   });
 });
 
@@ -56,7 +53,10 @@ describe("UsuarioService.cadastrar", () => {
   test("deve cadastrar usuario com sucesso — RF-001", async () => {
     mockUsuarioRepository.buscarPorEmail.mockResolvedValue(null);
     mockUsuarioRepository.buscarPorCpf.mockResolvedValue(null);
-    mockUsuarioRepository.criar.mockResolvedValue({
+    mockAutenticacaoService.cadastrar.mockResolvedValue({
+      id: "507f1f77bcf86cd799439012",
+    });
+    mockUsuarioRepository.buscarPorId.mockResolvedValue({
       _id: "507f1f77bcf86cd799439012",
       nome: "Teste Silva",
       email: "teste@email.com",
@@ -75,28 +75,28 @@ describe("UsuarioService.cadastrar", () => {
 
     expect(resultado.perfil).toBe("USUARIO");
     expect(resultado.situacao).toBe("ATIVO");
-    expect(mockUsuarioRepository.criar).toHaveBeenCalledTimes(1);
+    expect(mockAutenticacaoService.cadastrar).toHaveBeenCalledTimes(1);
   });
 
-  test("deve hashear a senha antes de salvar — RN-USR-004", async () => {
+  test("deve delegar a criação da credencial ao Better Auth — RN-USR-004", async () => {
     mockUsuarioRepository.buscarPorEmail.mockResolvedValue(null);
     mockUsuarioRepository.buscarPorCpf.mockResolvedValue(null);
-    mockUsuarioRepository.criar.mockResolvedValue({ _id: "1" });
+    mockAutenticacaoService.cadastrar.mockResolvedValue({ id: "1" });
+    mockUsuarioRepository.buscarPorId.mockResolvedValue({ _id: "1" });
 
-    await service.cadastrar({
+    const dados = {
       nome: "Teste",
       email: "teste@email.com",
       cpf: "123.456.789-09",
       senha: "Teste@123",
       cidade: "Porto Velho",
       uf: "RO",
-    });
+    };
 
-    const dadosSalvos = mockUsuarioRepository.criar.mock.calls[0][0];
-    expect(bcrypt.hash).toHaveBeenCalledWith("Teste@123", 10);
-    expect(dadosSalvos.senha).not.toBe("Teste@123");
-    expect(dadosSalvos.perfil).toBe("USUARIO");
-    expect(dadosSalvos.situacao).toBe("ATIVO");
+    await service.cadastrar(dados);
+
+    expect(mockAutenticacaoService.cadastrar).toHaveBeenCalledWith(dados);
+    expect(mockUsuarioRepository.atualizar).not.toHaveBeenCalled();
   });
 
   test("deve lancar 409 se email ja cadastrado — RN-USR-006", async () => {
@@ -110,7 +110,7 @@ describe("UsuarioService.cadastrar", () => {
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
 
-    expect(mockUsuarioRepository.criar).not.toHaveBeenCalled();
+    expect(mockAutenticacaoService.cadastrar).not.toHaveBeenCalled();
   });
 
   test("deve lancar 409 se CPF ja cadastrado — RN-USR-007", async () => {
@@ -125,198 +125,9 @@ describe("UsuarioService.cadastrar", () => {
       }),
     ).rejects.toMatchObject({ statusCode: 409 });
 
-    expect(mockUsuarioRepository.criar).not.toHaveBeenCalled();
+    expect(mockAutenticacaoService.cadastrar).not.toHaveBeenCalled();
   });
 });
-
-describe("UsuarioService.login", () => {
-  const usuarioMock = {
-    _id: "507f1f77bcf86cd799439012",
-    nome: "Teste Silva",
-    email: "teste@email.com",
-    perfil: "USUARIO",
-    situacao: "ATIVO",
-    senha: "$2b$10$hashedpassword",
-    token_redefinicao: "token-que-nao-pode-vazar",
-    token_redefinicao_expira: new Date("2026-12-31T23:59:59.000Z"),
-    toObject: () => ({
-      _id: "507f1f77bcf86cd799439012",
-      nome: "Teste Silva",
-      email: "teste@email.com",
-      perfil: "USUARIO",
-      situacao: "ATIVO",
-      senha: "$2b$10$hashedpassword",
-      token_redefinicao: "token-que-nao-pode-vazar",
-      token_redefinicao_expira: new Date("2026-12-31T23:59:59.000Z"),
-    }),
-  };
-
-  test("deve retornar tokens de autenticação sem credenciais internas do usuário — RF-002", async () => {
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuarioMock);
-    bcrypt.compare.mockResolvedValue(true);
-
-    const resultado = await service.login("teste@email.com", "Teste@123");
-
-    expect(resultado.token).toBeDefined();
-    expect(resultado.refreshToken).toBeDefined();
-    expect(resultado.usuario.senha).toBeUndefined();
-    expect(resultado.usuario.token_redefinicao).toBeUndefined();
-    expect(resultado.usuario.token_redefinicao_expira).toBeUndefined();
-  });
-
-  test("deve lancar 401 se usuario nao encontrado — RN-USR-009", async () => {
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(null);
-
-    await expect(
-      service.login("naoexiste@email.com", "qualquer"),
-    ).rejects.toMatchObject({ statusCode: 401 });
-  });
-
-  test("deve lancar 401 se senha incorreta — RN-USR-009", async () => {
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuarioMock);
-    bcrypt.compare.mockResolvedValue(false);
-
-    await expect(
-      service.login("teste@email.com", "SenhaErrada"),
-    ).rejects.toMatchObject({ statusCode: 401 });
-  });
-
-  test("deve lancar 403 se conta suspensa — RN-USR-010", async () => {
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue({
-      ...usuarioMock,
-      situacao: "SUSPENSO",
-      suspensao_ate: new Date(),
-      motivo_suspensao: "Teste",
-    });
-    bcrypt.compare.mockResolvedValue(true);
-
-    await expect(
-      service.login("teste@email.com", "Teste@123"),
-    ).rejects.toMatchObject({ statusCode: 403 });
-  });
-
-  test("deve lancar 403 se conta inativa — RN-USR-010", async () => {
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue({
-      ...usuarioMock,
-      situacao: "INATIVO",
-    });
-    bcrypt.compare.mockResolvedValue(true);
-
-    await expect(
-      service.login("teste@email.com", "Teste@123"),
-    ).rejects.toMatchObject({ statusCode: 403 });
-  });
-});
-
-describe("UsuarioService.esqueciSenha", () => {
-  test("deve enviar o token sem retorná-lo na resposta", async () => {
-    mockUsuarioRepository.buscarPorEmail.mockResolvedValue({
-      _id: "507f1f77bcf86cd799439012",
-      email: "teste@email.com",
-    });
-    mockUsuarioRepository.atualizar.mockResolvedValue({});
-
-    const resultado = await service.esqueciSenha("teste@email.com");
-
-    expect(resultado).toEqual({
-      message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
-    });
-    expect(resultado.token).toBeUndefined();
-    expect(mockUsuarioRepository.atualizar).toHaveBeenCalledTimes(1);
-    expect(mockUsuarioRepository.atualizar.mock.calls[0][1].token_redefinicao).toMatch(/^[a-f0-9]{64}$/);
-    expect(mockMailService.enviarLinkRecuperacao).toHaveBeenCalledWith({
-      email: "teste@email.com",
-      token: expect.stringMatching(/^[a-f0-9]{64}$/),
-    });
-  });
-
-  test("nao deve revelar se o email existe (anti-enumeracao)", async () => {
-    mockUsuarioRepository.buscarPorEmail.mockResolvedValue(null);
-
-    const resultado = await service.esqueciSenha("naoexiste@email.com");
-
-    // mesma mensagem generica, sem token, sem chamar atualizar
-    expect(resultado.message).toBe(
-      "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
-    );
-    expect(resultado.token).toBeUndefined();
-    expect(mockUsuarioRepository.atualizar).not.toHaveBeenCalled();
-  });
-});
-
-describe("UsuarioService.refreshToken", () => {
-  test("deve gerar novo token para usuario ativo", async () => {
-    mockUsuarioRepository.buscarPorId.mockResolvedValue({
-      _id: "507f1f77bcf86cd799439012",
-      situacao: "ATIVO",
-    });
-
-    const novoToken = await service.refreshToken({
-      id: "507f1f77bcf86cd799439012",
-      nome: "Teste",
-      email: "teste@email.com",
-      perfil: "USUARIO",
-    });
-
-    expect(novoToken).toBeDefined();
-    expect(typeof novoToken).toBe("string");
-  });
-
-  test("deve lancar 401 se usuario nao existe", async () => {
-    mockUsuarioRepository.buscarPorId.mockResolvedValue(null);
-
-    await expect(
-      service.refreshToken({ id: "inexistente" }),
-    ).rejects.toMatchObject({ statusCode: 401 });
-  });
-
-  test("deve lancar 403 se conta nao esta ativa", async () => {
-    mockUsuarioRepository.buscarPorId.mockResolvedValue({
-      _id: "123",
-      situacao: "SUSPENSO",
-    });
-
-    await expect(
-      service.refreshToken({ id: "123" }),
-    ).rejects.toMatchObject({ statusCode: 403 });
-  });
-});
-
-describe("UsuarioService.redefinirSenha", () => {
-  test("deve redefinir a senha com token valido", async () => {
-    mockUsuarioRepository.buscarPorTokenRedefinicao.mockResolvedValue({
-      _id: "507f1f77bcf86cd799439012",
-      token_redefinicao_expira: new Date(Date.now() + 60 * 60 * 1000),
-    });
-    mockUsuarioRepository.atualizarSenha.mockResolvedValue({});
-
-    const resultado = await service.redefinirSenha("token-valido", "NovaSenha@123");
-
-    expect(resultado.message).toBe("Senha redefinida com sucesso.");
-    expect(bcrypt.hash).toHaveBeenCalledWith("NovaSenha@123", 10);
-    expect(mockUsuarioRepository.atualizarSenha).toHaveBeenCalledTimes(1);
-  });
-
-  test("deve lancar 400 se token invalido", async () => {
-    mockUsuarioRepository.buscarPorTokenRedefinicao.mockResolvedValue(null);
-
-    await expect(
-      service.redefinirSenha("token-invalido", "NovaSenha@123"),
-    ).rejects.toMatchObject({ statusCode: 400 });
-  });
-
-  test("deve lancar 400 se token expirado", async () => {
-    mockUsuarioRepository.buscarPorTokenRedefinicao.mockResolvedValue({
-      _id: "123",
-      token_redefinicao_expira: new Date(Date.now() - 1000), // ja expirou
-    });
-
-    await expect(
-      service.redefinirSenha("token-expirado", "NovaSenha@123"),
-    ).rejects.toMatchObject({ statusCode: 400 });
-  });
-});
-
 
 describe("UsuarioService.atualizar", () => {
   test("deve atualizar usuario com sucesso — RF-004", async () => {
@@ -376,7 +187,7 @@ describe("UsuarioService.atualizar", () => {
     ).rejects.toMatchObject({ statusCode: 409 });
   });
 
-  test("campos sensiveis (cpf, perfil, situacao, senha) nao devem ser alterados — RN-USR-013", async () => {
+  test("campos de acesso nao sao alterados e a senha e delegada ao Better Auth — RN-USR-013", async () => {
     mockUsuarioRepository.buscarPorId.mockResolvedValue({
       _id: "507f1f77bcf86cd799439012",
     });
@@ -403,6 +214,10 @@ describe("UsuarioService.atualizar", () => {
     expect(chamada.situacao).toBeUndefined();
     expect(chamada.senha).toBeUndefined();
     expect(chamada.nome).toBe("Teste");
+    expect(mockAutenticacaoService.atualizarSenhaUsuario).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439012",
+      "tentativa",
+    );
   });
 });
 
@@ -410,16 +225,14 @@ describe("UsuarioService.excluir", () => {
   const usuario = {
     _id: "507f1f77bcf86cd799439012",
     email: "teste@email.com",
-    senha: "$2b$10$hash",
   };
 
   test("deve excluir usuario com sucesso (soft delete) — RF-020", async () => {
     mockUsuarioRepository.buscarPorId.mockResolvedValue(usuario);
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuario);
     mockItemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
     mockUsuarioRepository.atualizar.mockResolvedValue({});
     mockItemDoacaoRepository.cancelarItensPorUsuario.mockResolvedValue({});
-    bcrypt.compare.mockResolvedValue(true);
+    mockAutenticacaoService.verificarSenhaUsuario.mockResolvedValue(true);
 
     const resultado = await service.excluir(
       "507f1f77bcf86cd799439012",
@@ -427,15 +240,21 @@ describe("UsuarioService.excluir", () => {
     );
 
     expect(resultado.message).toBe("Conta excluída com sucesso.");
+    expect(mockAutenticacaoService.verificarSenhaUsuario).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439012",
+      "Teste@123",
+    );
+    expect(mockAutenticacaoService.revogarSessoesUsuario).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439012",
+    );
   });
 
   test("deve anonimizar os dados e cancelar itens ao excluir", async () => {
     mockUsuarioRepository.buscarPorId.mockResolvedValue(usuario);
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuario);
     mockItemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([]);
     mockUsuarioRepository.atualizar.mockResolvedValue({});
     mockItemDoacaoRepository.cancelarItensPorUsuario.mockResolvedValue({});
-    bcrypt.compare.mockResolvedValue(true);
+    mockAutenticacaoService.verificarSenhaUsuario.mockResolvedValue(true);
 
     await service.excluir("507f1f77bcf86cd799439012", "Teste@123");
 
@@ -450,8 +269,7 @@ describe("UsuarioService.excluir", () => {
 
   test("deve lancar 401 se senha incorreta — RN-USR-018", async () => {
     mockUsuarioRepository.buscarPorId.mockResolvedValue(usuario);
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuario);
-    bcrypt.compare.mockResolvedValue(false);
+    mockAutenticacaoService.verificarSenhaUsuario.mockResolvedValue(false);
 
     await expect(
       service.excluir("507f1f77bcf86cd799439012", "SenhaErrada"),
@@ -460,11 +278,10 @@ describe("UsuarioService.excluir", () => {
 
   test("deve lancar 400 se tiver itens em andamento — RN-USR-019", async () => {
     mockUsuarioRepository.buscarPorId.mockResolvedValue(usuario);
-    mockUsuarioRepository.buscarPorEmailComSenha.mockResolvedValue(usuario);
     mockItemDoacaoRepository.buscarEmAndamentoPorUsuario.mockResolvedValue([
       { _id: "item1" },
     ]);
-    bcrypt.compare.mockResolvedValue(true);
+    mockAutenticacaoService.verificarSenhaUsuario.mockResolvedValue(true);
 
     await expect(
       service.excluir("507f1f77bcf86cd799439012", "Teste@123"),
@@ -486,6 +303,9 @@ describe("UsuarioService.suspender", () => {
     });
 
     expect(resultado.situacao).toBe("SUSPENSO");
+    expect(mockAutenticacaoService.revogarSessoesUsuario).toHaveBeenCalledWith(
+      "123",
+    );
   });
 
   test("deve lancar 400 se conta inativa — RN-USR-025", async () => {

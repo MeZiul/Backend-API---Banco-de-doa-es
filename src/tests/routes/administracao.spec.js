@@ -1,10 +1,9 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import CustomError from "../../utils/helpers/CustomError.js";
 import errorHandler from "../../utils/helpers/errorHandler.js";
-import { createAdminUser, createRegularUser, testIds } from "../test.js";
+import { createAdminUser, createRegularUser, createTestBearer, testIds } from "../test.js";
 
 const mockAdministracaoService = {
   listar: jest.fn(),
@@ -39,7 +38,7 @@ jest.mock("../../repositories/UsuarioRepository.js", () => ({
 
 let app;
 
-const bearer = (user) => `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+const bearer = (user) => createTestBearer(user);
 const adminAuth = () => bearer(createAdminUser());
 
 beforeAll(async () => {

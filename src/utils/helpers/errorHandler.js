@@ -1,6 +1,6 @@
 // src/utils/helpers/errorHandler.js
 
-import { ZodError } from 'zod';
+import { ZodError } from 'zod-v3';
 import multer from 'multer';
 import logger from '../logger.js';
 import CommonResponse from './CommonResponse.js';

@@ -45,7 +45,7 @@ const getSwaggerOptions = () => ({
     info: {
       title: "API Banco de Doações DoaÍ",
       version: "1.0-alpha",
-      description: `É necessário autenticar com token JWT antes de utilizar a maioria das rotas.
+      description: `É necessário autenticar com token de sessão Better Auth antes de utilizar a maioria das rotas.
 
 ## Credenciais de Teste (Seed)
 
@@ -56,7 +56,7 @@ const getSwaggerOptions = () => ({
 
 ## Fluxo de Teste
 
-1. **Login** → obter token JWT
+1. **Login** → obter token opaco de sessão
 2. **Criar item** (usuário doador)
 3. **Manifestar interesse** no item (usuário interessado)
 4. **Aceitar interesse** (doador) → item fica RESERVADO
@@ -146,7 +146,9 @@ DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
         bearerAuth: {
           type: "http",
           scheme: "bearer",
-          bearerFormat: "JWT",
+          bearerFormat: "BetterAuthSession",
+          description:
+            "Token opaco e revogável retornado por POST /auth/login. Informe apenas o token, sem adicionar Bearer manualmente no Swagger.",
         },
       },
       schemas: {

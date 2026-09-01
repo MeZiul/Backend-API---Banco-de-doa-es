@@ -11,9 +11,9 @@ API backend do projeto acadêmico DoaI, construída com Node.js/Express e persis
 - PostgreSQL 18
 - Prisma ORM 7
 - `@prisma/adapter-pg` + `pg`
-- JWT
-- Bcrypt/BcryptJS
-- Zod
+- Better Auth 1.7 com sessões persistidas e Bearer plugin
+- BcryptJS
+- Zod 4 para Better Auth e alias Zod 3 para os schemas legados da API
 - Jest + Supertest
 - Swagger
 - Winston
@@ -42,6 +42,9 @@ Entidades relacionais principais:
 - `Denuncia`
 - `Administracao`
 - `Notificacao`
+- `Account`
+- `Session`
+- `Verification`
 
 `ItemDoacao.fotos[]`, antes embutido no MongoDB, virou a relação `ItemDoacao 1:N FotoItemDoacao`.
 
@@ -77,6 +80,14 @@ cp .env.example .env
 ```
 
 O `.env.example` contém apenas valores locais/placeholder. Não versione credenciais reais.
+
+Para autenticação, defina obrigatoriamente:
+
+- `BETTER_AUTH_SECRET`: segredo aleatório exclusivo com pelo menos 32 caracteres;
+- `BETTER_AUTH_URL`: origem pública da API, sem `/docs` e sem barra final;
+- `BETTER_AUTH_TRUSTED_ORIGINS`: origens permitidas separadas por vírgula.
+
+As credenciais ficam em `Account`, as sessões revogáveis em `Session` e os tokens temporários de recuperação em `Verification`. As rotas protegidas recebem o token opaco de sessão no header `Authorization: Bearer <token>`. Não é JWT e não deve ser decodificado pelo cliente.
 
 ## Opção A - tudo em Docker
 
@@ -142,7 +153,7 @@ npm ci
 
 Os scripts `dev`, `start`, `test`, `test:coverage` e `test:db` geram o Prisma Client antes de executar. O comando manual `npm run prisma:generate` continua disponível após alterações no schema.
 
-Aplique a migration inicial:
+Aplique todas as migrations pendentes:
 
 ```bash
 npm run db:migrate:deploy
@@ -176,6 +187,8 @@ Credenciais padrão de desenvolvimento:
 - Usuário inativo: `inativo@doai.com` / `Senha@123`
 
 O seed **limpa e recria a massa local**. Não execute contra um banco que contenha dados que você queira preservar.
+
+O seed cria cada usuário de domínio e sua credencial Better Auth correspondente. As senhas são armazenadas exclusivamente como hash bcrypt em `Account.password`.
 
 A migração atual cria o schema PostgreSQL, mas não transfere registros de uma instalação MongoDB antiga. Para este projeto acadêmico, os dados locais são descartáveis e a massa oficial de desenvolvimento é recriada pelo seed.
 
@@ -241,6 +254,33 @@ npm run test:db
 
 O smoke test exige `TEST_DATABASE_URL`, aplica as migrations somente nesse banco, percorre os repositórios reais, valida relações e força rollback ao final. Ele nunca usa `DATABASE_URL` como fallback e não deixa massa de teste persistida.
 
+Validação da migração de credenciais antigas, inteiramente revertida ao final:
+
+```bash
+npm run test:auth:migration
+```
+
+Smoke real do Better Auth, usando somente o banco de teste:
+
+```bash
+npm run test:auth
+npm run test:auth:http
+```
+
+O primeiro smoke cria um usuário temporário e valida diretamente `Account`, login, bearer, consulta e revogação. O smoke HTTP percorre as rotas reais `/usuario` e `/auth/*`, incluindo refresh e rejeição dos tokens antigos. Ambos removem seus registros ao final. Execute antes `docker compose up -d postgres-test` e `npm run test:db` para garantir que as migrations estejam aplicadas.
+
+## Autenticação
+
+Os contratos públicos do DoaI foram preservados:
+
+- `POST /usuario`: cadastro validado pelas regras de negócio do projeto;
+- `POST /auth/login`: retorna `{ token, usuario }`;
+- `POST /auth/logout`: revoga a sessão atual no PostgreSQL;
+- `POST /auth/refresh-token`: rotaciona o token atual e invalida imediatamente o anterior;
+- `POST /auth/esqueci-senha` e `PUT /auth/redefinir-senha`: recuperação com tokens temporários do Better Auth.
+
+O handler oficial existe em `/api/auth/*`, mas os endpoints nativos que alterariam cadastro, credenciais ou dados do usuário são bloqueados. Isso impede contornar os schemas Zod, as regras de CPF, a situação da conta e a autorização do domínio. Use sempre as rotas públicas do DoaI listadas acima.
+
 ## Compatibilidade de IDs
 
 Novos registros usam UUID. Para não quebrar fixtures e integrações antigas durante a transição, os validators aceitam temporariamente:
@@ -262,6 +302,7 @@ Contrato funcional base:
 Rotas:
 
 - [Autenticação](./documentacao/rotas/rotas-autenticacao.md)
+- [Migração para Better Auth](./documentacao/migracao-better-auth.md)
 - [Administração](./documentacao/rotas/rotas-administracao.md)
 - [Interesse](./documentacao/rotas/rotas-interesse.md)
 - [Denúncia](./documentacao/rotas/rotas-denuncia.md)
@@ -281,6 +322,9 @@ Alguns documentos de milestone preservam referências históricas a MongoDB/Mong
 | `npm run check:migration` | auditoria estática Mongo -> Prisma |
 | `npm run test:compat` | testa filtros, paginação e compatibilidade `_id` sem banco |
 | `npm run test:db` | smoke test real Prisma/PostgreSQL |
+| `npm run test:auth:migration` | valida o backfill de hashes antigos em transação revertida |
+| `npm run test:auth` | smoke real de cadastro, sessão Bearer e logout Better Auth |
+| `npm run test:auth:http` | smoke HTTP real das rotas de usuário e autenticação |
 | `npm run prisma:generate` | gera Prisma Client |
 | `npm run db:validate` | valida `schema.prisma` |
 | `npm run db:migrate:deploy` | aplica migrations existentes |

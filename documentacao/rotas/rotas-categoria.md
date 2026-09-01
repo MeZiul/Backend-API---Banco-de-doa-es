@@ -3,7 +3,7 @@
 
 ## 1. Apresentacao
 
-Este plano documenta os testes de contrato HTTP das rotas de categoria da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado, autenticacao via token JWT e controle de autorizacao por perfil, com o `CategoriaService` completamente mockado.
+Este plano documenta os testes de contrato HTTP das rotas de categoria da API REST DoaI. Os testes validam status HTTP, payload, sessão Better Auth e autorização por perfil, com o `CategoriaService` isolado.
 
 A suite importa o arquivo de rotas real (`categoriaRoutes.js`) e exercita a cadeia completa de middlewares (`AuthMiddleware`, `authorize`) antes de chegar ao controller, garantindo que o arquivo de rotas seja efetivamente coberto pelos testes.
 
@@ -46,9 +46,9 @@ Validar que as rotas de categoria respondem corretamente a cada cenario, cobrind
 
 **Abordagem:** testes de contrato HTTP — o `CategoriaService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express que monta o roteador real de categoria (`categoriaRoutes.js`), de modo que a cadeia de middlewares e o proprio arquivo de rotas sejam exercitados e contabilizados na cobertura.
 
-### 4.1 Autenticacao via JWT
+### 4.1 Autenticação por sessão
 
-As rotas administrativas exigem token JWT valido com perfil ADMINISTRADOR. Os tokens sao gerados no proprio teste com `jsonwebtoken` e enviados no header `Authorization`:
+As rotas administrativas exigem sessão válida e perfil `ADMINISTRADOR`. Os testes de route usam identidade Bearer controlada; o Better Auth real é coberto pela suíte própria de autenticação.
 
 | Helper          | Perfil Simulado                                  | Usado em                                   |
 | --------------- | ------------------------------------------------ | ------------------------------------------ |
@@ -159,7 +159,7 @@ src/tests/routes/categoria.spec.js
 - 100% dos testes de rotas de categoria aprovados (14/14)
 - Status HTTP corretos para todos os cenarios
 - Rotas publicas de leitura acessiveis sem token
-- Rotas administrativas exigindo token JWT valido (498 sem token)
+- Rotas administrativas exigindo sessão válida (498 sem bearer)
 - Autorizacao por perfil bloqueando usuario comum em rotas administrativas (403)
 - Unicidade de nome propagada do service (409)
 - Propagacao correta de erros do service para o cliente
@@ -169,7 +169,7 @@ src/tests/routes/categoria.spec.js
 
 ## 9. Observacoes
 
-- A suite monta o roteador real (`categoriaRoutes.js`) e gera tokens JWT no proprio teste, exercitando `AuthMiddleware` e `authorize` de ponta a ponta. Por isso o arquivo de rotas passa a constar na cobertura.
+- A suíte monta o roteador real (`categoriaRoutes.js`) e exercita autorização e controller com identidade controlada. O middleware de produção é validado separadamente.
 - As rotas `GET /categorias` e `GET /categorias/:id` sao publicas; as demais exigem perfil ADMINISTRADOR.
 - O `DELETE /categorias/:id` retorna `204` (sem corpo), conforme implementado no controller via `CommonResponse.success(res, null, 204)`.
 - Cenarios de bloqueio por autenticacao (498) e autorizacao (403) garantem que operacoes administrativas nao sejam executadas por usuarios sem permissao.

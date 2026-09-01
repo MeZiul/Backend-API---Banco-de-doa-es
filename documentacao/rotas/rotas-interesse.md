@@ -4,7 +4,7 @@ Este documento descreve o contrato funcional das rotas de `interesse` revisadas 
 
 Escopo considerado:
 - estado integrado final da `dev`
-- autenticação via Bearer Token JWT
+- autenticação via token de sessão Better Auth no formato Bearer
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md` e `Especificacao_API_REST_DoaI.html`
 
 ## Visão Geral

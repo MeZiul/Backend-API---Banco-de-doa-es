@@ -1,13 +1,15 @@
-import Usuario from '../models/Usuario.js';
 import BaseRepository from './base/BaseRepository.js';
 
 class PerfilRepository extends BaseRepository {
     constructor() {
-        super(Usuario);
+        super("usuario");
     }
 
-    buscarPorEmail(email) {
-        return this.model.findOne({ email });
+    async buscarPorEmail(email) {
+        const record = await this.delegate.findUnique({
+            where: { email: String(email).trim().toLowerCase() },
+        });
+        return this.mapRecord(record);
     }
 }
 

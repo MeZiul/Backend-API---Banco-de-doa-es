@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globa
 import {
   createControllerTestApp,
   createRegularUser,
+  createTestBearer,
   testIds,
 } from "../test.js";
 import NotificacaoRepository from "../../repositories/NotificacaoRepository.js";
@@ -19,11 +20,9 @@ jest.mock("../../repositories/NotificacaoRepository.js", () => ({
   },
 }));
 
-jest.mock("../../middlewares/AuthMiddleware.js", () => (
-  (_req, _res, next) => next()
-));
-
 let appUsuario;
+const usuario = createRegularUser({ id: testIds.usuario });
+const authorization = createTestBearer(usuario);
 
 beforeAll(async () => {
   const { default: notificacaoRouter } = await import(
@@ -31,7 +30,7 @@ beforeAll(async () => {
   );
 
   appUsuario = createControllerTestApp({
-    user: createRegularUser({ id: testIds.usuario }),
+    user: usuario,
     registerRoutes: (app) => {
       app.use("/", notificacaoRouter);
     },
@@ -49,7 +48,9 @@ describe("Rotas de Notificação (Repository mockado)", () => {
     const payload = { docs: [{ _id: testIds.administracao }] };
     NotificacaoRepository.listarDoUsuario.mockResolvedValue(payload);
 
-    const res = await request(appUsuario).get("/notificacoes?page=1&limit=10");
+    const res = await request(appUsuario)
+      .get("/notificacoes?page=1&limit=10")
+      .set("Authorization", authorization);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
@@ -58,7 +59,9 @@ describe("Rotas de Notificação (Repository mockado)", () => {
   test("GET /notificacoes/contador retorna a quantidade não lida", async () => {
     NotificacaoRepository.contarNaoLidas.mockResolvedValue(2);
 
-    const res = await request(appUsuario).get("/notificacoes/contador");
+    const res = await request(appUsuario)
+      .get("/notificacoes/contador")
+      .set("Authorization", authorization);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual({ nao_lidas: 2 });
@@ -69,7 +72,8 @@ describe("Rotas de Notificação (Repository mockado)", () => {
     NotificacaoRepository.marcarComoLida.mockResolvedValue(payload);
 
     const res = await request(appUsuario)
-      .patch(`/notificacoes/${testIds.administracao}/ler`);
+      .patch(`/notificacoes/${testIds.administracao}/ler`)
+      .set("Authorization", authorization);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
@@ -81,7 +85,9 @@ describe("Rotas de Notificação (Repository mockado)", () => {
       modifiedCount: 2,
     });
 
-    const res = await request(appUsuario).post("/notificacoes/ler-tudo");
+    const res = await request(appUsuario)
+      .post("/notificacoes/ler-tudo")
+      .set("Authorization", authorization);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual({ mensagem: "Marcado como Lidas" });

@@ -4,7 +4,7 @@
 
 ## 1. Apresentacao
 
-Este plano documenta os testes de contrato HTTP das rotas de usuario da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado, autenticacao via token JWT e controle de autorizacao por perfil, com o `UsuarioService` completamente mockado.
+Este plano documenta os testes de contrato HTTP das rotas de usuario da API REST DoaI. Os testes validam status HTTP, payload, autenticação por sessão Better Auth e autorização por perfil, com o `UsuarioService` isolado.
 
 A suite importa o arquivo de rotas real (`usuarioRoutes.js`) e exercita a cadeia completa de middlewares (`AuthMiddleware`, `authorize`) antes de chegar ao controller, garantindo que o arquivo de rotas seja efetivamente coberto pelos testes.
 
@@ -17,7 +17,7 @@ Validar que as rotas de usuario respondem corretamente a cada cenario, cobrindo:
 - Status HTTP corretos para cada operacao — 200, 201, 204, 400, 401, 403, 404, 498
 - Payload de resposta conforme o contrato da API
 - Senha nunca exposta na resposta — RN-USR-004
-- Autenticacao via token JWT — exigencia de token nas rotas protegidas
+- Autenticação via token opaco de sessão no header Bearer
 - Controle de acesso por perfil — USUARIO vs ADMINISTRADOR
 - Validacao de entrada via Zod antes de chegar ao service
 - Propagacao correta dos erros do service para o cliente
@@ -53,9 +53,9 @@ Validar que as rotas de usuario respondem corretamente a cada cenario, cobrindo:
 
 **Abordagem:** testes de contrato HTTP — o `UsuarioService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express que monta o roteador real de usuario (`usuarioRoutes.js`), de modo que a cadeia de middlewares e o proprio arquivo de rotas sejam exercitados e contabilizados na cobertura.
 
-### 4.1 Autenticacao via JWT
+### 4.1 Autenticação por sessão
 
-As rotas protegidas exigem token JWT valido. Os tokens sao gerados no proprio teste com `jsonwebtoken`, assinados com o segredo de acesso da aplicacao, e enviados no header `Authorization`:
+As rotas protegidas exigem Bearer válido. Nos testes de route, um middleware exclusivo de teste decodifica uma identidade controlada; o middleware Better Auth de produção é validado separadamente em `AuthMiddleware.spec.js` e `better-auth-smoke.js`.
 
 | Helper          | Perfil Simulado                                  | Usado em                                          |
 | --------------- | ------------------------------------------------ | ------------------------------------------------- |
@@ -225,7 +225,7 @@ Observacao: o handler `atualizarParcial` do controller reutiliza `usuarioService
 - 100% dos testes de rotas de usuario aprovados (20/20)
 - Nenhuma resposta com campo `senha` exposto
 - Status HTTP corretos para todos os cenarios
-- Rotas protegidas exigindo token JWT valido (498 sem token)
+- Rotas protegidas exigindo sessão válida (498 sem bearer)
 - Autorizacao por perfil bloqueando usuario comum em rotas administrativas (403)
 - Validacao Zod bloqueando payloads invalidos antes do service
 - Propagacao correta de erros do service para o cliente
@@ -235,7 +235,7 @@ Observacao: o handler `atualizarParcial` do controller reutiliza `usuarioService
 
 ## 9. Observacoes
 
-- A suite monta o roteador real (`usuarioRoutes.js`) e gera tokens JWT no proprio teste, exercitando `AuthMiddleware` e `authorize` de ponta a ponta. Por isso o arquivo de rotas passa a constar na cobertura.
+- A suíte monta o roteador real (`usuarioRoutes.js`), usa autenticação controlada no Jest e exercita autorização, Zod e controller. A validação real Better Auth + PostgreSQL fica nos testes específicos de autenticação.
 - O handler `atualizarParcial` do controller reutiliza `usuarioService.atualizar`; o mock de teste deve configurar `atualizar`, nao `atualizarParcial`.
 - O controller `atualizar` repassa `req.user` ao service — a verificacao de ownership e responsabilidade do service via parametro `actor`.
 - Os testes de `suspender` e `reativar` usam token de administrador; ha cenario adicional que confirma o bloqueio (403) de usuario comum em rota administrativa.

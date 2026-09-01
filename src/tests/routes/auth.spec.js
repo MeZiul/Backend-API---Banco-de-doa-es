@@ -1,17 +1,17 @@
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { createControllerTestApp, createRegularUser, testIds } from "../test.js";
-import { tokenBlacklist } from "../../utils/tokenBlacklist.js";
 
-const mockUsuarioService = {
+const mockAutenticacaoService = {
   login: jest.fn(),
   esqueciSenha: jest.fn(),
   redefinirSenha: jest.fn(),
   refreshToken: jest.fn(),
+  logout: jest.fn(),
 };
 
 jest.mock("../../containers/services.index.js", () => ({
-  usuarioService: mockUsuarioService,
+  autenticacaoService: mockAutenticacaoService,
 }));
 
 let app;
@@ -37,17 +37,16 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  Object.values(mockUsuarioService).forEach((mockFn) => mockFn.mockReset());
-  tokenBlacklist.clear();
+  Object.values(mockAutenticacaoService).forEach((mockFn) => mockFn.mockReset());
 });
 
 describe("Testes das Rotas de Autenticação", () => {
   test("Deve realizar login com credenciais válidas", async () => {
     const payload = {
-      token: "jwt-token",
+      token: "session-token",
       usuario: { _id: testIds.usuario, email: "carlos@email.com" },
     };
-    mockUsuarioService.login.mockResolvedValue(payload);
+    mockAutenticacaoService.login.mockResolvedValue(payload);
 
     const res = await request(app)
       .post("/auth/login")
@@ -55,7 +54,11 @@ describe("Testes das Rotas de Autenticação", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
-    expect(mockUsuarioService.login).toHaveBeenCalledWith("carlos@email.com", "Senha@123");
+    expect(mockAutenticacaoService.login).toHaveBeenCalledWith(
+      "carlos@email.com",
+      "Senha@123",
+      expect.any(Object),
+    );
   });
 
   test("Deve rejeitar login com payload inválido", async () => {
@@ -64,12 +67,12 @@ describe("Testes das Rotas de Autenticação", () => {
       .send({ email: "email-invalido", senha: "" });
 
     expect(res.statusCode).toBe(400);
-    expect(mockUsuarioService.login).not.toHaveBeenCalled();
+    expect(mockAutenticacaoService.login).not.toHaveBeenCalled();
   });
 
   test("Deve solicitar recuperação de senha", async () => {
     const payload = { message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes." };
-    mockUsuarioService.esqueciSenha.mockResolvedValue(payload);
+    mockAutenticacaoService.esqueciSenha.mockResolvedValue(payload);
 
     const res = await request(app)
       .post("/auth/esqueci-senha")
@@ -77,12 +80,12 @@ describe("Testes das Rotas de Autenticação", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
-    expect(mockUsuarioService.esqueciSenha).toHaveBeenCalledWith("carlos@email.com");
+    expect(mockAutenticacaoService.esqueciSenha).toHaveBeenCalledWith("carlos@email.com");
   });
 
   test("Deve redefinir senha com token válido", async () => {
     const payload = { message: "Senha redefinida com sucesso." };
-    mockUsuarioService.redefinirSenha.mockResolvedValue(payload);
+    mockAutenticacaoService.redefinirSenha.mockResolvedValue(payload);
 
     const res = await request(app)
       .put("/auth/redefinir-senha")
@@ -90,30 +93,32 @@ describe("Testes das Rotas de Autenticação", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual(payload);
-    expect(mockUsuarioService.redefinirSenha).toHaveBeenCalledWith("token-recuperacao", "Nova@123");
+    expect(mockAutenticacaoService.redefinirSenha).toHaveBeenCalledWith("token-recuperacao", "Nova@123");
   });
 
   test("Deve renovar token do usuário autenticado", async () => {
-    mockUsuarioService.refreshToken.mockResolvedValue("novo-token");
+    mockAutenticacaoService.refreshToken.mockResolvedValue("novo-token");
 
     const res = await request(app).post("/auth/refresh-token");
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data).toEqual({ token: "novo-token" });
-    expect(mockUsuarioService.refreshToken).toHaveBeenCalledWith({
-      id: testIds.usuario,
-      nome: "Carlos Silva",
-      email: "carlos@email.com",
-      perfil: "USUARIO",
+    expect(mockAutenticacaoService.refreshToken).toHaveBeenCalledWith({
+      sessionToken: "test-session-token",
+      usuarioId: testIds.usuario,
     });
   });
 
-  test("Deve invalidar token no logout", async () => {
+  test("Deve invalidar a sessão persistida no logout", async () => {
+    mockAutenticacaoService.logout.mockResolvedValue({
+      message: "Logout realizado com sucesso.",
+    });
+
     const res = await request(app)
       .post("/auth/logout")
       .set("Authorization", "Bearer token-antigo");
 
     expect(res.statusCode).toBe(200);
-    expect(tokenBlacklist.has("token-antigo")).toBe(true);
+    expect(mockAutenticacaoService.logout).toHaveBeenCalledWith(expect.any(Object));
   });
 });

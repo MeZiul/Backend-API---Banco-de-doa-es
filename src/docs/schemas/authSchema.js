@@ -28,7 +28,8 @@ const authSchemas = {
         properties: {
             token: {
                 type: "string",
-                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                example: "qZ8oY3fM8cG2nA1xV6kP4sT9uB7wD5eR",
+                description: "Token opaco de sessão Better Auth. Não é JWT.",
             },
             usuario: { $ref: "#/components/schemas/AuthUsuarioResumo" },
         },
@@ -71,7 +72,8 @@ const authSchemas = {
         properties: {
             token: {
                 type: "string",
-                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                example: "nR4fK8sQ2mV7xC5pL9dT3wY6aB1gH0uJ",
+                description: "Novo token opaco; o token anterior deixa de ser válido.",
             },
         },
     },

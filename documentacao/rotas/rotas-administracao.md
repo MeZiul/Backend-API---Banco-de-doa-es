@@ -4,7 +4,7 @@ Este documento descreve o contrato funcional das rotas de `administracao` revisa
 
 Escopo considerado:
 - estado integrado final da `dev`
-- autenticação via Bearer Token JWT
+- autenticação via token de sessão Better Auth no formato Bearer
 - autorização restrita ao perfil `ADMINISTRADOR`
 - regras de negócio definidas em `Documentação_da_api_Banco_de_Doação.md`
 
@@ -337,7 +337,7 @@ Erros comuns:
 Endurecimentos implementados:
 
 - usuarios suspensos ou inativos sao bloqueados antes de operacoes protegidas;
-- papeis e situacao atuais do usuario sao consultados para evitar privilegio antigo mantido em JWT;
+- perfil e situação atuais são consultados no banco, evitando privilégio antigo mantido em uma sessão já emitida;
 - administrador nao pode bloquear, inativar ou suspender a si mesmo;
 - moderacoes usam atualizacoes condicionais para impedir duas operacoes concorrentes de vencerem;
 - bloqueio, desbloqueio, inativacao, cancelamento de item e resolucao geram auditoria;

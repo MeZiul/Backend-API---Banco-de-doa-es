@@ -1,10 +1,9 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import CustomError from "../../utils/helpers/CustomError.js";
 import errorHandler from "../../utils/helpers/errorHandler.js";
-import { createRegularUser, testIds } from "../test.js";
+import { createRegularUser, createTestBearer, testIds } from "../test.js";
 
 const mockAvaliacaoService = {
   criar: jest.fn(),
@@ -20,7 +19,7 @@ jest.mock("../../containers/services.index.js", () => ({
 
 let app;
 
-const bearer = (user) => `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+const bearer = (user) => createTestBearer(user);
 const usuarioAuth = () => bearer(createRegularUser({ id: testIds.interessado }));
 
 const avaliacaoId = testIds.denuncia; 

@@ -1,9 +1,9 @@
 // src/utils/AuthHelper.js
-import bcrypt from 'bcrypt';
+import bcrypt from "bcryptjs";
 
 /**
  * Helper de hashing de senhas.
- * NÃO deve conter lógica de JWT — isso é responsabilidade do TokenService.
+ * A criação e a gestão de sessões são responsabilidade do Better Auth.
  */
 class AuthHelper {
     static async hashPassword(password) {

@@ -4,13 +4,13 @@ import {
   itemDoacaoRepository,
   avaliacaoRepository,
 } from "./repositories.all.container.js";
-import AuthHelper from "../utils/AuthHelper.js";
-import MailService from "../infra/MailService.js";
+import { autenticacaoService } from "./services.autenticacao.container.js";
+import prismaTransactionManager from "../infra/PrismaTransactionManager.js";
 
 export const usuarioService = new UsuarioService({
   usuarioRepository,
   itemDoacaoRepository,
   avaliacaoRepository,
-  passwordHasher: AuthHelper,
-  mailService: new MailService(),
+  autenticacaoService,
+  transactionManager: prismaTransactionManager,
 });

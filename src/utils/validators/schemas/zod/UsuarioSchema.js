@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod-v3";
 import objectIdSchema from "./ObjectIdSchema.js";
 export {
   AdministracaoUsuarioQuerySchema,
@@ -83,6 +83,7 @@ const UsuarioResponseSchema = z
     cpf: z.string(),
     cidade: z.string(),
     uf: z.string(),
+    email_verificado: z.boolean(),
     telefone: z.string().nullable().optional(),
     foto_perfil: z.string().nullable().optional(),
     bio: z.string().nullable().optional(),
@@ -124,8 +125,7 @@ const UsuarioSeedSchema = z
     situacao: z.enum(["ATIVO", "SUSPENSO", "INATIVO"]),
     motivo_suspensao: z.string().nullable(),
     suspensao_ate: z.date().nullable(),
-    token_redefinicao: z.string().nullable(),
-    token_redefinicao_expira: z.date().nullable(),
+    email_verificado: z.boolean(),
     media_avaliacoes: z.number(),
     total_avaliacoes: z.number(),
     total_doacoes: z.number(),

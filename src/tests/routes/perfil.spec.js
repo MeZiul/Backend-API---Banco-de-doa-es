@@ -1,24 +1,25 @@
 import request from "supertest";
-import { beforeAll, describe, expect, jest, test } from "@jest/globals";
-import jwt from "jsonwebtoken";
-import UsuarioModel from "../../models/Usuario.js";
+import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
+import PerfilRepository from "../../repositories/PerfilRepository.js";
 import {
     createControllerTestApp,
     createRegularUser,
+    createTestBearer,
     testIds,
 } from "../test.js";
 
-jest.mock("../../models/Usuario.js", () => {
-    return {
-        findByIdAndUpdate: jest.fn(),
-        findById: jest.fn(),
-        updateOne: jest.fn()
-    };
-});
+jest.mock("../../repositories/PerfilRepository.js", () => ({
+    __esModule: true,
+    default: {
+        atualizar: jest.fn(),
+        buscarPorId: jest.fn(),
+        buscarPorEmail: jest.fn(),
+    },
+}));
 
 let appAdmin;
 
-const bearer = (user) => `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+const bearer = (user) => createTestBearer(user);
 const usuarioAutenticado = () => bearer(createRegularUser());
 
 beforeAll(async () => {
@@ -34,10 +35,14 @@ beforeAll(async () => {
     });
 });
 
+beforeEach(() => {
+    Object.values(PerfilRepository).forEach((mockFn) => mockFn.mockReset?.());
+});
+
 describe("Rotas de Perfil (Mock Nativo)", () => {
 
     test("GET /perfil retorna somente o perfil do usuário autenticado", async () => {
-        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
+        PerfilRepository.buscarPorId.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
 
         const res = await request(appAdmin)
             .get("/perfil")
@@ -45,12 +50,12 @@ describe("Rotas de Perfil (Mock Nativo)", () => {
 
         expect(res.statusCode).toBe(200);
         expect(res.body.data).toMatchObject({ _id: testIds.usuario });
-        expect(UsuarioModel.findById).toHaveBeenCalledWith(testIds.usuario);
+        expect(PerfilRepository.buscarPorId).toHaveBeenCalledWith(testIds.usuario);
     });
 
     test("PUT /perfil atualiza o perfil do usuário autenticado", async () => {
-        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
-        UsuarioModel.findByIdAndUpdate.mockResolvedValue({ _id: testIds.usuario, cidade: "Cuiabá" });
+        PerfilRepository.buscarPorId.mockResolvedValue({ _id: testIds.usuario, email: "usuario@doai.com" });
+        PerfilRepository.atualizar.mockResolvedValue({ _id: testIds.usuario, cidade: "Cuiabá" });
 
         const res = await request(appAdmin)
             .put("/perfil")
@@ -58,26 +63,24 @@ describe("Rotas de Perfil (Mock Nativo)", () => {
             .send({ cidade: "Cuiabá" });
 
         expect(res.statusCode).toBe(200);
-        expect(UsuarioModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        expect(PerfilRepository.atualizar).toHaveBeenCalledWith(
             testIds.usuario,
             { cidade: "Cuiabá" },
-            { new: true, runValidators: false },
         );
     });
 
     test("DELETE /perfil desativa a conta autenticada", async () => {
-        UsuarioModel.findById.mockResolvedValue({ _id: testIds.usuario, situacao: "ATIVO" });
-        UsuarioModel.findByIdAndUpdate.mockResolvedValue({ _id: testIds.usuario, situacao: "INATIVO" });
+        PerfilRepository.buscarPorId.mockResolvedValue({ _id: testIds.usuario, situacao: "ATIVO" });
+        PerfilRepository.atualizar.mockResolvedValue({ _id: testIds.usuario, situacao: "INATIVO" });
 
         const res = await request(appAdmin)
             .delete("/perfil")
             .set("Authorization", usuarioAutenticado());
 
         expect(res.statusCode).toBe(204);
-        expect(UsuarioModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        expect(PerfilRepository.atualizar).toHaveBeenCalledWith(
             testIds.usuario,
             { situacao: "INATIVO" },
-            { new: true, runValidators: false },
         );
     });
 

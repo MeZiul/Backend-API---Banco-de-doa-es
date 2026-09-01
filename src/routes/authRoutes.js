@@ -1,7 +1,7 @@
 import express from "express";
 import { asyncWrapper } from "../utils/helpers/index.js";
 import AutenticacaoController from "../controllers/AutenticacaoController.js";
-import AuthMiddleware from "../middlewares/AuthMiddleware.js";
+import AuthMiddleware, { SessionAuthMiddleware } from "../middlewares/AuthMiddleware.js";
 import { loginLimiter, forgotPasswordLimiter } from "../middlewares/rateLimiters.js";
 
 const router = express.Router();
@@ -14,7 +14,7 @@ router
 
   .put("/auth/redefinir-senha", asyncWrapper(AuthController.redefinirSenha))
 
-  .post("/auth/logout", AuthMiddleware, asyncWrapper(AuthController.logout))
+  .post("/auth/logout", SessionAuthMiddleware, asyncWrapper(AuthController.logout))
 
   .post("/auth/refresh-token", AuthMiddleware, asyncWrapper(AuthController.refreshToken));
 
