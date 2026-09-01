@@ -5,13 +5,15 @@ const authPaths = {
         post: {
             tags: ["Autenticação"],
             summary: "Autenticar usuário",
-            description: `Autentica um usuário por e-mail e senha e retorna um token JWT.
+            description: `Autentica um usuário por e-mail e senha e retorna um token opaco de sessão Better Auth.
 
 Regras de negócio:
 - E-mail e senha são obrigatórios.
 - Credenciais inválidas retornam erro sem informar qual campo falhou.
 - Usuários SUSPENSO ou INATIVO não podem autenticar.
-- O token gerado deve ser enviado nas rotas protegidas pelo header Authorization: Bearer <token>.`,
+- A sessão é persistida no PostgreSQL e pode ser revogada imediatamente.
+- O token retornado não é JWT e não deve ser decodificado pelo cliente.
+- O token deve ser enviado nas rotas protegidas pelo header Authorization: Bearer <token>.`,
             security: [],
             requestBody: {
                 required: true,
@@ -88,12 +90,13 @@ Regras de negócio:
         post: {
             tags: ["Autenticação"],
             summary: "Encerrar sessão",
-            description: `Invalida o token JWT informado no header Authorization.
+            description: `Revoga a sessão persistida correspondente ao Bearer informado no header Authorization.
 
 Regras de negócio:
 - A rota exige autenticação.
-- O token atual é colocado em blacklist.
-- Requisições futuras com o mesmo token devem ser recusadas pelo middleware de autenticação.`,
+- A sessão atual é removida da tabela Session.
+- Não existe blacklist em memória.
+- Requisições futuras com o mesmo token são recusadas mesmo após reiniciar a API.`,
             security: [{ bearerAuth: [] }],
             responses: {
                 200: commonResponses[200]("#/components/schemas/AuthMensagemResponse"),
@@ -106,14 +109,14 @@ Regras de negócio:
     "/auth/refresh-token": {
         post: {
             tags: ["Autenticação"],
-            summary: "Renovar token JWT",
-            description: `Gera um novo token JWT para o usuário autenticado.
+            summary: "Rotacionar token de sessão",
+            description: `Substitui atomicamente o token da sessão Better Auth do usuário autenticado.
 
 Regras de negócio:
 - A rota exige autenticação.
-- O usuário associado ao token deve existir.
-- Apenas usuários com situação ATIVO podem renovar token.
-- O novo token mantém as informações essenciais de identidade e perfil.`,
+- O usuário associado à sessão deve existir e estar ATIVO.
+- A rotação só ocorre se o token atual ainda existir e não estiver expirado.
+- O token anterior é invalidado imediatamente; uma segunda tentativa concorrente falha.`,
             security: [{ bearerAuth: [] }],
             responses: {
                 200: commonResponses[200]("#/components/schemas/AuthRefreshTokenResponse"),

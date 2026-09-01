@@ -47,7 +47,7 @@ Principais grupos:
 
 ### 3.2 Testes de endpoint
 
-Os testes usam os routers reais com `Supertest`, JWT local de teste e Services mockados.
+Os testes usam os routers reais com `Supertest`, identidade Bearer controlada no Jest e Services mockados. A sessão Better Auth real é validada em suíte e smoke próprios.
 
 Eles validam:
 
@@ -71,6 +71,7 @@ O projeto inclui validacao descartavel com PostgreSQL exclusivo de testes para:
 - compare-and-set de usuario e item;
 - filtros e projecoes sem exposicao indevida.
 - repositories reais e rollback transacional sem persistir massa de teste.
+- migração de hashes legados para `Account`, sessão Bearer real e revogação persistida.
 
 ## 4. Fluxo Principal Associado as Regras
 
@@ -105,14 +106,19 @@ O projeto inclui validacao descartavel com PostgreSQL exclusivo de testes para:
 | `136-unit-admin-interesse-denuncia` | base ampliada e integrada em 68 testes dos Services alvo |
 | `137-endpoints-admin-interesse-denuncia` | base ampliada e integrada em 48 testes de endpoint dos tres modulos |
 
-Validacao integrada final da `dev`:
+Validacao integrada atual da branch baseada na `dev`:
 
 - recorte focado de Administracao, Interesse e Denuncia: `8` suites e `123` testes aprovados;
 - cobertura focada dos Services: `97,51%` statements, `85,35%` branches, `100%` funcoes e `97,50%` linhas;
 - Controllers e routers dos tres modulos: `100%` de linhas;
 - smoke PostgreSQL: migrations, conexao, repositories, relacoes e rollback aprovados;
-- suite global: `343` de `345` testes aprovados; as 2 falhas restantes pertencem a Usuario e Perfil;
-- cobertura global gerada nessa execucao: `75,08%` statements, `61,13%` branches, `73,63%` funcoes e `77,18%` linhas;
+- suite global: `34` suites e `369` de `369` testes aprovados;
+- cobertura global: `76,58%` statements, `62,08%` branches, `73,52%` funcoes e `78,67%` linhas;
+- `AutenticacaoService`: `97,26%` statements, `84,78%` branches, `87,50%` funcoes e `97,18%` linhas;
+- `createAuthMiddleware`: `94,11%` statements, `76,92%` branches, `100%` funcoes e `93,75%` linhas;
+- migration smoke: hash legado preservado em `Account` e colunas antigas removidas dentro de transacao revertida;
+- smokes Better Auth: cadastro, senha incorreta, login, Bearer, refresh, rejeicao do token antigo, logout e conta suspensa aprovados;
+- Docker: imagem construida, migrations aplicadas, API conectada ao PostgreSQL e `/docs/`/`/docs.json` com HTTP `200`;
 - importacao das fontes Swagger de Administracao, Interesse e Denuncia aprovada.
 
 ## 7. Comandos
@@ -146,6 +152,9 @@ Integracao real isolada:
 ```powershell
 docker compose up -d postgres-test
 npm.cmd run test:db
+npm.cmd run test:auth:migration
+npm.cmd run test:auth
+npm.cmd run test:auth:http
 ```
 
 ## 8. Evidencia para Apresentacao

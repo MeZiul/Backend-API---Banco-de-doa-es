@@ -454,7 +454,7 @@ Crie:
 - `src/docs/schemas/favoritoSchema.js`
 - `src/docs/paths/favorito.js`
 
-No schema, documente request, resposta e paginação. No path, documente os três endpoints, Bearer JWT, params/query/body, códigos `200`, `201`, `400`, `403`, `404`, `409` e respostas comuns.
+No schema, documente request, resposta e paginação. No path, documente os três endpoints, sessão Better Auth via Bearer, params/query/body, códigos `200`, `201`, `400`, `403`, `404`, `409` e respostas comuns.
 
 Depois importe e espalhe os objetos em `src/docs/config/head.js`, seguindo `itemDoacaoSchema.js` e `interesse.js`:
 

@@ -3,7 +3,7 @@
 
 ## 1. Apresentacao
 
-Este plano documenta os testes de contrato HTTP das rotas de avaliacao da API REST DoaI. Os testes validam o comportamento dos endpoints a nivel de requisicao e resposta, incluindo status HTTP, payload retornado, autenticacao via token JWT e controle de acesso por autoria, com o `AvaliacaoService` completamente mockado.
+Este plano documenta os testes de contrato HTTP das rotas de avaliacao da API REST DoaI. Os testes validam status HTTP, payload, sessão Better Auth e controle de autoria, com o `AvaliacaoService` isolado.
 
 A suite importa o arquivo de rotas real (`avaliacaoRotas.js`) e exercita a cadeia de middleware (`AuthMiddleware`) antes de chegar ao controller, garantindo que o arquivo de rotas seja efetivamente coberto pelos testes.
 
@@ -15,7 +15,7 @@ Validar que as rotas de avaliacao respondem corretamente a cada cenario, cobrind
 
 - Status HTTP corretos para cada operacao — 200, 201, 204, 400, 403, 404, 498
 - Payload de resposta conforme o contrato da API
-- Exigencia de token JWT em todas as rotas do modulo
+- Exigência de sessão válida em todas as rotas do módulo
 - Repasse correto dos parametros (dados, filtros, ator) do controller ao service
 - Bloqueio de alteracao de campos sensiveis na atualizacao (item_id, avaliador_id, avaliado_id, tipo)
 - Controle de autoria propagado do service (apenas o autor altera/remove)
@@ -48,9 +48,9 @@ Validar que as rotas de avaliacao respondem corretamente a cada cenario, cobrind
 
 **Abordagem:** testes de contrato HTTP — o `AvaliacaoService` e completamente mockado via `jest.mock()`. As requisicoes HTTP sao feitas com `supertest` contra um app Express que monta o roteador real de avaliacao (`avaliacaoRotas.js`), de modo que o middleware de autenticacao e o proprio arquivo de rotas sejam exercitados e contabilizados na cobertura.
 
-### 4.1 Autenticacao via JWT
+### 4.1 Autenticação por sessão
 
-Todas as rotas do modulo exigem token JWT valido. O token e gerado no proprio teste com `jsonwebtoken` e enviado no header `Authorization`:
+Todas as rotas do módulo exigem bearer de sessão. Os testes de route usam identidade controlada; a integração Better Auth é validada nas suítes específicas.
 
 | Helper          | Perfil Simulado                                  | Usado em                        |
 | --------------- | ------------------------------------------------ | ------------------------------- |
@@ -174,7 +174,7 @@ src/tests/routes/avaliacao.spec.js
 
 - 100% dos testes de rotas de avaliacao aprovados (9/9)
 - Status HTTP corretos para todos os cenarios
-- Todas as rotas exigindo token JWT valido (498 sem token)
+- Todas as rotas exigindo sessão válida (498 sem bearer)
 - Bloqueio de alteracao de campos sensiveis na atualizacao (400)
 - Controle de autoria propagado do service (403 para nao-autor)
 - Propagacao correta de erros do service para o cliente
@@ -184,7 +184,7 @@ src/tests/routes/avaliacao.spec.js
 
 ## 9. Observacoes
 
-- A suite monta o roteador real (`avaliacaoRotas.js`) e gera token JWT no proprio teste, exercitando o `AuthMiddleware` de ponta a ponta. Por isso o arquivo de rotas passa a constar na cobertura.
+- A suíte monta o roteador real (`avaliacaoRotas.js`) e exercita Zod, controller e autoria com identidade controlada. O middleware de produção é validado separadamente.
 - Todas as rotas do modulo exigem apenas autenticacao (`AuthMiddleware`); nao ha exigencia de perfil ADMINISTRADOR neste modulo.
 - O controle de autoria (apenas o autor edita/remove) e responsabilidade do service e e validado por propagacao de erro (RA-08).
 - O bloqueio de campos sensiveis na atualizacao (item_id, avaliador_id, avaliado_id, tipo) ocorre na validacao do schema, antes de chegar ao service (RA-07).

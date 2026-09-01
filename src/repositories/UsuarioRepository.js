@@ -53,37 +53,6 @@ class UsuarioRepository extends BaseRepository {
     return this.mapRecord(record);
   }
 
-  async buscarPorEmailComSenha(email) {
-    const record = await this.delegate.findUnique({
-      where: { email: String(email).trim().toLowerCase() },
-    });
-
-    if (!record) return null;
-
-    const {
-      token_redefinicao: _tokenRedefinicao,
-      token_redefinicao_expira: _tokenRedefinicaoExpira,
-      ...recordComSenha
-    } = record;
-
-    return this.mapRecord(recordComSenha, { includeHidden: true });
-  }
-
-  async buscarPorTokenRedefinicao(tokenHash) {
-    const record = await this.delegate.findFirst({
-      where: { token_redefinicao: tokenHash },
-    });
-    return this.mapRecord(record, { includeHidden: true });
-  }
-
-  atualizarSenha(id, senha) {
-    return this.atualizar(id, {
-      senha,
-      token_redefinicao: null,
-      token_redefinicao_expira: null,
-    });
-  }
-
   async atualizarSeSituacao(
     id,
     situacaoEsperada,

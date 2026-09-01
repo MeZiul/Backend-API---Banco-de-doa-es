@@ -1,9 +1,9 @@
 import { afterEach, jest } from "@jest/globals";
 
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
-process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret";
-process.env.JWT_SECRET_ACCESS_TOKEN = process.env.JWT_SECRET_ACCESS_TOKEN || "test-access-secret";
-process.env.JWT_SECRET_PASSWORD_RECOVERY = process.env.JWT_SECRET_PASSWORD_RECOVERY || "test-recovery-secret";
+process.env.TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || "postgresql://doai:doai_local@localhost:5433/doai_test?schema=public";
+process.env.BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET || "test-better-auth-secret-with-32-characters";
+process.env.BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || "http://localhost:7340";
 
 afterEach(() => {
   jest.clearAllMocks();

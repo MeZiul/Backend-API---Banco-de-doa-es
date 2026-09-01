@@ -8,8 +8,10 @@ import compression from 'compression';
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import { toNodeHandler } from "better-auth/node";
 
 import DbConnect from './config/DbConnect.js';
+import { auth } from "./config/betterAuth.js";
 import errorHandler from './utils/helpers/errorHandler.js';
 import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
@@ -70,6 +72,10 @@ app.get('/robots.txt', (req, res) => {
 });
 
 app.use(compression());
+
+// O handler do Better Auth deve receber o corpo bruto antes do parser JSON do Express.
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

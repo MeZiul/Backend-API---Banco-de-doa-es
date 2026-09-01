@@ -1,21 +1,19 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { CustomError } from "../utils/helpers/index.js";
 import { validarCPF } from "../utils/verificarCPF.js";
-import crypto from "crypto";
-import MailService from "../infra/MailService.js";
 
 class UsuarioService {
   constructor({
     usuarioRepository,
     itemDoacaoRepository,
     avaliacaoRepository,
-    mailService = new MailService(),
+    autenticacaoService,
+    transactionManager = { run: (operation) => operation() },
   }) {
     this.repository = usuarioRepository;
     this.itemDoacaoRepository = itemDoacaoRepository;
     this.avaliacaoRepository = avaliacaoRepository;
-    this.mailService = mailService;
+    this.autenticacaoService = autenticacaoService;
+    this.transactionManager = transactionManager;
   }
 
   async cadastrar(dados) {
@@ -44,130 +42,18 @@ class UsuarioService {
       });
     }
 
-    const senha = await bcrypt.hash(dados.senha, 10);
+    const authUser = await this.autenticacaoService.cadastrar(dados);
+    const usuarioCriado = await this.repository.buscarPorId(authUser.id);
 
-    return this.repository.criar({
-      ...dados,
-      senha,
-      perfil: "USUARIO",
-      situacao: "ATIVO",
-    });
-  }
-
-  async login(email, senha) {
-    const usuario = await this.repository.buscarPorEmailComSenha(email);
-
-    if (!usuario) {
+    if (!usuarioCriado) {
       throw new CustomError({
-        statusCode: 401,
-        customMessage: "E-mail ou senha incorretos.",
+        statusCode: 409,
+        customMessage:
+          "E-mail já cadastrado. Faça login ou recupere sua senha.",
       });
     }
 
-    const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaCorreta) {
-      throw new CustomError({
-        statusCode: 401,
-        customMessage: "E-mail ou senha incorretos.",
-      });
-    }
-
-    if (usuario.situacao === "SUSPENSO") {
-      throw new CustomError({
-        statusCode: 403,
-        customMessage: `Conta suspensa até ${usuario.suspensao_ate?.toLocaleDateString("pt-BR")}. Motivo: ${usuario.motivo_suspensao}`,
-      });
-    }
-
-    if (usuario.situacao === "INATIVO") {
-      throw new CustomError({
-        statusCode: 403,
-        customMessage: "Conta inativa.",
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        id: usuario._id,
-        nome: usuario.nome,
-        email: usuario.email,
-        perfil: usuario.perfil,
-        situacao: usuario.situacao,
-      },
-      process.env.JWT_SECRET_ACCESS_TOKEN,
-      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "15m" },
-    );
-    const refreshToken = jwt.sign(
-      {
-        id: usuario._id,
-        nome: usuario.nome,
-        email: usuario.email,
-        perfil: usuario.perfil,
-      },
-      process.env.JWT_SECRET_REFRESH_TOKEN,
-      { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRATION || "7d" },
-    );
-
-    const removerSenha = usuario.toObject();
-    delete removerSenha.senha;
-    delete removerSenha.token_redefinicao;
-    delete removerSenha.token_redefinicao_expira;
-
-    return { token, refreshToken, usuario: removerSenha };
-  }
-
-  async esqueciSenha(email) {
-    const usuario = await this.repository.buscarPorEmail(email);
-
-    if (!usuario) {
-      return {
-        message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
-      };
-    }
-
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    const expira = new Date(Date.now() + 60 * 60 * 1000);
-
-    await this.repository.atualizar(usuario._id, {
-      token_redefinicao: tokenHash,
-      token_redefinicao_expira: expira,
-    });
-
-    await this.mailService.enviarLinkRecuperacao({
-      email: usuario.email,
-      token,
-    });
-
-    return {
-      message: "Se o e-mail estiver cadastrado, voce recebera as instrucoes.",
-    };
-  }
-
-  async refreshToken({ id, nome, email, perfil }) {
-    const usuario = await this.repository.buscarPorId(id);
-
-    if (!usuario) {
-      throw new CustomError({
-        statusCode: 401,
-        customMessage: "Usuário não encontrado.",
-      });
-    }
-
-    if (usuario.situacao !== "ATIVO") {
-      throw new CustomError({
-        statusCode: 403,
-        customMessage: "Conta inativa ou suspensa.",
-      });
-    }
-
-    const novoToken = jwt.sign(
-      { id, nome, email, perfil },
-      process.env.JWT_SECRET_ACCESS_TOKEN,
-      { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRATION || "24h" },
-    );
-
-    return novoToken;
+    return usuarioCriado;
   }
 
   async atualizar(id, dados, actor = null) {
@@ -182,16 +68,6 @@ class UsuarioService {
 
     const { senha, cpf, perfil, situacao, ...dadosPermitidos } = dados;
 
-    if (senha) {
-      if (senha.length < 8) {
-        throw new CustomError({
-          statusCode: 400,
-          customMessage: "A senha deve ter no mínimo 8 caracteres.",
-        });
-      }
-      dadosPermitidos.senha = await bcrypt.hash(senha, 10);
-    }
-
     if (dadosPermitidos.email) {
       const emailExiste = await this.repository.buscarPorEmail(dadosPermitidos.email);
       if (emailExiste && emailExiste._id.toString() !== id) {
@@ -202,31 +78,18 @@ class UsuarioService {
       }
     }
 
-    return this.repository.atualizar(id, dadosPermitidos);
-  }
+    return this.transactionManager.run(async () => {
+      const usuarioAtualizado = await this.repository.atualizar(
+        id,
+        dadosPermitidos,
+      );
 
-  async redefinirSenha(token, novaSenha) {
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    const usuario = await this.repository.buscarPorTokenRedefinicao(tokenHash);
+      if (senha) {
+        await this.autenticacaoService.atualizarSenhaUsuario(id, senha);
+      }
 
-    if (!usuario) {
-      throw new CustomError({
-        statusCode: 400,
-        customMessage: "Token inválido ou expirado.",
-      });
-    }
-
-    if (usuario.token_redefinicao_expira < new Date()) {
-      throw new CustomError({
-        statusCode: 400,
-        customMessage: "Token expirado",
-      });
-    }
-
-    const senha = await bcrypt.hash(novaSenha, 10);
-    await this.repository.atualizarSenha(usuario._id, senha);
-
-    return { message: "Senha redefinida com sucesso." };
+      return usuarioAtualizado;
+    });
   }
 
   async excluir(id, senha, actor = null) {
@@ -238,10 +101,10 @@ class UsuarioService {
       });
     }
 
-    const usuario = await this.repository.buscarPorEmailComSenha(
-      usuarioExiste.email,
+    const senhaCorreta = await this.autenticacaoService.verificarSenhaUsuario(
+      id,
+      senha,
     );
-    const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
     if (!senhaCorreta) {
       throw new CustomError({
         statusCode: 401,
@@ -259,17 +122,20 @@ class UsuarioService {
       });
     }
 
-    await this.repository.atualizar(id, {
-      situacao: "INATIVO",
-      nome: "Usuário Removido",
-      email: `removido_${id}@exemplo.com`,
-      cpf: `removido_${id}`,
-      telefone: null,
-      foto_perfil: null,
-      bio: null,
-    });
+    await this.transactionManager.run(async () => {
+      await this.repository.atualizar(id, {
+        situacao: "INATIVO",
+        nome: "Usuário Removido",
+        email: `removido_${id}@exemplo.com`,
+        cpf: `removido_${id}`,
+        telefone: null,
+        foto_perfil: null,
+        bio: null,
+      });
 
-    await this.itemDoacaoRepository.cancelarItensPorUsuario(id);
+      await this.itemDoacaoRepository.cancelarItensPorUsuario(id);
+      await this.autenticacaoService.revogarSessoesUsuario(id);
+    });
 
     return { message: "Conta excluída com sucesso." };
   }
@@ -291,11 +157,14 @@ class UsuarioService {
       });
     }
 
-    return this.repository.atualizar(id, {
+    const usuarioSuspenso = await this.repository.atualizar(id, {
       situacao: "SUSPENSO",
       motivo_suspensao: motivo,
       suspensao_ate: new Date(suspensao_ate),
     });
+
+    await this.autenticacaoService?.revogarSessoesUsuario?.(id);
+    return usuarioSuspenso;
   }
 
   async reativar(id) {

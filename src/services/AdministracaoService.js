@@ -10,6 +10,7 @@ class AdministracaoService {
         interesseRepository,
         avaliacaoRepository,
         notificacaoService,
+        autenticacaoService = null,
         transactionManager,
     }) {
         this.repository = administracaoRepository;
@@ -19,6 +20,7 @@ class AdministracaoService {
         this.interesseRepository = interesseRepository;
         this.avaliacaoRepository = avaliacaoRepository;
         this.notificacaoService = notificacaoService;
+        this.autenticacaoService = autenticacaoService;
         this.transactionManager = transactionManager;
     }
 
@@ -160,6 +162,8 @@ class AdministracaoService {
             mensagemConflito: "A situação do usuário foi alterada por outra operação.",
         });
 
+        await this.revogarSessoes(usuarioId);
+
         await this.notificar([
             this.criarNotificacao({
                 usuarioId,
@@ -296,6 +300,8 @@ class AdministracaoService {
             await this.notificarCancelamentoItem(item, interessesAtivos);
         }
 
+        await this.revogarSessoes(usuarioIdNormalizado);
+
         return resultadoTransacao.usuarioInativado;
     }
 
@@ -392,6 +398,10 @@ class AdministracaoService {
 
             return denunciaResolvida;
         });
+
+        if (resultado === "PROCEDENTE" && denuncia.tipo_alvo === "USUARIO") {
+            await this.revogarSessoes(this.getEntityId(denuncia.alvo_usuario_id));
+        }
 
         await this.notificarResultadoDenuncia(denuncia, resultado);
 
@@ -500,6 +510,12 @@ class AdministracaoService {
             alvo_model: this.getAlvoModel(dados.tipo_alvo),
             data_acao: new Date(),
         });
+    }
+
+    async revogarSessoes(usuarioId) {
+        if (this.autenticacaoService?.revogarSessoesUsuario) {
+            await this.autenticacaoService.revogarSessoesUsuario(usuarioId);
+        }
     }
 
     async ensureExists(id) {

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod-v3";
 export { CategoriaIdSchema, CategoriaQuerySchema } from "./querys/CategoriaQuerySchema.js";
 
 const CategoriaSchema = z.object({

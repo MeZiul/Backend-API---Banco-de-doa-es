@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod-v3';
 
 export const atualizarPerfilSchema = z.object({
     nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres.").optional(),

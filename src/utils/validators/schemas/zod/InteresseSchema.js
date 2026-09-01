@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod-v3";
 import objectIdSchema from "./ObjectIdSchema.js";
 
 export { InteresseIdSchema, InteresseQuerySchema } from "./querys/InteresseQuerySchema.js";

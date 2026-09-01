@@ -1,10 +1,9 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import CustomError from "../../utils/helpers/CustomError.js";
 import errorHandler from "../../utils/helpers/errorHandler.js";
-import { createRegularUser, testIds } from "../test.js";
+import { createRegularUser, createTestBearer, testIds } from "../test.js";
 
 const mockInteresseService = {
   criar: jest.fn(),
@@ -34,7 +33,7 @@ jest.mock("../../repositories/UsuarioRepository.js", () => ({
 let app;
 
 const bearer = (user = createRegularUser({ id: testIds.interessado })) =>
-  `Bearer ${jwt.sign(user, process.env.JWT_SECRET_ACCESS_TOKEN)}`;
+  createTestBearer(user);
 
 beforeAll(async () => {
   const { default: interesseRoutes } = await import("../../routes/interesseRoutes.js");

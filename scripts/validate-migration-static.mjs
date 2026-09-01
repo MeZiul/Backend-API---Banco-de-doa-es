@@ -4,10 +4,14 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const schema = fs.readFileSync(path.join(root, "prisma/schema.prisma"), "utf8");
-const migration = fs.readFileSync(
-  path.join(root, "prisma/migrations/20260818213000_init_postgresql/migration.sql"),
-  "utf8",
-);
+const migrationsDir = path.join(root, "prisma/migrations");
+const migration = fs
+  .readdirSync(migrationsDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) =>
+    fs.readFileSync(path.join(migrationsDir, entry.name, "migration.sql"), "utf8"),
+  )
+  .join("\n");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 
 const expectedModels = [
@@ -20,6 +24,9 @@ const expectedModels = [
   "Denuncia",
   "Administracao",
   "Notificacao",
+  "Session",
+  "Account",
+  "Verification",
 ];
 
 const expectedConstraints = [
@@ -29,6 +36,8 @@ const expectedConstraints = [
   "denuncia_usuario_em_analise_unica_por_denunciante",
   "Denuncia_alvo_check",
   "Administracao_alvo_check",
+  "Account_issuer_accountId_key",
+  "Session_token_key",
 ];
 
 const errors = [];

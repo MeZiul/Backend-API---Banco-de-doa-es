@@ -23,11 +23,18 @@ const createRegularUser = (overrides = {}) => ({
   ...overrides,
 });
 
+const createTestBearer = (user) =>
+  `Bearer ${Buffer.from(JSON.stringify(user), "utf8").toString("base64url")}`;
+
 const createControllerTestApp = ({ user = createRegularUser(), registerRoutes }) => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
     req.user = user;
+    req.auth = {
+      session: { token: "test-session-token", userId: user.id },
+      user: { id: user.id },
+    };
     next();
   });
 
@@ -41,5 +48,6 @@ export {
   testIds,
   createAdminUser,
   createRegularUser,
+  createTestBearer,
   createControllerTestApp,
 };

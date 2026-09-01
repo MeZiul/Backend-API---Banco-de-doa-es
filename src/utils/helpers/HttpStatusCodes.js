@@ -33,7 +33,7 @@ class HttpStatusCodes {
     static LOCKED = { code: 423, message: 'Recurso bloqueado' };
     static REQUEST_HEADER_FIELDS_TOO_LARGE = { code: 431, message: 'Cabeçalhos da requisição são muito grandes' };
     static UNAVAILABLE_FOR_LEGAL_REASONS = { code: 451, message: 'Acesso negado por motivos legais' };
-    static INVALID_TOKEN = { code: 498, message: 'Tente novamente, o token JWT está expirado! ' };
+    static INVALID_TOKEN = { code: 498, message: 'Sessão inválida ou expirada. Faça login novamente.' };
 
     static INTERNAL_SERVER_ERROR = { code: 500, message: 'Erro interno do servidor' };
     static NOT_IMPLEMENTED = { code: 501, message: 'Funcionalidade não suportada' };

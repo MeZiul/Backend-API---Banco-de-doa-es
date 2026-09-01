@@ -64,9 +64,6 @@ async function run() {
           cpf: `smoke-doador-${suffix}`,
           cidade: "Porto Velho",
           uf: "RO",
-          senha: "hash-smoke",
-          token_redefinicao: "segredo-smoke",
-          token_redefinicao_expira: new Date(Date.now() + 60_000),
         },
       });
       const interessado = await tx.usuario.create({
@@ -76,7 +73,6 @@ async function run() {
           cpf: `smoke-interessado-${suffix}`,
           cidade: "Porto Velho",
           uf: "RO",
-          senha: "hash-smoke",
         },
       });
       const administrador = await tx.usuario.create({
@@ -86,9 +82,19 @@ async function run() {
           cpf: `smoke-admin-${suffix}`,
           cidade: "Porto Velho",
           uf: "RO",
-          senha: "hash-smoke",
           perfil: "ADMINISTRADOR",
         },
+      });
+
+      await tx.account.createMany({
+        data: [doador, interessado, administrador].map((usuario) => ({
+          id: `credential:${usuario.id}`,
+          issuer: "local:credential",
+          accountId: usuario.id,
+          providerId: "credential",
+          userId: usuario.id,
+          password: "hash-smoke",
+        })),
       });
 
       const categoria = await categoriaRepository.criar({
@@ -160,7 +166,13 @@ async function run() {
         notificacao._id,
         doador.id,
       );
-      const usuarioComSenha = await usuarioRepository.buscarPorEmailComSenha(emailDoador);
+      const contaCredencial = await tx.account.findFirst({
+        where: {
+          userId: doador.id,
+          issuer: "local:credential",
+          providerId: "credential",
+        },
+      });
       const administradoresAtivos = await usuarioRepository.listarAdministradoresAtivos();
       const itemCarregado = await itemRepository.buscarPorId(item._id);
       const denunciaResolvida = await denunciaRepository.atualizarSeStatus(
@@ -177,9 +189,7 @@ async function run() {
         interessado.id,
       );
 
-      assert.equal(usuarioComSenha?.senha, "hash-smoke");
-      assert.equal(usuarioComSenha?.token_redefinicao, undefined);
-      assert.equal(usuarioComSenha?.token_redefinicao_expira, undefined);
+      assert.equal(contaCredencial?.password, "hash-smoke");
       assert.ok(administradoresAtivos.some((usuario) => usuario._id === administrador.id));
       assert.equal(itemCarregado?.fotos.length, 1);
       assert.equal(interesseAceito?.status, "ACEITO");

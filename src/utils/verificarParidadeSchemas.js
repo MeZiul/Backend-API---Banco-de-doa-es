@@ -15,7 +15,6 @@ import { UsuarioResponseSchema } from "./validators/schemas/zod/UsuarioSchema.js
 const MODELOS_PUBLICOS = {
   Usuario: {
     schema: UsuarioResponseSchema,
-    excluir: ["senha", "token_redefinicao", "token_redefinicao_expira"],
   },
   Administracao: {
     schema: AdministracaoResponseSchema,

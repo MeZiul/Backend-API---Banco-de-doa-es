@@ -94,7 +94,7 @@ model Usuario {
   telefone                 String?
   cidade                   String
   uf                       String          @db.VarChar(2)
-  senha                    String
+  email_verificado         Boolean         @default(false)
   foto_perfil              String?
   bio                      String?         @db.VarChar(500)
   perfil                   PerfilUsuario   @default(USUARIO)
@@ -104,8 +104,6 @@ model Usuario {
   media_avaliacoes         Float           @default(0)
   total_avaliacoes         Int             @default(0)
   total_doacoes            Int             @default(0)
-  token_redefinicao        String?
-  token_redefinicao_expira DateTime?
   data_cadastro            DateTime        @default(now())
   data_atualizacao         DateTime        @updatedAt
 
@@ -120,11 +118,59 @@ model Usuario {
   notificacoes              Notificacao[]
   administracoes_realizadas Administracao[]  @relation("Administrador")
   administracoes_como_alvo  Administracao[]  @relation("AdministracaoAlvoUsuario")
+  accounts                  Account[]
+  sessions                  Session[]
 
   @@index([email, cpf])
   @@index([cidade, uf])
   @@index([situacao])
   @@index([perfil])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  usuario   Usuario  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  usuario               Usuario   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
 }
 
 model Categoria {
