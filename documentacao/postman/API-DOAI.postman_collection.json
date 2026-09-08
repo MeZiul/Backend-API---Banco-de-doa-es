@@ -1,0 +1,1148 @@
+{
+  "info": {
+    "_postman_id": "91ad59b6-209a-4fde-8e64-383d4c67602b",
+    "name": "API-DOAI",
+    "description": "Fluxo automatizado para apresentacao na API online. Execute as requests em ordem: tokens, IDs, avaliacao e denuncia sao salvos automaticamente em variaveis da collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "54518239"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.doai.fs.fslab.dev",
+      "type": "string"
+    },
+    {
+      "key": "senhaPadrao",
+      "value": "Senha@123",
+      "type": "string"
+    },
+    {
+      "key": "joaoEmail",
+      "value": "joao@email.com",
+      "type": "string"
+    },
+    {
+      "key": "anaEmail",
+      "value": "ana@email.com",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@doai.com",
+      "type": "string"
+    },
+    {
+      "key": "adminSenha",
+      "value": "Admin@123",
+      "type": "string"
+    },
+    {
+      "key": "categoriaId",
+      "value": "6a2b3f17f5dd53be61d6fab8",
+      "type": "string"
+    },
+    {
+      "key": "joaoToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "joaoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "interesseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "avaliacaoAnaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "avaliacaoJoaoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "denunciaId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Apresentacao - API Online",
+      "description": "Execute em ordem. A collection usa a API online e preenche automaticamente tokens e IDs. A categoria e buscada automaticamente no pre-request da criacao do item, com fallback para uma categoria online existente.",
+      "item": [
+        {
+          "name": "01 - Login como Joao (doador)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token || json?.token;",
+                  "const usuario = json?.data?.usuario || json?.usuario;",
+                  "if (token) pm.collectionVariables.set('joaoToken', token);",
+                  "if (usuario?._id) pm.collectionVariables.set('joaoId', usuario._id);",
+                  "pm.test('login do Joao retornou token', function () { pm.expect(token).to.be.ok; });",
+                  "pm.test('joaoId preenchido', function () { pm.expect(pm.collectionVariables.get('joaoId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{joaoEmail}}\",\n  \"senha\": \"{{senhaPadrao}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Joao cria item",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get('baseUrl');",
+                  "if (!pm.collectionVariables.get('categoriaId')) {",
+                  "  pm.collectionVariables.set('categoriaId', '6a2b3f17f5dd53be61d6fab8');",
+                  "}",
+                  "pm.sendRequest(`${baseUrl}/categorias?page=1&limite=10`, function (err, res) {",
+                  "  if (err || !res) return;",
+                  "  const json = res.json();",
+                  "  const data = json?.data;",
+                  "  const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "  const brinquedos = docs.find((categoria) => String(categoria?.nome || '').toLowerCase().includes('brinqu'));",
+                  "  const categoria = brinquedos || docs[0];",
+                  "  if (categoria?._id) pm.collectionVariables.set('categoriaId', categoria._id);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const item = json?.data;",
+                  "if (item?._id) pm.collectionVariables.set('itemId', item._id);",
+                  "if (item?.categoria_id?._id) pm.collectionVariables.set('categoriaId', item.categoria_id._id);",
+                  "pm.test('item criado com sucesso', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "pm.test('itemId preenchido', function () { pm.expect(pm.collectionVariables.get('itemId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Bicicleta infantil aro 16 - {{$timestamp}}\",\n  \"descricao\": \"Bicicleta com rodinhas em otimo estado para demonstracao do fluxo principal.\",\n  \"categoria_id\": \"{{categoriaId}}\",\n  \"condicao_item\": \"USADO_BOM\",\n  \"cidade\": \"Rio Branco\",\n  \"uf\": \"AC\",\n  \"bairro\": \"Centro\",\n  \"condicoes_doacao\": \"Retirada combinada pelo chat.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Verificar item publico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('item publico retornou dados', function () { pm.expect(json?.data?._id).to.eql(pm.collectionVariables.get('itemId')); });",
+                  "pm.test('item esta disponivel', function () { pm.expect(json?.data?.status).to.eql('DISPONIVEL'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao",
+                "{{itemId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Login como Ana (recebedora)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token || json?.token;",
+                  "const usuario = json?.data?.usuario || json?.usuario;",
+                  "if (token) pm.collectionVariables.set('anaToken', token);",
+                  "if (usuario?._id) pm.collectionVariables.set('anaId', usuario._id);",
+                  "pm.test('login da Ana retornou token', function () { pm.expect(token).to.be.ok; });",
+                  "pm.test('anaId preenchido', function () { pm.expect(pm.collectionVariables.get('anaId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{anaEmail}}\",\n  \"senha\": \"{{senhaPadrao}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Ana manifesta interesse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const interesse = json?.data;",
+                  "if (interesse?._id) pm.collectionVariables.set('interesseId', interesse._id);",
+                  "pm.test('interesse criado com sucesso', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "pm.test('interesseId preenchido', function () { pm.expect(pm.collectionVariables.get('interesseId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{itemId}}\",\n  \"mensagem_interessado\": \"Tenho interesse nessa bicicleta e posso retirar ainda hoje.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/interesses",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "interesses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Ana lista seus interesses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json?.data;",
+                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const currentItemId = pm.collectionVariables.get('itemId');",
+                  "const match = docs.find((i) => String(i.item_id?._id || i.item_id) === String(currentItemId));",
+                  "if (match?._id) pm.collectionVariables.set('interesseId', match._id);",
+                  "pm.test('interesse da Ana aparece na listagem', function () { pm.expect(pm.collectionVariables.get('interesseId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/interesses?itemId={{itemId}}&page=1&limit=10",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "interesses"
+              ],
+              "query": [
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Joao lista interesses recebidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json?.data;",
+                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const currentItemId = pm.collectionVariables.get('itemId');",
+                  "const match = docs.find((i) => String(i.item_id?._id || i.item_id) === String(currentItemId)) || docs[0];",
+                  "if (match?._id) pm.collectionVariables.set('interesseId', match._id);",
+                  "pm.test('Joao recebeu o interesse', function () { pm.expect(pm.collectionVariables.get('interesseId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/interesses/recebidos?itemId={{itemId}}&page=1&limit=10",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "interesses",
+                "recebidos"
+              ],
+              "query": [
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Joao aceita o interesse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('interesse aceito', function () { pm.expect(json?.data?.status).to.eql('ACEITO'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resposta_doador\": \"Pode retirar amanha no periodo da tarde.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/interesses/{{interesseId}}/aceitar",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "interesses",
+                "{{interesseId}}",
+                "aceitar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Verificar item reservado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('item ficou reservado', function () { pm.expect(json?.data?.status).to.eql('RESERVADO'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao",
+                "{{itemId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Joao confirma entrega",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('item aguarda confirmacao', function () { pm.expect(json?.data?.status).to.eql('AGUARDANDO_CONFIRMACAO'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}/confirmar-entrega",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao",
+                "{{itemId}}",
+                "confirmar-entrega"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "11 - Ana confirma recebimento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('item foi doado', function () { pm.expect(json?.data?.status).to.eql('DOADO'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}/confirmar-recebimento",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao",
+                "{{itemId}}",
+                "confirmar-recebimento"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "12 - Verificar item doado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('status final DOADO', function () { pm.expect(json?.data?.status).to.eql('DOADO'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "itemdoacao",
+                "{{itemId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "13 - Ana avalia Joao",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?._id) pm.collectionVariables.set('avaliacaoAnaId', json.data._id);",
+                  "pm.test('avaliacao da Ana criada', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{itemId}}\",\n  \"avaliado_id\": \"{{joaoId}}\",\n  \"nota\": 5,\n  \"comentario\": \"Doador pontual e item entregue como combinado.\",\n  \"tipo\": \"INTERESSADO_PARA_DOADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/avaliacoes",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "avaliacoes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "14 - Joao avalia Ana",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?._id) pm.collectionVariables.set('avaliacaoJoaoId', json.data._id);",
+                  "pm.test('avaliacao do Joao criada', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{joaoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": \"{{itemId}}\",\n  \"avaliado_id\": \"{{anaId}}\",\n  \"nota\": 5,\n  \"comentario\": \"Interessada compareceu no horario combinado.\",\n  \"tipo\": \"DOADOR_PARA_INTERESSADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/avaliacoes",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "avaliacoes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "15 - Ana cria denuncia do item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?._id) pm.collectionVariables.set('denunciaId', json.data._id);",
+                  "pm.test('denuncia criada', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "pm.test('denunciaId preenchido', function () { pm.expect(pm.collectionVariables.get('denunciaId')).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_alvo\": \"ITEM\",\n  \"alvo_item_id\": \"{{itemId}}\",\n  \"motivo\": \"OUTRO\",\n  \"descricao\": \"Denuncia de demonstracao para validar o fluxo administrativo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/denuncias",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "denuncias"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "16 - Login como Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token || json?.token;",
+                  "const usuario = json?.data?.usuario || json?.usuario;",
+                  "if (token) pm.collectionVariables.set('adminToken', token);",
+                  "if (usuario?._id) pm.collectionVariables.set('adminId', usuario._id);",
+                  "pm.test('login admin retornou token', function () { pm.expect(token).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"senha\": \"{{adminSenha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "17 - Admin lista denuncias em analise",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json?.data;",
+                  "const docs = Array.isArray(data) ? data : (data?.docs || []);",
+                  "const currentDenunciaId = pm.collectionVariables.get('denunciaId');",
+                  "const match = docs.find((d) => String(d._id) === String(currentDenunciaId)) || docs[0];",
+                  "if (match?._id) pm.collectionVariables.set('denunciaId', match._id);",
+                  "pm.test('admin visualizou denuncias', function () { pm.expect(pm.response.code).to.eql(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/admin/denuncias?status=EM_ANALISE&page=1&limit=10",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "admin",
+                "denuncias"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "EM_ANALISE"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "18 - Admin resolve denuncia como improcedente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('denuncia resolvida', function () { pm.expect(json?.data?.status).to.eql('IMPROCEDENTE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resultado_denuncia\": \"IMPROCEDENTE\",\n  \"resposta_administrativa\": \"Denuncia analisada em demonstracao.\",\n  \"acao_tomada\": \"Nenhuma acao aplicada.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/admin/denuncias/{{denunciaId}}/resolver",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "admin",
+                "denuncias",
+                "{{denunciaId}}",
+                "resolver"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "19 - Admin consulta historico da Ana",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('admin consultou historico da Ana', function () { pm.expect(json?.data?._id).to.eql(pm.collectionVariables.get('anaId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://api.doai.fs.fslab.dev/admin/usuarios/{{anaId}}",
+              "protocol": "https",
+              "host": [
+                "api",
+                "doai",
+                "fs",
+                "fslab",
+                "dev"
+              ],
+              "path": [
+                "admin",
+                "usuarios",
+                "{{anaId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

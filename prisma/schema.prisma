@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PerfilUsuario {
+  USUARIO
+  ADMINISTRADOR
+}
+enum SituacaoUsuario {
+  ATIVO
+  SUSPENSO
+  INATIVO
+}
+enum CondicaoItem {
+  NOVO
+  SEMINOVO
+  USADO_BOM
+  USADO_REGULAR
+}
+enum StatusItem {
+  DISPONIVEL
+  RESERVADO
+  AGUARDANDO_CONFIRMACAO
+  DOADO
+  CANCELADO
+}
+enum StatusInteresse {
+  PENDENTE
+  ACEITO
+  RECUSADO
+  CANCELADO
+  EXPIRADO
+}
+enum TipoAvaliacao {
+  DOADOR_PARA_INTERESSADO
+  INTERESSADO_PARA_DOADOR
+}
+enum TipoAlvoDenuncia {
+  ITEM
+  USUARIO
+}
+enum MotivoDenuncia {
+  CONTEUDO_INAPROPRIADO
+  ITEM_PROIBIDO
+  FRAUDE
+  ASSEDIO
+  SPAM
+  OUTRO
+}
+enum StatusDenuncia {
+  EM_ANALISE
+  PROCEDENTE
+  IMPROCEDENTE
+}
+enum TipoAcaoAdministracao {
+  BLOQUEIO_USUARIO
+  DESBLOQUEIO_USUARIO
+  INATIVACAO_USUARIO
+  CANCELAMENTO_ITEM
+  RESOLUCAO_DENUNCIA
+}
+enum TipoAlvoAdministracao {
+  USUARIO
+  ITEM
+  DENUNCIA
+}
+enum ResultadoDenuncia {
+  PROCEDENTE
+  IMPROCEDENTE
+}
+enum TipoNotificacao {
+  INTERESSE_RECEBIDO
+  INTERESSE_ACEITO
+  INTERESSE_RECUSADO
+  INTERESSE_CANCELADO
+  DOACAO_CONFIRMADA
+  AVALIACAO_RECEBIDA
+  DENUNCIA_RESULTADO
+  USUARIO_SUSPENSO
+  USUARIO_REATIVADO
+  ITEM_CANCELADO
+  SISTEMA
+}
+
+model Usuario {
+  id                       String          @id @default(uuid())
+  nome                     String
+  email                    String          @unique
+  cpf                      String          @unique
+  telefone                 String?
+  cidade                   String
+  uf                       String          @db.VarChar(2)
+  email_verificado         Boolean         @default(false)
+  foto_perfil              String?
+  bio                      String?         @db.VarChar(500)
+  perfil                   PerfilUsuario   @default(USUARIO)
+  situacao                 SituacaoUsuario @default(ATIVO)
+  motivo_suspensao         String?
+  suspensao_ate            DateTime?
+  media_avaliacoes         Float           @default(0)
+  total_avaliacoes         Int             @default(0)
+  total_doacoes            Int             @default(0)
+  data_cadastro            DateTime        @default(now())
+  data_atualizacao         DateTime        @updatedAt
+
+  itens_doacao              ItemDoacao[]     @relation("UsuarioItens")
+  interesses_manifestados   Interesse[]      @relation("UsuarioInteressado")
+  interesses_recebidos      Interesse[]      @relation("UsuarioDoador")
+  avaliacoes_feitas         Avaliacao[]      @relation("Avaliador")
+  avaliacoes_recebidas      Avaliacao[]      @relation("Avaliado")
+  denuncias_feitas          Denuncia[]       @relation("Denunciante")
+  denuncias_como_alvo       Denuncia[]       @relation("AlvoUsuario")
+  denuncias_analisadas      Denuncia[]       @relation("AdminDenuncia")
+  notificacoes              Notificacao[]
+  administracoes_realizadas Administracao[]  @relation("Administrador")
+  administracoes_como_alvo  Administracao[]  @relation("AdministracaoAlvoUsuario")
+  accounts                  Account[]
+  sessions                  Session[]
+
+  @@index([email, cpf])
+  @@index([cidade, uf])
+  @@index([situacao])
+  @@index([perfil])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  usuario   Usuario  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  usuario               Usuario   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Categoria {
+  id               String       @id @default(uuid())
+  nome             String       @unique
+  descricao        String?
+  icone            String?
+  ativo            Boolean      @default(true)
+  ordem            Int          @default(0)
+  data_cadastro    DateTime     @default(now())
+  data_atualizacao DateTime     @updatedAt
+  itens            ItemDoacao[]
+  @@index([ativo])
+  @@index([ordem])
+}
+
+model ItemDoacao {
+  id                  String           @id @default(uuid())
+  usuario_id          String
+  categoria_id        String
+  interesse_aceito_id String?          @unique
+  titulo              String
+  descricao           String
+  condicao_item       CondicaoItem
+  cidade              String
+  uf                  String           @db.VarChar(2)
+  bairro              String?
+  condicoes_doacao    String?
+  status              StatusItem
+  motivo_cancelamento String?
+  data_doacao         DateTime?
+  visualizacoes       Int              @default(0)
+  total_interesses    Int              @default(0)
+  data_cadastro       DateTime         @default(now())
+  data_atualizacao    DateTime         @updatedAt
+
+  usuario             Usuario          @relation("UsuarioItens", fields: [usuario_id], references: [id], onDelete: Restrict)
+  categoria           Categoria        @relation(fields: [categoria_id], references: [id], onDelete: Restrict)
+  interesse_aceito    Interesse?       @relation("InteresseAceito", fields: [interesse_aceito_id], references: [id], onDelete: SetNull)
+  interesses          Interesse[]      @relation("InteressesItem")
+  fotos               FotoItemDoacao[]
+  avaliacoes          Avaliacao[]
+  denuncias           Denuncia[]       @relation("AlvoItem")
+  administracoes      Administracao[]  @relation("AdministracaoAlvoItem")
+
+  @@index([usuario_id])
+  @@index([categoria_id])
+  @@index([condicao_item])
+  @@index([cidade])
+  @@index([uf])
+  @@index([status, data_cadastro(sort: Desc)])
+  @@index([status, visualizacoes(sort: Desc)])
+}
+
+model FotoItemDoacao {
+  id            String     @id @default(uuid())
+  item_id       String
+  url           String
+  ordem         Int
+  nome_original String?
+  tamanho       Int?
+  mime_type     String?
+  data_upload   DateTime   @default(now())
+  item          ItemDoacao @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  @@index([item_id, ordem])
+}
+
+model Interesse {
+  id                     String          @id @default(uuid())
+  item_id                String
+  usuario_interessado_id String
+  usuario_doador_id      String
+  mensagem_interessado   String?
+  resposta_doador        String?
+  status                 StatusInteresse @default(PENDENTE)
+  data_interesse         DateTime        @default(now())
+  data_resposta          DateTime?
+  data_cancelamento      DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  item                   ItemDoacao      @relation("InteressesItem", fields: [item_id], references: [id], onDelete: Cascade)
+  usuario_interessado    Usuario         @relation("UsuarioInteressado", fields: [usuario_interessado_id], references: [id], onDelete: Restrict)
+  usuario_doador         Usuario         @relation("UsuarioDoador", fields: [usuario_doador_id], references: [id], onDelete: Restrict)
+  item_como_aceito       ItemDoacao?     @relation("InteresseAceito")
+
+  @@index([item_id])
+  @@index([usuario_interessado_id])
+  @@index([usuario_doador_id])
+  @@index([status])
+}
+
+model Avaliacao {
+  id             String        @id @default(uuid())
+  item_id        String
+  avaliador_id   String
+  avaliado_id    String
+  nota           Int
+  comentario     String?
+  tipo           TipoAvaliacao
+  data_avaliacao DateTime      @default(now())
+
+  item           ItemDoacao @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  avaliador      Usuario    @relation("Avaliador", fields: [avaliador_id], references: [id], onDelete: Restrict)
+  avaliado       Usuario    @relation("Avaliado", fields: [avaliado_id], references: [id], onDelete: Restrict)
+
+  @@unique([item_id, avaliador_id, tipo])
+  @@index([avaliado_id])
+  @@index([item_id])
+}
+
+model Denuncia {
+  id              String           @id @default(uuid())
+  denunciante_id  String
+  tipo_alvo       TipoAlvoDenuncia
+  alvo_item_id    String?
+  alvo_usuario_id String?
+  motivo          MotivoDenuncia
+  descricao       String?
+  status          StatusDenuncia   @default(EM_ANALISE)
+  resposta_admin  String?
+  admin_id        String?
+  acao_tomada     String?
+  data_denuncia   DateTime         @default(now())
+  data_analise    DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  denunciante     Usuario          @relation("Denunciante", fields: [denunciante_id], references: [id], onDelete: Restrict)
+  alvo_item       ItemDoacao?      @relation("AlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
+  alvo_usuario    Usuario?         @relation("AlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
+  admin           Usuario?         @relation("AdminDenuncia", fields: [admin_id], references: [id], onDelete: SetNull)
+  administracoes  Administracao[]  @relation("AdministracaoAlvoDenuncia")
+
+  @@index([status, data_denuncia(sort: Desc)])
+  @@index([denunciante_id])
+  @@index([alvo_item_id])
+  @@index([alvo_usuario_id])
+  @@index([admin_id])
+}
+
+model Administracao {
+  id                      String                    @id @default(uuid())
+  administrador_id        String
+  tipo_acao               TipoAcaoAdministracao
+  tipo_alvo               TipoAlvoAdministracao
+  alvo_usuario_id         String?
+  alvo_item_id            String?
+  alvo_denuncia_id        String?
+  justificativa           String?                   @db.VarChar(1000)
+  suspensao_ate           DateTime?
+  resultado_denuncia      ResultadoDenuncia?
+  resposta_administrativa String?                   @db.VarChar(1000)
+  acao_tomada             String?                   @db.VarChar(500)
+  data_acao               DateTime                  @default(now())
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  administrador           Usuario      @relation("Administrador", fields: [administrador_id], references: [id], onDelete: Restrict)
+  alvo_usuario            Usuario?     @relation("AdministracaoAlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
+  alvo_item               ItemDoacao?  @relation("AdministracaoAlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
+  alvo_denuncia           Denuncia?    @relation("AdministracaoAlvoDenuncia", fields: [alvo_denuncia_id], references: [id], onDelete: Restrict)
+
+  @@index([administrador_id, data_acao(sort: Desc)])
+  @@index([alvo_usuario_id, data_acao(sort: Desc)])
+  @@index([alvo_item_id, data_acao(sort: Desc)])
+  @@index([alvo_denuncia_id, data_acao(sort: Desc)])
+  @@index([tipo_acao, data_acao(sort: Desc)])
+}
+
+model Notificacao {
+  id               String          @id @default(uuid())
+  usuario_id       String
+  tipo             TipoNotificacao
+  titulo           String
+  mensagem         String
+  lida             Boolean         @default(false)
+  referencia_tipo  String?
+  referencia_id    String?
+  data_criacao     DateTime        @default(now())
+  data_atualizacao DateTime        @updatedAt
+  usuario          Usuario         @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id, data_criacao(sort: Desc)])
+  @@index([usuario_id, lida])
+}
