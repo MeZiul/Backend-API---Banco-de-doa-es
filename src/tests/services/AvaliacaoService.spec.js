@@ -17,6 +17,8 @@ describe("AvaliacaoService", () => {
       atualizar: jest.fn(),
       deletar: jest.fn(),
       listar: jest.fn(),
+      bloquearAvaliado: jest.fn(),
+      agregarPorAvaliado: jest.fn(),
     };
 
     itemDoacaoRepository = {
@@ -37,6 +39,7 @@ describe("AvaliacaoService", () => {
       itemDoacaoRepository,
       interesseRepository,
       usuarioRepository,
+      transactionManager: { run: (operation) => operation() },
     });
   });
 
@@ -60,7 +63,7 @@ describe("AvaliacaoService", () => {
     usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.doador });
     avaliacaoRepository.buscarPorAvaliadorItemTipo.mockResolvedValue(null);
     avaliacaoRepository.criar.mockResolvedValue({ _id: testIds.denuncia, nota: 5 });
-    avaliacaoRepository.listar.mockResolvedValue({ docs: [{ nota: 5 }] });
+    avaliacaoRepository.agregarPorAvaliado.mockResolvedValue({ total: 1, media: 5 });
 
     const resultado = await service.criar(
       {
@@ -94,7 +97,7 @@ describe("AvaliacaoService", () => {
     usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.interessado });
     avaliacaoRepository.buscarPorAvaliadorItemTipo.mockResolvedValue(null);
     avaliacaoRepository.criar.mockResolvedValue({ _id: testIds.denuncia, nota: 4 });
-    avaliacaoRepository.listar.mockResolvedValue({ docs: [{ nota: 4 }] });
+    avaliacaoRepository.agregarPorAvaliado.mockResolvedValue({ total: 1, media: 4 });
 
     const resultado = await service.criar(
       {
@@ -274,7 +277,7 @@ describe("AvaliacaoService", () => {
       _id: testIds.denuncia,
       nota: 4,
     });
-    avaliacaoRepository.listar.mockResolvedValue({ docs: [{ nota: 4 }, { nota: 2 }] });
+    avaliacaoRepository.agregarPorAvaliado.mockResolvedValue({ total: 2, media: 3 });
 
     const resultado = await service.atualizar(
       testIds.denuncia,
@@ -312,6 +315,16 @@ describe("AvaliacaoService", () => {
     expect(avaliacaoRepository.atualizar).toHaveBeenCalledWith(testIds.denuncia, { comentario: "Comentário atualizado." });
     expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
     expect(resultado).toEqual({ _id: testIds.denuncia, nota: 5, comentario: "Comentário atualizado." });
+  });
+
+  test("Deve retornar 404 se outra transação remover a avaliação durante a espera pelo lock", async () => {
+    avaliacaoRepository.buscarPorId
+      .mockResolvedValueOnce({ _id: testIds.denuncia, avaliador_id: testIds.interessado, avaliado_id: testIds.doador })
+      .mockResolvedValueOnce(null);
+    await expect(service.atualizar(testIds.denuncia, { nota: 4 },
+      createRegularUser({ id: testIds.interessado }))).rejects.toMatchObject({ statusCode: 404 });
+    expect(avaliacaoRepository.atualizar).not.toHaveBeenCalled();
+    expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
   });
 
   test("Deve impedir atualização quando avaliação não é encontrada", async () => {
@@ -376,7 +389,7 @@ describe("AvaliacaoService", () => {
       avaliador_id: testIds.interessado,
       avaliado_id: testIds.doador,
     });
-    avaliacaoRepository.listar.mockResolvedValue({ docs: [] });
+    avaliacaoRepository.agregarPorAvaliado.mockResolvedValue({ total: 0, media: 0 });
 
     const resultado = await service.deletar(
       testIds.denuncia,
@@ -397,7 +410,7 @@ describe("AvaliacaoService", () => {
       avaliador_id: testIds.interessado,
       avaliado_id: testIds.doador,
     });
-    avaliacaoRepository.listar.mockResolvedValue({ docs: [] });
+    avaliacaoRepository.agregarPorAvaliado.mockResolvedValue({ total: 0, media: 0 });
 
     const resultado = await service.deletar(
       testIds.denuncia,

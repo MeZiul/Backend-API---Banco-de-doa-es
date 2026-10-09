@@ -2,14 +2,21 @@ import { CustomError } from "../utils/helpers/index.js";
 
 class AvaliacaoService {
 
-  constructor({ avaliacaoRepository, itemDoacaoRepository, interesseRepository, usuarioRepository }) {
+  constructor({ avaliacaoRepository, itemDoacaoRepository, interesseRepository, usuarioRepository, transactionManager }) {
     this.repository             = avaliacaoRepository;
     this.itemDoacaoRepository   = itemDoacaoRepository;
     this.interesseRepository    = interesseRepository;
     this.usuarioRepository      = usuarioRepository;
+    this.transactionManager     = transactionManager;
   }
 
   async criar(dados, usuarioId) {
+    return this.transactionManager.run(() => this._criar(dados, usuarioId), {
+      isolationLevel: "ReadCommitted",
+    });
+  }
+
+  async _criar(dados, usuarioId) {
     const { item_id, avaliado_id, nota, comentario, tipo } = dados;
 
     const item = await this.itemDoacaoRepository.buscarPorId(item_id);
@@ -44,6 +51,7 @@ class AvaliacaoService {
     }
 
     await this.ensureUsuarioExists(avaliado_id);
+    await this.repository.bloquearAvaliado(avaliado_id);
     await this.ensureParticipouDaDoacao(item, { avaliado_id, tipo }, usuarioId);
 
     const jaAvaliou = await this.repository.buscarPorAvaliadorItemTipo(
@@ -73,15 +81,12 @@ class AvaliacaoService {
   }
 
   async deletar(id, usuario) {
-    const avaliacao = await this.ensureExists(id);
-
-    if (usuario?.perfil !== "ADMINISTRADOR") {
-      this.ensureAutorDaAvaliacao(avaliacao, usuario);
-    }
-
-    await this.repository.deletar(id);
-    await this._recalcularMedia(avaliacao.avaliado_id);
-    return { message: "Avaliação removida com sucesso." };
+    return this.transactionManager.run(async () => {
+      const avaliacao = await this._buscarParaEscrita(id, usuario, true);
+      await this.repository.deletar(id);
+      await this._recalcularMedia(avaliacao.avaliado_id);
+      return { message: "Avaliação removida com sucesso." };
+    }, { isolationLevel: "ReadCommitted" });
   }
 
   async listarPorUsuario({ filtros = {}, page = 1, limit = 20 }, usuario) {
@@ -97,30 +102,32 @@ class AvaliacaoService {
   }
   
   async atualizar(id, dados, usuario) {
-    const avaliacao = await this.ensureExists(id);
-    this.ensureAutorDaAvaliacao(avaliacao, usuario);
+    return this.transactionManager.run(async () => {
+      const avaliacao = await this._buscarParaEscrita(id, usuario);
+      const avaliacaoAtualizada = await this.repository.atualizar(id, dados);
+      if (dados.nota !== undefined) {
+        await this._recalcularMedia(avaliacao.avaliado_id);
+      }
+      return avaliacaoAtualizada;
+    }, { isolationLevel: "ReadCommitted" });
+  }
 
-    const avaliacaoAtualizada = await this.repository.atualizar(id, dados);
-
-    if (dados.nota !== undefined) {
-      await this._recalcularMedia(avaliacao.avaliado_id);
+  async _buscarParaEscrita(id, usuario, permitirAdmin = false) {
+    const anterior = await this.ensureExists(id);
+    if (!permitirAdmin || usuario?.perfil !== "ADMINISTRADOR") {
+      this.ensureAutorDaAvaliacao(anterior, usuario);
     }
-
-    return avaliacaoAtualizada;
+    await this.repository.bloquearAvaliado(anterior.avaliado_id);
+    // A previous writer may have removed this evaluation while we waited.
+    const atual = await this.ensureExists(id);
+    if (!permitirAdmin || usuario?.perfil !== "ADMINISTRADOR") {
+      this.ensureAutorDaAvaliacao(atual, usuario);
+    }
+    return atual;
   }
 
   async _recalcularMedia(avaliado_id) {
-    const avaliacoes = await this.repository.listar({
-      filtros: { avaliado_id },
-      page: 1,
-      limit: 1000,
-    });
-
-    const docs = avaliacoes.docs || avaliacoes;
-    const total = docs.length;
-    const media = total > 0
-      ? docs.reduce((acc, a) => acc + a.nota, 0) / total
-      : 0;
+    const { total, media } = await this.repository.agregarPorAvaliado(avaliado_id);
 
     await this.usuarioRepository.atualizar(avaliado_id, {
       media_avaliacoes: parseFloat(media.toFixed(1)),
