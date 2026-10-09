@@ -19,6 +19,21 @@ class AvaliacaoRepository extends BaseRepository {
     return clean;
   }
 
+  // Call inside the service transaction: one writer per recipient until commit.
+  async bloquearAvaliado(avaliado_id) {
+    // NO KEY UPDATE also permits the foreign-key checks of reciprocal ratings.
+    await this.client.$queryRaw`SELECT id FROM "Usuario" WHERE id = ${String(avaliado_id)} FOR NO KEY UPDATE`;
+  }
+
+  async agregarPorAvaliado(avaliado_id) {
+    const agregado = await this.delegate.aggregate({
+      where: { avaliado_id },
+      _count: { _all: true },
+      _avg: { nota: true },
+    });
+    return { total: agregado._count._all, media: agregado._avg.nota ?? 0 };
+  }
+
   async buscarPorAvaliador(avaliador_id) {
     return this.mapRecord(
       await this.delegate.findFirst({ where: { avaliador_id } }),

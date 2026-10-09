@@ -1,4 +1,5 @@
 import AvaliacaoService from "../services/AvaliacaoService.js";
+import prismaTransactionManager from "../infra/PrismaTransactionManager.js";
 import {
   avaliacaoRepository,
   itemDoacaoRepository,
@@ -11,4 +12,5 @@ export const avaliacaoService = new AvaliacaoService({
   itemDoacaoRepository,
   interesseRepository,
   usuarioRepository,
+  transactionManager: prismaTransactionManager,
 });
