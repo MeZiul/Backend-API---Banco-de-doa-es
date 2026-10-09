@@ -93,7 +93,7 @@ class ItemDoacaoService {
     delete dadosAtualizacao.usuario_id;
     delete dadosAtualizacao.interesse_aceito_id;
 
-    return await this.repository.atualizar(id, dadosAtualizacao);
+    return this.atualizarSnapshot(id, item, dadosAtualizacao);
   }
 
   async deletar(id, usuarioAutenticadoId) {
@@ -122,7 +122,7 @@ class ItemDoacaoService {
       });
     }
 
-    return await this.repository.atualizar(id, { status: "CANCELADO" });
+    return this.atualizarSnapshot(id, item, { status: "CANCELADO" });
   }
 
   async confirmarEntrega(idItem, usuarioAutenticadoId) {
@@ -148,7 +148,7 @@ class ItemDoacaoService {
       });
     }
 
-    return await this.repository.atualizar(idItem, {
+    return this.atualizarSnapshot(idItem, item, {
       status: "AGUARDANDO_CONFIRMACAO",
     });
   }
@@ -190,7 +190,7 @@ class ItemDoacaoService {
       });
     }
 
-    return await this.repository.atualizar(idItem, {
+    return this.atualizarSnapshot(idItem, item, {
       status: "DOADO",
       data_doacao: new Date(),
     });
@@ -221,10 +221,26 @@ class ItemDoacaoService {
     }
 
     // Atualiza o status do item para CANCELADO e salva o motivo
-    return await this.repository.atualizar(idItem, {
+    return this.atualizarSnapshot(idItem, item, {
       status: "CANCELADO",
       motivo_cancelamento: motivo
     });
+  }
+
+  async atualizarSnapshot(id, item, dados) {
+    // Além do estado, a reserva precisa continuar sendo a mesma que foi validada.
+    const interesseId = item.interesse_aceito_id?._id ?? item.interesse_aceito_id;
+    const atualizado = await this.repository.atualizarSeStatus(id, item.status, dados, {
+      usuario_id: item.usuario_id.toString(),
+      interesse_aceito_id: interesseId?.toString() ?? null,
+    });
+    if (!atualizado) {
+      throw new CustomError({
+        statusCode: 409,
+        customMessage: "O item foi alterado por outra operação. Atualize a página e tente novamente.",
+      });
+    }
+    return atualizado;
   }
 
   async listarInteresses(idItem, usuarioAutenticado) {
