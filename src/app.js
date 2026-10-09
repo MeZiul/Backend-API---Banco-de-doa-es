@@ -82,7 +82,13 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Deixa a pasta 'uploads' pública para a internet conseguir ver as imagens
-app.use('/uploads', express.static(uploadsRoot));
+app.use('/uploads', express.static(uploadsRoot, {
+    setHeaders: (res, filePath) => {
+        if (/\.(png|jpe?g|webp)$/i.test(filePath)) {
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        }
+    }
+}));
 
 
 /* ───────────── 4. Rotas ───────────── */
