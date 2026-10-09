@@ -1,5 +1,7 @@
+export const normalizarCPF = (cpf) => cpf.replace(/\D/g, "");
+
 export function validarCPF(cpf) {
-    const cpfLimpo = cpf.replace(/\D/g, "");
+    const cpfLimpo = normalizarCPF(cpf);
     if (cpfLimpo.length !== 11 || /^(\d)\1+$/.test(cpfLimpo)) return false;
 
     const calcularDigito = (fator) => {

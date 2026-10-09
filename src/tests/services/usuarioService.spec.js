@@ -95,7 +95,9 @@ describe("UsuarioService.cadastrar", () => {
 
     await service.cadastrar(dados);
 
-    expect(mockAutenticacaoService.cadastrar).toHaveBeenCalledWith(dados);
+    expect(mockAutenticacaoService.cadastrar).toHaveBeenCalledWith({ ...dados, cpf: "12345678909" });
+    expect(mockUsuarioRepository.buscarPorCpf).toHaveBeenCalledWith("12345678909");
+    expect(dados.cpf).toBe("123.456.789-09");
     expect(mockUsuarioRepository.atualizar).not.toHaveBeenCalled();
   });
 

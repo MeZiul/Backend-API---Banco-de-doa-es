@@ -1,5 +1,5 @@
 import { CustomError } from "../utils/helpers/index.js";
-import { validarCPF } from "../utils/verificarCPF.js";
+import { normalizarCPF, validarCPF } from "../utils/verificarCPF.js";
 
 class UsuarioService {
   constructor({
@@ -34,7 +34,8 @@ class UsuarioService {
       });
     }
 
-    const cpfExiste = await this.repository.buscarPorCpf(dados.cpf);
+    const cpf = normalizarCPF(dados.cpf);
+    const cpfExiste = await this.repository.buscarPorCpf(cpf);
     if (cpfExiste) {
       throw new CustomError({
         statusCode: 409,
@@ -42,7 +43,20 @@ class UsuarioService {
       });
     }
 
-    const authUser = await this.autenticacaoService.cadastrar(dados);
+    let authUser;
+    try {
+      authUser = await this.autenticacaoService.cadastrar({ ...dados, cpf });
+    } catch (error) {
+      // Better Auth pode ocultar o erro unique do Prisma durante um cadastro concorrente.
+      const cpfCadastrado = await this.repository.buscarPorCpf(cpf);
+      if (cpfCadastrado) {
+        throw new CustomError({
+          statusCode: 409,
+          customMessage: "CPF já cadastrado. Faça login ou recupere sua senha.",
+        });
+      }
+      throw error;
+    }
     const usuarioCriado = await this.repository.buscarPorId(authUser.id);
 
     if (!usuarioCriado) {
