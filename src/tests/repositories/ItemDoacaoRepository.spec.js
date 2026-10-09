@@ -121,3 +121,32 @@ describe("ItemDoacaoRepository - consistência de interesse", () => {
     });
   });
 });
+
+describe("ItemDoacaoRepository - upload sob lock", () => {
+  function uploadRepository(record) {
+    const repository = new ItemDoacaoRepository();
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: "item" }]),
+      itemDoacao: { findUnique: jest.fn().mockResolvedValue(record) },
+      fotoItemDoacao: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    };
+    attachClient(repository, { $transaction: callback => callback(tx) });
+    return { repository, tx };
+  }
+  test.each([
+    [{ usuario_id: "other", status: "DISPONIVEL", fotos: [] }, 403],
+    [{ usuario_id: "owner", status: "RESERVADO", fotos: [] }, 400],
+    [{ usuario_id: "owner", status: "DISPONIVEL", fotos: Array(5).fill({ ordem: 1 }) }, 400],
+  ])("rechecks changed owner, status and count before inserting", async (record, statusCode) => {
+    const { repository, tx } = uploadRepository(record);
+    await expect(repository.adicionarFotos("item", [{ url: "/uploads/itens/a.png" }], "owner")).rejects.toMatchObject({ statusCode });
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.fotoItemDoacao.createMany).not.toHaveBeenCalled();
+  });
+  test("assigns order from locked current photo set", async () => {
+    const { repository, tx } = uploadRepository({ id: "item", usuario_id: "owner", status: "DISPONIVEL", fotos: [{ ordem: 4 }] });
+    await repository.adicionarFotos("item", [{ url: "/uploads/itens/a.png", ordem: 1 }], "owner");
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.itemDoacao.findUnique.mock.invocationCallOrder[0]);
+    expect(tx.fotoItemDoacao.createMany).toHaveBeenCalledWith({ data: [expect.objectContaining({ ordem: 5 })] });
+  });
+});

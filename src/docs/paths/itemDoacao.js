@@ -228,7 +228,9 @@ Regras de negócio:
 - Apenas o doador (proprietário do item) pode adicionar fotos.
 - O item deve estar com o status DISPONIVEL.
 - São aceitas no máximo 5 fotos por item (RN-ITEM-002).
-- Formatos aceitos: JPEG, PNG e WebP, com tamanho máximo de 5 MB cada (RN-ITEM-003).`,
+- Formatos aceitos: JPEG, PNG e WebP estáticos, com tamanho máximo de 5 MB cada e 4096 pixels por dimensão (RN-ITEM-003).
+- O conteúdo é decodificado e reencodificado; SVG, animações, conteúdo inválido e MIME divergente são rejeitados.
+- A extensão enviada não determina o formato armazenado.`,
             security: [{ bearerAuth: [] }],
             parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" }, description: "ID do item" }],
             requestBody: {

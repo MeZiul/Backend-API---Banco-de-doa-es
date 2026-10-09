@@ -16,6 +16,7 @@ import errorHandler from './utils/helpers/errorHandler.js';
 import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
 import { configureTrustProxy } from './config/trustProxy.js';
+import { uploadsRoot } from './config/uploads.js';
 //import fileUpload from 'express-fileupload';
 //import path, { dirname } from 'path';
 //import { fileURLToPath } from 'url';
@@ -81,7 +82,7 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // Deixa a pasta 'uploads' pública para a internet conseguir ver as imagens
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadsRoot));
 
 
 /* ───────────── 4. Rotas ───────────── */

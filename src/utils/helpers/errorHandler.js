@@ -26,7 +26,7 @@ const errorHandler = (err, req, res, next) => {
     logger.warn('Erro de upload (Multer)', { code: err.code, message: err.message, path: req.path, requestId });
     let mensagem = 'Erro no upload do arquivo.';
     if (err.code === 'LIMIT_FILE_SIZE') {
-      mensagem = 'Arquivo muito grande. Tamanho máximo permitido: 50MB.';
+      mensagem = 'Arquivo muito grande. Tamanho máximo permitido: 5MB.';
     } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       mensagem = 'Campo de arquivo inesperado.';
     } else if (err.code === 'LIMIT_FILE_COUNT') {
