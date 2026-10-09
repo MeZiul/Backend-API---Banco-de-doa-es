@@ -254,6 +254,14 @@ npm run test:db
 
 O smoke test exige `TEST_DATABASE_URL`, aplica as migrations somente nesse banco, percorre os repositórios reais, valida relações e força rollback ao final. Ele nunca usa `DATABASE_URL` como fallback e não deixa massa de teste persistida.
 
+A consistência das avaliações tem uma validação PostgreSQL própria:
+
+```bash
+npm run test:avaliacao:db
+```
+
+Esse teste exige `TEST_DATABASE_URL` local com banco `doai_test` (ou `doai_test_<sufixo>`) e migrations já aplicadas. Cria e remove somente fixtures identificadas por UUID, verifica mais de 1000 avaliações, concorrência entre criação/edição/remoção, avaliações recíprocas, duplicidade e rollback real ao falhar a atualização da reputação. O serviço serializa as escritas pelo usuário avaliado e mantém a avaliação e seu COUNT/AVG na mesma transação. A listagem HTTP continua paginada, a autoria e o prazo de criação de 30 dias continuam vigentes; esse teste não executa backfill de reputações antigas.
+
 Validação da migração de credenciais antigas, inteiramente revertida ao final:
 
 ```bash
