@@ -33,6 +33,12 @@ O service é instanciado com mocks de `usuarioRepository`, `itemDoacaoRepository
 
 ## 5. Fluxos críticos
 
+### Unicidade de CPF
+
+O cadastro consulta e envia ao Better Auth o CPF apenas com os 11 dígitos. A busca reconhece também CPFs históricos com máscara, sem alterar esses registros. Duplicidade retorna HTTP 409, inclusive quando a restrição única rejeita um cadastro concorrente com o CPF canônico.
+
+A comparação histórica normaliza a pontuação no PostgreSQL por consulta parametrizada; esse fallback pode percorrer os registros legados. A restrição única existente protege novos cadastros canônicos. Sem migration de índice por CPF normalizado, ela não impede uma gravação simultânea com máscara feita por uma versão antiga da API ou por outro escritor externo.
+
 ### Atualização de senha
 
 1. O Zod valida complexidade.
