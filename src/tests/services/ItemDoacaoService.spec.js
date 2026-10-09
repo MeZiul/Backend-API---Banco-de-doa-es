@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import ItemDoacaoService from "../../services/ItemDoacaoService.js";
 import CustomError from "../../utils/helpers/CustomError.js";
+import { mapAuthenticatedUser } from "../../middlewares/createAuthMiddleware.js";
+import { itemDoacaoSchema } from "../../utils/validators/schemas/zod/ItemDoacaoSchema.js";
 
 const mockItemRepository = {
     criar: jest.fn(),
     listarDisponiveis: jest.fn(),
     buscarPorId: jest.fn(),
     buscarDetalhes: jest.fn(),
-    atualizar: jest.fn(),
+    atualizarSeStatus: jest.fn(),
     deletar: jest.fn(),
 };
 
@@ -20,6 +22,7 @@ let service;
 
 beforeEach(() => {
     jest.clearAllMocks();
+    mockItemRepository.atualizarSeStatus.mockReset().mockResolvedValue({ _id: "i1" });
     service = new ItemDoacaoService(
         mockItemRepository,
         mockCategoriaRepository,
@@ -30,6 +33,33 @@ beforeEach(() => {
 describe("ItemDoacaoService", () => {
 
     describe("criar", () => {
+        test.each([
+            [{}, "Vilhena", "RO"],
+            [{ cidade: "Cuiabá", uf: "MT" }, "Cuiabá", "MT"],
+            [{ cidade: "Porto Velho" }, "Porto Velho", "RO"],
+            [{ uf: "MT" }, "Vilhena", "MT"],
+        ])("preserva localizacao do contexto autenticado e prioriza campos explicitos %j", async (localizacao, cidade, uf) => {
+            const usuario = mapAuthenticatedUser({
+                _id: "u1", nome: "Maria", email: "maria@doai.local",
+                perfil: "USUARIO", situacao: "ATIVO", cidade: "Vilhena", uf: "RO",
+                cpf: "52998224725", senha: "nao-deve-ser-propagada",
+            });
+            const dados = itemDoacaoSchema.parse({
+                titulo: "Livro", descricao: "Livro de programação para doação",
+                categoria_id: "c1", condicao_item: "USADO_BOM", ...localizacao,
+            });
+            mockItemRepository.criar.mockImplementation(async (item) => ({ _id: "i1", ...item }));
+
+            const item = await service.criar(dados, usuario);
+
+            expect(item).toMatchObject({ cidade, uf, usuario_id: "u1", status: "DISPONIVEL" });
+            expect(mockItemRepository.criar).toHaveBeenCalledWith(expect.objectContaining({ cidade, uf }));
+            expect(usuario).not.toHaveProperty("cpf");
+            expect(usuario).not.toHaveProperty("senha");
+            expect(item).not.toHaveProperty("cpf");
+            expect(item).not.toHaveProperty("senha");
+        });
+
         test("deve criar item com sucesso se usuario ativo", async () => {
             const usuario = { id: "u1", situacao: "ATIVO", cidade: "Vilhena", uf: "RO" };
             const dados = { titulo: "Livro", descricao: "Java", categoria_id: "c1", condicao_item: "Bom" };
@@ -92,7 +122,7 @@ describe("ItemDoacaoService", () => {
         test("deve cancelar item se for o dono", async () => {
             const item = { _id: "i1", usuario_id: "u1", status: "DISPONIVEL" };
             mockItemRepository.buscarPorId.mockResolvedValue(item);
-            mockItemRepository.atualizar.mockResolvedValue({ status: "CANCELADO" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ status: "CANCELADO" });
 
             const res = await service.cancelarItem("i1", "Motivo qualquer", { id: "u1" });
             expect(res.status).toBe("CANCELADO");
@@ -110,7 +140,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item já está CANCELADO", async () => {
@@ -120,7 +150,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível cancelar um item com status CANCELADO.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item já está DOADO", async () => {
@@ -130,19 +160,19 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível cancelar um item com status DOADO.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve permitir que ADMINISTRADOR cancele item de outro usuario", async () => {
             mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "dono", status: "DISPONIVEL" });
-            mockItemRepository.atualizar.mockResolvedValue({ status: "CANCELADO" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ status: "CANCELADO" });
 
             const res = await service.cancelarItem("i1", "motivo admin", { id: "admin", perfil: "ADMINISTRADOR" });
             expect(res.status).toBe("CANCELADO");
-            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", expect.objectContaining({
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalledWith("i1", "DISPONIVEL", expect.objectContaining({
                 status: "CANCELADO",
                 motivo_cancelamento: "motivo admin",
-            }));
+            }), { usuario_id: "dono", interesse_aceito_id: null });
         });
     });
 
@@ -196,9 +226,9 @@ describe("ItemDoacaoService", () => {
             });
 
             await service.confirmarEntrega("i1", "u1");
-            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", expect.objectContaining({
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalledWith("i1", "RESERVADO", expect.objectContaining({
                 status: "AGUARDANDO_CONFIRMACAO"
-            }));
+            }), { usuario_id: "u1", interesse_aceito_id: null });
         });
 
         test("deve lançar 404 se item nao encontrado ao confirmar entrega", async () => {
@@ -208,7 +238,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 403 se usuario nao for o doador ao confirmar entrega", async () => {
@@ -218,7 +248,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 403,
                 customMessage: "Apenas o doador pode marcar o item como entregue.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item nao está RESERVADO ao confirmar entrega", async () => {
@@ -228,7 +258,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "O item precisa estar reservado para ser marcado como entregue.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
     });
 
@@ -243,7 +273,7 @@ describe("ItemDoacaoService", () => {
                     usuario_interessado_id: "interessado1",
                 },
             });
-            mockItemRepository.atualizar.mockResolvedValue({ status: "DOADO" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ status: "DOADO" });
 
             const res = await service.confirmarRecebimento("i1", "interessado1");
             expect(mockItemRepository.buscarPorId).toHaveBeenCalledWith("i1", {
@@ -254,9 +284,9 @@ describe("ItemDoacaoService", () => {
                     },
                 ],
             });
-            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", expect.objectContaining({
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalledWith("i1", "AGUARDANDO_CONFIRMACAO", expect.objectContaining({
                 status: "DOADO",
-            }));
+            }), { usuario_id: "u1", interesse_aceito_id: "interesse1" });
             expect(res.status).toBe("DOADO");
         });
 
@@ -267,7 +297,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item nao está AGUARDANDO_CONFIRMACAO", async () => {
@@ -284,7 +314,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Este item não está aguardando confirmação de recebimento.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 403 se usuario nao for o interessado aceito", async () => {
@@ -303,7 +333,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 403,
                 customMessage: "Você não tem permissão para confirmar o recebimento deste item.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
     });
 
@@ -330,11 +360,11 @@ describe("ItemDoacaoService", () => {
     describe("atualizar", () => {
         test("deve atualizar item com sucesso se for o dono e status DISPONIVEL", async () => {
             mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "DISPONIVEL" });
-            mockItemRepository.atualizar.mockResolvedValue({ _id: "i1", titulo: "Novo titulo" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ _id: "i1", titulo: "Novo titulo" });
 
             const res = await service.atualizar("i1", { titulo: "Novo titulo" }, "u1");
             expect(res.titulo).toBe("Novo titulo");
-            expect(mockItemRepository.atualizar).toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalled();
         });
 
         test("deve lançar 404 se item nao encontrado ao atualizar", async () => {
@@ -344,7 +374,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 403 se usuario nao for o dono ao atualizar", async () => {
@@ -354,7 +384,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 403,
                 customMessage: "Você não tem permissão para editar este item.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item nao está DISPONIVEL ao atualizar", async () => {
@@ -364,32 +394,32 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Edição bloqueada. O status atual do item é RESERVADO.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve ignorar campos sensiveis na atualizacao", async () => {
             mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "DISPONIVEL" });
-            mockItemRepository.atualizar.mockResolvedValue({ _id: "i1" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ _id: "i1" });
 
             const dados = { titulo: "Novo", status: "DOADO", usuario_id: "hacker", interesse_aceito_id: "x" };
             await service.atualizar("i1", dados, "u1");
 
-            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", expect.not.objectContaining({
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalledWith("i1", "DISPONIVEL", expect.not.objectContaining({
                 status: "DOADO",
                 usuario_id: "hacker",
                 interesse_aceito_id: "x",
-            }));
+            }), { usuario_id: "u1", interesse_aceito_id: null });
         });
     });
 
         describe("deletar", () => {
         test("deve cancelar item com sucesso se for o dono, sem removê-lo", async () => {
             mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "DISPONIVEL" });
-            mockItemRepository.atualizar.mockResolvedValue({ _id: "i1", status: "CANCELADO" });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue({ _id: "i1", status: "CANCELADO" });
 
             const res = await service.deletar("i1", "u1");
             expect(res.status).toBe("CANCELADO");
-            expect(mockItemRepository.atualizar).toHaveBeenCalledWith("i1", { status: "CANCELADO" });
+            expect(mockItemRepository.atualizarSeStatus).toHaveBeenCalledWith("i1", "DISPONIVEL", { status: "CANCELADO" }, { usuario_id: "u1", interesse_aceito_id: null });
             expect(mockItemRepository.deletar).not.toHaveBeenCalled();
         });
 
@@ -400,7 +430,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 404,
                 customMessage: "Item não encontrado.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 403 se usuario nao for o dono ao deletar", async () => {
@@ -410,7 +440,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 403,
                 customMessage: "Você não tem permissão para excluir este item.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item está RESERVADO ao deletar", async () => {
@@ -420,7 +450,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível excluir um item que está em processo de doação.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
 
         test("deve lançar 400 se item está AGUARDANDO_CONFIRMACAO ao deletar", async () => {
@@ -430,7 +460,7 @@ describe("ItemDoacaoService", () => {
                 statusCode: 400,
                 customMessage: "Não é possível excluir um item que está em processo de doação.",
             });
-            expect(mockItemRepository.atualizar).not.toHaveBeenCalled();
+            expect(mockItemRepository.atualizarSeStatus).not.toHaveBeenCalled();
         });
     });
 

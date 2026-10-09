@@ -326,24 +326,22 @@ class ItemDoacaoRepository extends BaseRepository {
 
     try {
       return await this.withTransaction(async (tx) => {
-        const result = await tx.itemDoacao.updateMany({
+        // Prisma permite filtros adicionais ao id único. Uma única atualização
+        // condicional também suporta fotos relacionadas e retorna o estado gravado.
+        const record = await tx.itemDoacao.update({
           where: {
             id: String(id),
-            status,
-            ...toPrismaWhere(filtrosAdicionais),
+            // A reserva é unique nullable: no topo do WhereUniqueInput,
+            // Prisma exige string. Dentro de AND, WhereInput aceita null.
+            AND: [{ status, ...toPrismaWhere(filtrosAdicionais) }],
           },
           data: this.normalizeData(dadosAtualizacao),
-        });
-
-        if (result.count === 0) return null;
-
-        const record = await tx.itemDoacao.findUnique({
-          where: { id: String(id) },
           include: DEFAULT_INCLUDE,
         });
         return this.mapRecord(record);
       });
     } catch (error) {
+      if (error?.code === "P2025") return null;
       throw mapPrismaErrorToLegacy(error);
     }
   }

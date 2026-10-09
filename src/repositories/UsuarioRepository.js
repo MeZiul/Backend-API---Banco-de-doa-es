@@ -1,5 +1,6 @@
 import BaseRepository from "./base/BaseRepository.js";
 import UsuarioFilterBuilder from "./filters/UsuarioFilterBuilder.js";
+import { normalizarCPF } from "../utils/verificarCPF.js";
 import {
   mapPrismaErrorToLegacy,
   toPrismaWhere,
@@ -49,8 +50,18 @@ class UsuarioRepository extends BaseRepository {
   }
 
   async buscarPorCpf(cpf) {
-    const record = await this.delegate.findUnique({ where: { cpf } });
-    return this.mapRecord(record);
+    const cpfNormalizado = normalizarCPF(cpf);
+    const record = await this.delegate.findUnique({ where: { cpf: cpfNormalizado } });
+    if (record) return this.mapRecord(record);
+
+    // Preserva registros históricos e compara máscaras sem interpolar SQL.
+    const [legacy] = await this.client.$queryRaw`
+      SELECT "id" FROM "Usuario"
+      WHERE "cpf" NOT LIKE 'removido_%'
+        AND regexp_replace("cpf", '[^0-9]', '', 'g') = ${cpfNormalizado}
+      LIMIT 1
+    `;
+    return legacy ? this.buscarPorId(legacy.id) : null;
   }
 
   async atualizarSeSituacao(
