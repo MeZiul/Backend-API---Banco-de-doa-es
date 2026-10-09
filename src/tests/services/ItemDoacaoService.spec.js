@@ -19,14 +19,19 @@ const mockInteresseRepository = {
 };
 
 let service;
+const mockUsuarioRepository = { atualizar: jest.fn() };
+const mockTransactionManager = { run: jest.fn() };
 
 beforeEach(() => {
     jest.clearAllMocks();
     mockItemRepository.atualizarSeStatus.mockReset().mockResolvedValue({ _id: "i1" });
+    mockUsuarioRepository.atualizar.mockReset().mockResolvedValue({ _id: "u1", total_doacoes: 1 });
+    mockTransactionManager.run.mockReset().mockImplementation((operation) => operation());
     service = new ItemDoacaoService(
         mockItemRepository,
         mockCategoriaRepository,
-        mockInteresseRepository
+        mockInteresseRepository,
+        { usuarioRepository: mockUsuarioRepository, transactionManager: mockTransactionManager }
     );
 });
 
@@ -288,6 +293,22 @@ describe("ItemDoacaoService", () => {
                 status: "DOADO",
             }), { usuario_id: "u1", interesse_aceito_id: "interesse1" });
             expect(res.status).toBe("DOADO");
+            expect(mockTransactionManager.run).toHaveBeenCalledTimes(1);
+            expect(mockUsuarioRepository.atualizar).toHaveBeenCalledWith("u1", { total_doacoes: { increment: 1 } });
+        });
+
+        test("CAS perdedor não incrementa o contador", async () => {
+            mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "AGUARDANDO_CONFIRMACAO", interesse_aceito_id: { _id: "int1", usuario_interessado_id: "u2" } });
+            mockItemRepository.atualizarSeStatus.mockResolvedValue(null);
+            await expect(service.confirmarRecebimento("i1", "u2")).rejects.toMatchObject({ statusCode: 409 });
+            expect(mockUsuarioRepository.atualizar).not.toHaveBeenCalled();
+        });
+
+        test.each([null, new Error("Falha no contador")])("falha no contador rejeita a transação (%s)", async (failure) => {
+            mockItemRepository.buscarPorId.mockResolvedValue({ usuario_id: "u1", status: "AGUARDANDO_CONFIRMACAO", interesse_aceito_id: { _id: "int1", usuario_interessado_id: "u2" } });
+            if (failure) mockUsuarioRepository.atualizar.mockRejectedValue(failure);
+            else mockUsuarioRepository.atualizar.mockResolvedValue(null);
+            await expect(service.confirmarRecebimento("i1", "u2")).rejects.toBeInstanceOf(Error);
         });
 
         test("deve lançar 404 se item nao encontrado ao confirmar recebimento", async () => {

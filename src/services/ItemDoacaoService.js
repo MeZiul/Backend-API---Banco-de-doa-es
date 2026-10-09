@@ -2,10 +2,15 @@ import { CustomError } from "../utils/helpers/index.js";
 import ItemDoacaoRepository from "../repositories/ItemDoacaoRepository.js";
 
 class ItemDoacaoService {
-  constructor(itemDoacaoRepository, categoriaRepository, interesseRepository) {
+  constructor(itemDoacaoRepository, categoriaRepository, interesseRepository, {
+    usuarioRepository,
+    transactionManager,
+  } = {}) {
     this.repository = itemDoacaoRepository;
     this.categoriaRepository = categoriaRepository;
     this.interesseRepository = interesseRepository; // Agora a variável existe!
+    this.usuarioRepository = usuarioRepository;
+    this.transactionManager = transactionManager;
   }
 
   async criar(dadosItem, usuarioAutenticado) {
@@ -190,9 +195,20 @@ class ItemDoacaoService {
       });
     }
 
-    return this.atualizarSnapshot(idItem, item, {
-      status: "DOADO",
-      data_doacao: new Date(),
+    return this.transactionManager.run(async () => {
+      const atualizado = await this.atualizarSnapshot(idItem, item, {
+        status: "DOADO",
+        data_doacao: new Date(),
+      });
+      // O CAS vencedor e o incremento pertencem ao mesmo commit. Retries ou
+      // cancelamentos concorrentes não podem contabilizar a mesma doação.
+      const doador = await this.usuarioRepository.atualizar(item.usuario_id.toString(), {
+        total_doacoes: { increment: 1 },
+      });
+      if (!doador) {
+        throw new CustomError({ statusCode: 409, customMessage: "O doador foi alterado. Tente novamente." });
+      }
+      return atualizado;
     });
   }
 

@@ -31,6 +31,7 @@ function setup(status, statusVencedor) {
   const escritaVencedora = deferred();
   let leituras = 0;
   let escritas = 0;
+  let totalDoacoes = 0;
   const delegate = {
     findUnique: jest.fn(async () => {
       const snapshot = structuredClone(state);
@@ -54,8 +55,11 @@ function setup(status, statusVencedor) {
   Object.defineProperty(repository, "client", {
     value: { itemDoacao: delegate, $transaction: (callback) => callback({ itemDoacao: delegate }) },
   });
-  const service = new ItemDoacaoService(repository, {}, {});
-  return { service, repository, state: () => state, escritas: () => escritas };
+  const service = new ItemDoacaoService(repository, {}, {}, {
+    usuarioRepository: { atualizar: async () => ({ total_doacoes: ++totalDoacoes }) },
+    transactionManager: { run: (operation) => operation() },
+  });
+  return { service, repository, state: () => state, escritas: () => escritas, totalDoacoes: () => totalDoacoes };
 }
 
 const dono = { id: "doador" };
@@ -72,6 +76,7 @@ async function assertRace(context, operations, vencedor) {
   expect(context.state().status).toBe(vencedor);
   expect(context.state().total_interesses).toBe(3);
   expect(context.escritas()).toBe(1);
+  expect(context.totalDoacoes()).toBe(vencedor === "DOADO" ? 1 : 0);
 }
 
 describe("ItemDoacao - transições concorrentes com leituras sincronizadas", () => {
