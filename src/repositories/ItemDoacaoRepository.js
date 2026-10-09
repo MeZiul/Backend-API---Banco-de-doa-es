@@ -1,5 +1,6 @@
 import BaseRepository from "./base/BaseRepository.js";
 import ItemDoacaoFilterBuilder from "./filters/ItemDoacaoFilterBuilder.js";
+import { CustomError } from "../utils/helpers/index.js";
 import {
   mapPrismaErrorToLegacy,
   projectLegacy,
@@ -182,21 +183,30 @@ class ItemDoacaoRepository extends BaseRepository {
     }
   }
 
-  async adicionarFotos(idItem, novasFotos) {
+  async adicionarFotos(idItem, novasFotos, usuarioId) {
     try {
       return await this.withTransaction(async (tx) => {
+        // Serialize competing uploads across API processes before counting existing photos.
+        await tx.$queryRaw`SELECT id FROM "ItemDoacao" WHERE id = ${String(idItem)} FOR UPDATE`;
         const existing = await tx.itemDoacao.findUnique({
           where: { id: String(idItem) },
-          select: { id: true },
+          include: DEFAULT_INCLUDE,
         });
         if (!existing) return null;
+        if (usuarioId !== undefined && String(existing.usuario_id) !== String(usuarioId)) {
+          throw new CustomError({ statusCode: 403, customMessage: "Acesso negado." });
+        }
+        if (existing.status !== "DISPONIVEL" || existing.fotos.length + novasFotos.length > 5) {
+          throw new CustomError({ statusCode: 400, customMessage: "O item deve estar disponível e possuir no máximo 5 fotos." });
+        }
+        const ordemInicial = existing.fotos.length ? Math.max(...existing.fotos.map(f => f.ordem)) + 1 : 1;
 
         if (novasFotos.length) {
           await tx.fotoItemDoacao.createMany({
-            data: novasFotos.map((foto) => ({
+            data: novasFotos.map((foto, index) => ({
               item_id: String(idItem),
               url: foto.url,
-              ordem: foto.ordem,
+              ordem: ordemInicial + index,
               nome_original: foto.nome_original ?? null,
               tamanho: foto.tamanho ?? null,
               mime_type: foto.mime_type ?? null,

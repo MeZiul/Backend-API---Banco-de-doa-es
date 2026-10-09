@@ -1,20 +1,8 @@
 import multer from "multer";
-import path from "path";
-import crypto from "crypto";
 import { CustomError } from "../utils/helpers/index.js";
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/itens/");
-    },
-
-    filename: (req, file, cb) => {
-        const hash = crypto.randomBytes(16).toString("hex");
-        const extensao = path.extname(file.originalname);
-
-        cb(null, `${hash}-${Date.now()}${extensao}`);
-    }
-});
+// Keep untrusted bytes off the filesystem until authorization and decoding.
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
     const formatosAceitos = [
@@ -41,7 +29,10 @@ export const uploadFotos = multer({
     storage,
     limits: {
         fileSize: 5 * 1024 * 1024,
-        files: 5
+        files: 5,
+        fields: 0,
+        // Busboy emits partsLimit on reaching the bound, so allow the closing boundary.
+        parts: 6
     },
     fileFilter
 });

@@ -45,6 +45,9 @@ services:
       # Dentro da rede do Compose, o host do banco é o nome do serviço.
       DATABASE_URL: postgresql://doai:doai_local@postgres:5432/doai?schema=public
       NODE_ENV: production
+      UPLOADS_DIR: /node-app/uploads
+    volumes:
+      - vol-uploads:/node-app/uploads
     ports:
       - "${API_HOST_PORT:-7340}:7340"
     depends_on:
@@ -55,3 +58,4 @@ services:
 volumes:
   vol-postgres:
   vol-postgres-test:
+  vol-uploads:
