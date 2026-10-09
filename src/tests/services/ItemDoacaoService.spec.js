@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import ItemDoacaoService from "../../services/ItemDoacaoService.js";
 import CustomError from "../../utils/helpers/CustomError.js";
+import { mapAuthenticatedUser } from "../../middlewares/createAuthMiddleware.js";
+import { itemDoacaoSchema } from "../../utils/validators/schemas/zod/ItemDoacaoSchema.js";
 
 const mockItemRepository = {
     criar: jest.fn(),
@@ -30,6 +32,33 @@ beforeEach(() => {
 describe("ItemDoacaoService", () => {
 
     describe("criar", () => {
+        test.each([
+            [{}, "Vilhena", "RO"],
+            [{ cidade: "Cuiabá", uf: "MT" }, "Cuiabá", "MT"],
+            [{ cidade: "Porto Velho" }, "Porto Velho", "RO"],
+            [{ uf: "MT" }, "Vilhena", "MT"],
+        ])("preserva localizacao do contexto autenticado e prioriza campos explicitos %j", async (localizacao, cidade, uf) => {
+            const usuario = mapAuthenticatedUser({
+                _id: "u1", nome: "Maria", email: "maria@doai.local",
+                perfil: "USUARIO", situacao: "ATIVO", cidade: "Vilhena", uf: "RO",
+                cpf: "52998224725", senha: "nao-deve-ser-propagada",
+            });
+            const dados = itemDoacaoSchema.parse({
+                titulo: "Livro", descricao: "Livro de programação para doação",
+                categoria_id: "c1", condicao_item: "USADO_BOM", ...localizacao,
+            });
+            mockItemRepository.criar.mockImplementation(async (item) => ({ _id: "i1", ...item }));
+
+            const item = await service.criar(dados, usuario);
+
+            expect(item).toMatchObject({ cidade, uf, usuario_id: "u1", status: "DISPONIVEL" });
+            expect(mockItemRepository.criar).toHaveBeenCalledWith(expect.objectContaining({ cidade, uf }));
+            expect(usuario).not.toHaveProperty("cpf");
+            expect(usuario).not.toHaveProperty("senha");
+            expect(item).not.toHaveProperty("cpf");
+            expect(item).not.toHaveProperty("senha");
+        });
+
         test("deve criar item com sucesso se usuario ativo", async () => {
             const usuario = { id: "u1", situacao: "ATIVO", cidade: "Vilhena", uf: "RO" };
             const dados = { titulo: "Livro", descricao: "Java", categoria_id: "c1", condicao_item: "Bom" };

@@ -10,6 +10,8 @@ const mapAuthenticatedUser = (usuario) => ({
   papeis: usuario.perfil ? [usuario.perfil] : [],
   instituicaoId: null,
   situacao: usuario.situacao,
+  cidade: usuario.cidade,
+  uf: usuario.uf,
 });
 
 const createAuthMiddleware = ({
