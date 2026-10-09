@@ -7,7 +7,7 @@ import { notificacaoQuerySchema } from "../utils/validators/schemas/zod/querys/N
 
 const router = express.Router();
 
-router.use(AuthMiddleware);
+router.use("/notificacoes", AuthMiddleware);
 
 router.get("/notificacoes",
     validate(notificacaoQuerySchema, 'query'),
