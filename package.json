@@ -31,7 +31,9 @@
     "test:auth:http": "cross-env NODE_ENV=test BETTER_AUTH_SECRET=doai-test-secret-not-for-production-2026 node scripts/better-auth-http-smoke.js",
     "test:compat": "node --test scripts/prisma-compat.test.mjs",
     "test:dependencies": "cross-env NODE_ENV=test LOG_ENABLED=false node scripts/dependency-contract-smoke.js",
-    "test:avaliacao:db": "cross-env NODE_ENV=test node scripts/avaliacao-transaction-smoke.js"
+    "test:avaliacao:db": "cross-env NODE_ENV=test node scripts/avaliacao-transaction-smoke.js",
+    "test:rnf": "node scripts/rnf-isolated-smoke.mjs",
+    "test:logger:disabled": "node --test scripts/logger-disabled.test.mjs"
   },
   "repository": {
     "type": "git",
