@@ -1,4 +1,6 @@
-# Documentação da API - Banco de Doação - Doai
+# Documentação histórica da API - Banco de Doação - Doai
+
+> Requisitos originais para referência. Nomes de rota, senha, permissões e persistência podem divergir do runtime. Consulte [os contratos e a matriz atuais](./contratos-requisitos-atuais.md) e o OpenAPI em /docs.json.
 
 Nosso sistema tem como objetivo possibilitar a comunicação entre doadores e interessados em itens domésticos ou outros objetos. A proposta é solucionar a dificuldade no escoamento e na busca por itens doados em comunidades locais.
 

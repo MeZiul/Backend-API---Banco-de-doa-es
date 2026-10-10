@@ -21,7 +21,7 @@ const avaliacoesSchemas = {
     AvaliacaoUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "João Souza" },
             email: { type: "string", format: "email", example: "joao@email.com" },
             cidade: { type: "string", example: "Cuiabá" },
@@ -33,7 +33,7 @@ const avaliacoesSchemas = {
     AvaliacaoItemResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Cadeira de escritório" },
             status: {
                 type: "string",
@@ -48,7 +48,7 @@ const avaliacoesSchemas = {
     AvaliacaoListagem: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439020" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             item_id: { $ref: "#/components/schemas/AvaliacaoItemResumo" },
             avaliador_id: { $ref: "#/components/schemas/AvaliacaoUsuarioResumo" },
             avaliado_id: { $ref: "#/components/schemas/AvaliacaoUsuarioResumo" },
@@ -75,8 +75,8 @@ const avaliacoesSchemas = {
         type: "object",
         required: ["item_id", "avaliado_id", "nota", "tipo"],
         properties: {
-            item_id: { type: "string", example: "507f1f77bcf86cd799439015" },
-            avaliado_id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            item_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
+            avaliado_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nota: { type: "integer", minimum: 1, maximum: 5, example: 5 },
             comentario: {
                 type: "string",

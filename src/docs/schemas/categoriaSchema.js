@@ -21,7 +21,7 @@ const categoriasSchemas = {
   CategoriaResponse: {
     type: "object",
     properties: {
-      _id: { type: "string", example: "507f1f77bcf86cd799439030" },
+      _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
       nome: { type: "string", example: "Móveis" },
       descricao: {
         type: "string",

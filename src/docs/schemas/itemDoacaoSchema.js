@@ -21,7 +21,7 @@ const itemDoacaoSchemas = {
     ItemDoacaoUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "João Doador" },
             email: { type: "string", format: "email", example: "joao@email.com" },
         },
@@ -29,14 +29,14 @@ const itemDoacaoSchemas = {
     ItemDoacaoCategoriaResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439099" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Móveis" },
         },
     },
     ItemDoacaoFotoObj: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "607f1f77bcf86cd799439123" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             url: { type: "string", format: "uri", example: "https://meubucket.s3.amazonaws.com/foto1.jpg" },
             ordem: { type: "integer", example: 1 },
             nome_original: { type: "string", example: "cadeira_frente.jpg" },
@@ -48,7 +48,7 @@ const itemDoacaoSchemas = {
     ItemDoacaoListagem: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Cadeira de escritório ergonômica" },
             descricao: { type: "string", example: "Cadeira preta com ajuste de altura, usada por 6 meses." },
             categoria_id: { $ref: "#/components/schemas/ItemDoacaoCategoriaResumo" },
@@ -96,7 +96,7 @@ const itemDoacaoSchemas = {
         properties: {
             titulo: { type: "string", example: "Mesa de jantar de madeira" },
             descricao: { type: "string", example: "Mesa para 4 lugares, pequenas marcas de uso." },
-            categoria_id: { type: "string", example: "507f1f77bcf86cd799439099" },
+            categoria_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             condicao_item: {
                 type: "string",
                 enum: ["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"],
@@ -113,7 +113,7 @@ const itemDoacaoSchemas = {
         properties: {
             titulo: { type: "string", example: "Mesa de jantar de madeira (Atualizado)" },
             descricao: { type: "string", example: "Mesa para 4 lugares, pequenos arranhões nas bordas." },
-            categoria_id: { type: "string", example: "507f1f77bcf86cd799439099" },
+            categoria_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             condicao_item: {
                 type: "string",
                 enum: ["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"],

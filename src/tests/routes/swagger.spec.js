@@ -12,7 +12,7 @@ beforeAll(() => {
   routes(app);
 });
 
-describe("Swagger UI", () => {
+describe("Referência Scalar", () => {
   test("serve a interface com scripts locais compatíveis com a CSP", async () => {
     const response = await request(app).get("/docs/");
     const scriptTags = [...response.text.matchAll(/<script\b([^>]*)>/g)];
@@ -20,19 +20,15 @@ describe("Swagger UI", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-security-policy"]).toContain("script-src 'self'");
     expect(response.text).not.toContain("unpkg.com");
-    expect(response.text).toContain("./swagger-ui-bundle.js");
-    expect(response.text).toContain("./swagger-ui-init.js");
-    expect(response.text).toContain("/docs/download-json.js");
+    expect(response.text).toContain("/docs/assets/scalar.js");
+    expect(response.text).toContain("Scalar.createApiReference");
+    expect(response.text).toContain("/docs.json");
     expect(scriptTags.length).toBeGreaterThan(0);
-    expect(scriptTags.every(([, attributes]) => /\bsrc=/.test(attributes))).toBe(true);
+    expect(scriptTags.every(([, attributes]) => /\bnonce=/.test(attributes))).toBe(true);
   });
 
   test.each([
-    ["/docs/swagger-ui.css", /text\/css/],
-    ["/docs/swagger-ui-bundle.js", /javascript/],
-    ["/docs/swagger-ui-standalone-preset.js", /javascript/],
-    ["/docs/swagger-ui-init.js", /javascript/],
-    ["/docs/download-json.js", /javascript/],
+    ["/docs/assets/scalar.js", /javascript/],
   ])("serve o asset local %s", async (path, contentType) => {
     const response = await request(app).get(path);
 
