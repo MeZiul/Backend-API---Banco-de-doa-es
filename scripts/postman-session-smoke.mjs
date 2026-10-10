@@ -22,6 +22,7 @@ const server = http.createServer((req, res) => {
   if (req.url === '/auth/logout') { scenario.revoked.add(req.headers.authorization); return res.end('{}'); }
   if (req.url === '/usuario') {
     scenario.sent.push(req.headers.authorization);
+    scenario.markStarted();
     if (scenario.abort && scenario.sent.length === 1) { release = () => res.end('{}'); return; }
     return res.end(JSON.stringify({ message: `${oldToken} / ${newToken}` }));
   }
@@ -32,7 +33,9 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   for (const abort of [false, true]) {
-    scenario = { abort, sent: [], revoked: new Set() };
+    let markStarted;
+    const started = new Promise((resolve) => { markStarted = resolve; });
+    scenario = { abort, sent: [], revoked: new Set(), markStarted };
     const page = await browser.newPage(); const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${origin}/docs/postman`);
@@ -41,7 +44,7 @@ try {
     await page.locator('#variable-joaoToken').fill(oldToken);
     await page.locator('#path').fill('/usuario'); await page.locator('#token').selectOption('joaoToken');
     const received = page.waitForRequest((request) => request.url() === `${origin}/usuario`);
-    await page.locator('#send').click(); await received;
+    await page.locator('#send').click(); await received; await started;
     if (abort) { await page.locator('#stop').click(); release?.(); }
     await page.waitForFunction(() => !document.getElementById('send').disabled);
     if (abort) assert.match(await page.locator('#status').innerText(), /interrompida/);
