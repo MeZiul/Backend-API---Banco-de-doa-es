@@ -2,4 +2,6 @@ node_modules/
 coverage/
 .git
 .env
+# A integração MCP e seu ambiente são exclusivos do host local do desenvolvedor.
+tools/postman-mcp/
 README.md

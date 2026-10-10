@@ -4,6 +4,7 @@ dotenv.config()
 
 import express from 'express';
 import routes from './routes/index.js';
+import postmanDocs from './routes/postmanDocsRoutes.js';
 import compression from 'compression';
 import helmet from "helmet";
 import cors from "cors";
@@ -92,6 +93,7 @@ app.use('/uploads', express.static(uploadsRoot, {
 
 
 /* ───────────── 4. Rotas ───────────── */
+app.use(postmanDocs);
 routes(app);
 
 
