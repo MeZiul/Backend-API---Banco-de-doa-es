@@ -3,8 +3,8 @@
 // BIBLIOTECAS
 import express from "express";
 import swaggerJsDoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
-import getSwaggerOptions from "../docs/config/head.js";
+import { registerApiReference } from "../docs/scalar.js";
+import getOpenApiOptions from "../docs/config/head.js";
 import dotenv from "dotenv";
 
 // MIDDLEWARES
@@ -33,22 +33,6 @@ import perfil from "./perfilRoutes.js";
 
 dotenv.config();
 
-const buildSwaggerDocsForRequest = (swaggerDocs, req) => {
-  const seenUrls = new Set();
-  const servers = [...(swaggerDocs.servers || [])].filter(
-    ({ url }) => {
-      if (!url || seenUrls.has(url)) return false;
-      seenUrls.add(url);
-      return true;
-    },
-  );
-
-  return {
-    ...swaggerDocs,
-    servers,
-  };
-};
-
 const routes = (app) => {
   if (process.env.DEBUGLOG) {
     app.use(logRoutes);
@@ -58,72 +42,8 @@ const routes = (app) => {
     res.redirect("/docs");
   });
 
-  const swaggerDocs = swaggerJsDoc(getSwaggerOptions());
-  const swaggerUiOptions = {
-    customSiteTitle: "API Banco de Doações DoaÍ - Documentação",
-    customRobots: "noindex, nofollow, noarchive, nosnippet",
-    customJs: "/docs/download-json.js",
-    customCss: `
-      .download-json-btn {
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        z-index: 9999;
-        background-color: #49cc90;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 4px;
-        text-decoration: none;
-        font-family: sans-serif;
-        font-size: 14px;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      }
-      .download-json-btn:hover { background-color: #3db47e; }
-    `,
-    swaggerOptions: {
-      deepLinking: true,
-      persistAuthorization: true,
-    },
-  };
-
-  app.get("/docs.json", (req, res) => {
-    const docs = buildSwaggerDocsForRequest(swaggerDocs, req);
-
-    res.setHeader("Content-Type", "application/json");
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="doai-api-docs.json"',
-    );
-    res.json(docs);
-  });
-
-  app.get("/docs/download-json.js", (_req, res) => {
-    res.type("application/javascript").send(`
-      (() => {
-        const addDownloadButton = () => {
-          if (document.querySelector(".download-json-btn")) return;
-
-          const link = document.createElement("a");
-          link.href = "/docs.json";
-          link.className = "download-json-btn";
-          link.download = "doai-api-docs.json";
-          link.textContent = "Download JSON";
-          document.body.appendChild(link);
-        };
-
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", addDownloadButton);
-        } else {
-          addDownloadButton();
-        }
-      })();
-    `);
-  });
-
-  // Assets e inicialização locais mantêm o Swagger compatível com a CSP do Helmet.
-  app.use("/docs", swaggerUi.serveFiles(swaggerDocs, swaggerUiOptions));
-  app.get("/docs", swaggerUi.setup(swaggerDocs, swaggerUiOptions));
+  const openApi = swaggerJsDoc(getOpenApiOptions());
+  registerApiReference(app, openApi);
 
   // ── Registro das rotas da API ──────────────────────
   app.use(auth);

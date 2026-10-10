@@ -21,8 +21,8 @@ const notificacaoSchemas = {
     NotificacaoDetalhes: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "607f1f77bcf86cd799439abc" },
-            usuario_id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
+            usuario_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             tipo: {
                 type: "string",
                 description: "Tipo da notificação baseado na constante TIPOS_NOTIFICACAO",
@@ -32,7 +32,7 @@ const notificacaoSchemas = {
             mensagem: { type: "string", example: "O doador aceitou o seu interesse no item Cadeira de Escritório." },
             lida: { type: "boolean", example: false },
             referencia_tipo: { type: "string", nullable: true, example: "ItemDoacao" },
-            referencia_id: { type: "string", nullable: true, example: "507f1f77bcf86cd799439015" },
+            referencia_id: { type: "string", nullable: true, example: "550e8400-e29b-41d4-a716-446655440000" },
             data_criacao: { type: "string", format: "date-time" },
             data_atualizacao: { type: "string", format: "date-time" }
         }

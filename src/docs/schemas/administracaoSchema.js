@@ -21,7 +21,7 @@ const administracaoSchemas = {
     AdministracaoUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Usuário Moderado" },
             email: { type: "string", format: "email", example: "usuario@email.com" },
             perfil: { type: "string", enum: ["USUARIO", "ADMINISTRADOR"], nullable: true },
@@ -31,7 +31,7 @@ const administracaoSchemas = {
     AdministracaoItemResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Notebook usado" },
             status: {
                 type: "string",
@@ -53,7 +53,7 @@ const administracaoSchemas = {
     AdministracaoDenunciaResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439016" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             tipo_alvo: { type: "string", enum: ["ITEM", "USUARIO"] },
             status: { type: "string", enum: ["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"] },
             motivo: {
@@ -61,9 +61,9 @@ const administracaoSchemas = {
                 enum: ["CONTEUDO_INAPROPRIADO", "ITEM_PROIBIDO", "FRAUDE", "ASSEDIO", "SPAM", "OUTRO"],
                 nullable: true,
             },
-            denunciante_id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            denunciante_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             alvo_item_id: { $ref: "#/components/schemas/AdministracaoItemResumo" },
-            alvo_usuario_id: { type: "string", nullable: true, example: "507f1f77bcf86cd799439013" },
+            alvo_usuario_id: { type: "string", nullable: true, example: "550e8400-e29b-41d4-a716-446655440000" },
             data_denuncia: { type: "string", format: "date-time" },
             data_analise: { type: "string", format: "date-time", nullable: true },
         },
@@ -71,10 +71,10 @@ const administracaoSchemas = {
     AdministracaoInteresseHistorico: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439018" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             item_id: { $ref: "#/components/schemas/AdministracaoItemResumo" },
-            usuario_interessado_id: { type: "string", example: "507f1f77bcf86cd799439012" },
-            usuario_doador_id: { type: "string", example: "507f1f77bcf86cd799439013" },
+            usuario_interessado_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
+            usuario_doador_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             status: { type: "string", enum: ["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"] },
             data_interesse: { type: "string", format: "date-time" },
             data_resposta: { type: "string", format: "date-time", nullable: true },
@@ -84,7 +84,7 @@ const administracaoSchemas = {
     AdministracaoAvaliacaoHistorico: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439019" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             item_id: { $ref: "#/components/schemas/AdministracaoItemResumo" },
             avaliador_id: { $ref: "#/components/schemas/AdministracaoUsuarioResumo" },
             avaliado_id: { $ref: "#/components/schemas/AdministracaoUsuarioResumo" },
@@ -121,7 +121,7 @@ const administracaoSchemas = {
     AdministracaoListagem: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439017" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             administrador_id: { $ref: "#/components/schemas/AdministracaoUsuarioResumo" },
             tipo_acao: {
                 type: "string",
@@ -181,7 +181,7 @@ const administracaoSchemas = {
     AdministracaoUsuarioResultado: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Usuário Moderado" },
             email: { type: "string", format: "email", example: "usuario@email.com" },
             perfil: { type: "string", enum: ["USUARIO", "ADMINISTRADOR"] },
@@ -204,7 +204,7 @@ const administracaoSchemas = {
     AdministracaoItemResultado: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Notebook usado" },
             status: {
                 type: "string",
@@ -216,9 +216,9 @@ const administracaoSchemas = {
     AdministracaoDenunciaResultado: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439016" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             status: { type: "string", enum: ["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"], example: "PROCEDENTE" },
-            admin_id: { type: "string", example: "507f1f77bcf86cd799439011" },
+            admin_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             resposta_admin: { type: "string", nullable: true },
             acao_tomada: { type: "string", nullable: true },
             data_analise: { type: "string", format: "date-time", nullable: true },

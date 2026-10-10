@@ -3,6 +3,7 @@ import commonResponses from "../schemas/swaggerCommonResponses.js";
 const usuariosPaths = {
   "/usuario": {
     post: {
+      security: [],
       tags: ["Usuários"],
       summary: "Cadastrar novo usuário",
       description: `Cria uma nova conta de usuário na plataforma.
