@@ -6,6 +6,7 @@ let variables = Object.create(null);
 const observedTokens = new Set();
 const status = (message) => { $('status').textContent = message; };
 const inputs = new Map();
+const credentialValues = () => ({ ...variables, ...Object.fromEntries([...observedTokens].map((token, index) => [`historicalToken${index}`, token])) });
 
 function busyState(value) {
   busy = value;
@@ -67,7 +68,10 @@ async function execute(request, draft = request) {
   const current = generation, started = performance.now();
   const plan = draft.method === request.method && draft.path === request.path && draft.mode !== 'multipart'
     ? request : { name: 'Requisição editada', statuses: [200, 201, 202, 204], captures: [], checks: [] };
-  const prepared = prepareRequest(draft, variables, window.location.origin);
+  const prepared = prepareRequest(draft, credentialValues(), window.location.origin);
+  // Registrar antes do dispatch preserva tokens manuais, mesmo com erro/abort
+  // ou quando o usuário substitui posteriormente o valor da variável.
+  if (prepared.options.headers.Authorization) observedTokens.add(prepared.options.headers.Authorization.slice(7));
   $('request-title').textContent = plan.name;
   status(`Executando ${plan.name}…`);
   const response = await boundedFetch(prepared.url, prepared.options);
@@ -76,7 +80,7 @@ async function execute(request, draft = request) {
   const evaluation = evaluateResponse(plan, response.status, json, variables);
   for (const key of evaluation.captured) if (/Token$/.test(key)) observedTokens.add(variables[key]);
   syncVariables();
-  $('response').textContent = `HTTP ${response.status} · ${Math.round(performance.now() - started)} ms\n${json ? JSON.stringify(redact(json, variables), null, 2) : redact(response.text, variables)}`;
+  $('response').textContent = `HTTP ${response.status} · ${Math.round(performance.now() - started)} ms\n${json ? JSON.stringify(redact(json, credentialValues()), null, 2) : redact(response.text, credentialValues())}`;
   $('checks').replaceChildren();
   for (const result of evaluation.results) {
     const li = document.createElement('li'); li.textContent = `${result.passed ? 'PASSOU' : 'FALHOU'} · ${result.label}`;

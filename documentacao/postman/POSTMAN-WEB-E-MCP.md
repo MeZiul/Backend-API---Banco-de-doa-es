@@ -10,6 +10,8 @@
 
 O modo multipart permite enviar até cinco arquivos JPEG/PNG/WebP para `/itemdoacao/{UUID}/fotos` com o campo `fotos`. O navegador define o boundary; a API mantém seus limites e validações próprios. O modo JSON limita o corpo a 64 KiB; resposta a 1 MiB; espera a 20 segundos. Não há proxy de requisições, scripts `pm.*`/`eval`, importação arbitrária de coleções, destinos externos ou armazenamento local de credenciais. A página mostra apenas as 27 etapas da coleção canônica, com verificações declarativas próprias; não substitui toda a aplicação Postman.
 
+Cada Bearer enviado é registrado na memória antes da requisição. Substituir uma variável ou interromper a espera preserva o token anterior para revogação ao sair; os valores históricos também são ocultados quando aparecem em respostas e bloqueados em URLs. A regressão de navegador `node scripts/postman-session-smoke.mjs` verifica substituição após resposta e interrupção com três sessões sintéticas, sem banco ou conta real. Ela requer Playwright disponível no ambiente de QA; `POSTMAN_PLAYWRIGHT_PACKAGE` pode apontar ao `package.json` do runtime que fornece o módulo. O teste abre somente Edge headless com perfil temporário e um servidor HTTP efêmero em loopback.
+
 ## Postman MCP oficial
 
 A integração local separada em `tools/postman-mcp` instala `@postman/postman-mcp-server` **2.13.0**, fixado em um lockfile próprio. Ela não entra nas dependências nem na inicialização do servidor Express e é excluída do contexto Docker da API, inclusive seu eventual `.env` local. Usa stdio e a configuração mínima de ferramentas do pacote oficial. O MCP administra recursos da conta Postman; o runner web executa requisições na API DoaI. Os tokens de autenticação dessas duas ferramentas têm finalidades diferentes.
