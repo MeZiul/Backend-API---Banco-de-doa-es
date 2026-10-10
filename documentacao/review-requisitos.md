@@ -1,4 +1,6 @@
-# Revisão de Requisitos, Segurança e Cobertura de Testes
+# Revisão histórica de Requisitos, Segurança e Cobertura de Testes
+
+> Os indicadores abaixo são um retrato anterior, sem validade como aceite atual. Consulte [a matriz vigente](./contratos-requisitos-atuais.md). Rotas de perfil, CPF, sessões, uploads, reputação e contador de doações evoluíram desde esta análise.
 
 > **Nota de migração (18/08/2026):** este documento foi produzido antes da migração de persistência e pode conter referências históricas a MongoDB/Mongoose. O runtime atual usa Prisma + PostgreSQL. Para setup e comandos atuais, consulte o `README.md`.
 

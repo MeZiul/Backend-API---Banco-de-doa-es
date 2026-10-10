@@ -1,3 +1,4 @@
+import currentContracts from "../schemas/currentContracts.js";
 import administracaoPaths from "../paths/administracao.js";
 import authPaths from "../paths/auth.js";
 import usuariosPaths from "../paths/usuario.js";
@@ -20,8 +21,8 @@ import categoriasPaths from "../paths/categoria.js";
 import categoriasSchemas from "../schemas/categoriaSchema.js";
 
 const getServersInCorrectOrder = () => {
-  const devUrl = process.env.SWAGGER_DEV_URL?.trim();
-  const prodUrl = process.env.SWAGGER_PROD_URL?.trim();
+  const devUrl = process.env.OPENAPI_DEV_URL?.trim();
+  const prodUrl = process.env.OPENAPI_PROD_URL?.trim();
   const configuredServers =
     process.env.NODE_ENV === "production"
       ? [prodUrl, devUrl]
@@ -29,7 +30,7 @@ const getServersInCorrectOrder = () => {
 
   const seenUrls = new Set();
 
-  return configuredServers
+  const servers = configuredServers
     .filter(Boolean)
     .filter((url) => {
       if (seenUrls.has(url)) return false;
@@ -37,43 +38,29 @@ const getServersInCorrectOrder = () => {
       return true;
     })
     .map((url) => ({ url }));
+  return servers.length ? servers : [{ url: "/" }];
 };
 
-const getSwaggerOptions = () => ({
+const getOpenApiOptions = () => ({
   swaggerDefinition: {
     openapi: "3.0.0",
     info: {
       title: "API Banco de Doações DoaÍ",
       version: "1.0-alpha",
-      description: `É necessário autenticar com token de sessão Better Auth antes de utilizar a maioria das rotas.
+      description: `API de doações com persistência PostgreSQL/Prisma e sessões opacas Better Auth.
 
-## Credenciais de Teste (Seed)
+Use POST /usuario para cadastro e POST /auth/login para obter o token; envie Authorization: Bearer <token> nas rotas protegidas. O token não é JWT. Logout e troca de senha revogam sessões persistidas. Não há credenciais reais nesta documentação.
 
-| Perfil | E-mail | Senha |
-|----|----|----|
-| ADMINISTRADOR | admin@doai.com | Admin@123 |
-| USUARIO | carlos@email.com | Senha@123 |
+Fluxo: criar item → manifestar interesse → doador aceitar → RESERVADO → doador confirmar entrega → AGUARDANDO_CONFIRMACAO → interessado confirmar recebimento → DOADO. A conclusão incrementa total_doacoes uma vez na mesma transação. Cancelamento e disputa de estado obedecem às regras de cada rota.
 
-## Fluxo de Teste
+ADMINISTRADOR modera pelas rotas administrativas. Esse perfil não substitui a autorização de autoria/propriedade das rotas comuns. Avaliações e COUNT/AVG da reputação são atualizados atomicamente.
 
-1. **Login** → obter token opaco de sessão
-2. **Criar item** (usuário doador)
-3. **Manifestar interesse** no item (usuário interessado)
-4. **Aceitar interesse** (doador) → item fica RESERVADO
-5. **Confirmar entrega** (doador) → AGUARDANDO_CONFIRMACAO
-6. **Confirmar recebimento** (interessado) → item DOADO
+Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. ObjectId legado é aceito por alguns validators, mas não implica uma persistência MongoDB.
 
-## Perfis
-
-- **ADMINISTRADOR** — acesso total: modera usuários, itens, denúncias e categorias
-- **USUARIO** — cadastra itens, manifesta interesse, avalia e denuncia
-
-## Status do Item
-
-DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
+[Baixar OpenAPI](/docs.json) · [Coleções Postman](/docs/postman)`,
       contact: {
         name: "Equipe Banco de Doações",
-        url: "https://api.doai.fs.fslab.dev/docs#/", 
+        url: "https://api.doai.fs.fslab.dev/docs",
       },
     },
     servers: getServersInCorrectOrder(),
@@ -81,7 +68,7 @@ DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
       {
         name: "Autenticação",
         description:
-          "Rotas para login, recuperação de senha, logout e renovação de token.",
+          "Rotas para login, recuperação de senha, logout e rotação de sessão opaca.",
       },
       {
         name: "Administração",
@@ -148,7 +135,7 @@ DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
           scheme: "bearer",
           bearerFormat: "BetterAuthSession",
           description:
-            "Token opaco e revogável retornado por POST /auth/login. Informe apenas o token, sem adicionar Bearer manualmente no Swagger.",
+            "Token opaco e revogável retornado por POST /auth/login. Informe o token no campo HTTP Bearer do Scalar; o cliente acrescenta o prefixo Bearer.",
         },
       },
       schemas: {
@@ -162,6 +149,7 @@ DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
         ...itemDoacaoSchemas,
         ...notificacaoSchema,
         ...perfilSchemas,
+        ...currentContracts,
       },
     },
     security: [
@@ -170,7 +158,7 @@ DISPONIVEL → RESERVADO → AGUARDANDO_CONFIRMACAO → DOADO`,
       },
     ],
   },
-  apis: ["./src/routes/*.js"],
+  apis: [], // Os módulos src/docs/paths são a fonte única do contrato HTTP.
 });
 
-export default getSwaggerOptions;
+export default getOpenApiOptions;

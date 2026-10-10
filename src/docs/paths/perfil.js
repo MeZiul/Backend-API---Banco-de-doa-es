@@ -7,7 +7,7 @@ const perfilPaths = {
             summary: "Consultar o próprio perfil",
             security: [{ bearerAuth: [] }],
             responses: {
-                200: commonResponses[200](),
+                200: commonResponses[200]("#/components/schemas/UsuarioCompleto"),
                 401: commonResponses[401](),
                 404: commonResponses[404](),
                 498: commonResponses[498](),
@@ -27,7 +27,7 @@ const perfilPaths = {
                 },
             },
             responses: {
-                200: commonResponses[200](),
+                200: commonResponses[200]("#/components/schemas/UsuarioCompleto"),
                 400: commonResponses[400](),
                 401: commonResponses[401](),
                 409: commonResponses[409](),
@@ -80,7 +80,7 @@ Regras de negócio:
                 }
             },
             responses: {
-                200: commonResponses[200](),
+                200: commonResponses[200]("#/components/schemas/UsuarioCompleto"),
                 400: commonResponses[400](),
                 401: commonResponses[401](),
                 403: commonResponses[403](),

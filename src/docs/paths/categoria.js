@@ -3,6 +3,7 @@ import commonResponses from "../schemas/swaggerCommonResponses.js";
 const categoriasPaths = {
   "/categorias": {
     get: {
+      security: [],
       tags: ["Categorias"],
       summary: "Listar categorias",
       description: `Lista as categorias de itens de doação.
@@ -64,6 +65,7 @@ Regras de negócio:
   },
   "/categorias/{id}": {
     get: {
+      security: [],
       tags: ["Categorias"],
       summary: "Consultar categoria por ID",
       description: `Retorna uma categoria específica.

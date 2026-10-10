@@ -31,7 +31,9 @@
     "test:auth:http": "cross-env NODE_ENV=test BETTER_AUTH_SECRET=doai-test-secret-not-for-production-2026 node scripts/better-auth-http-smoke.js",
     "test:compat": "node --test scripts/prisma-compat.test.mjs",
     "test:dependencies": "cross-env NODE_ENV=test LOG_ENABLED=false node scripts/dependency-contract-smoke.js",
-    "test:avaliacao:db": "cross-env NODE_ENV=test node scripts/avaliacao-transaction-smoke.js"
+    "test:avaliacao:db": "cross-env NODE_ENV=test node scripts/avaliacao-transaction-smoke.js",
+    "test:rnf": "node scripts/rnf-isolated-smoke.mjs",
+    "test:logger:disabled": "node --test scripts/logger-disabled.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -79,13 +81,13 @@
     "sharp": "0.35.5",
     "sinon": "^21.0.1",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "4.4.3",
     "zod-to-json-schema": "^3.25.1",
-    "zod-v3": "npm:zod@3.25.76"
+    "zod-v3": "npm:zod@3.25.76",
+    "@scalar/api-reference": "1.73.1"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",
@@ -148,7 +150,7 @@
     ]
   },
   "engines": {
-    "node": "^20.19.0 || ^22.12.0 || ^24.0.0"
+    "node": "^22.12.0 || ^24.0.0"
   },
   "overrides": {
     "mysql2": "3.24.5",

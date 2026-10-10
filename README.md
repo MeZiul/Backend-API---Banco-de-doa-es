@@ -6,7 +6,7 @@ API backend do projeto acadêmico DoaI, construída com Node.js/Express e persis
 
 ## Stack
 
-- Node.js 20.19+ na linha 20, 22.12+ na linha 22, ou Node 24 (Docker usa Node 24)
+- Node.js 22.12+ na linha 22 ou Node 24 (Docker usa Node 24; Scalar exige Node 22+)
 - Express 5
 - PostgreSQL 18
 - Prisma ORM 7
@@ -15,7 +15,7 @@ API backend do projeto acadêmico DoaI, construída com Node.js/Express e persis
 - BcryptJS
 - Zod 4 para Better Auth e alias Zod 3 para os schemas legados da API
 - Jest + Supertest
-- Swagger
+- Scalar local para a referência interativa; OpenAPI 3 gerado por swagger-jsdoc
 - Winston
 
 ## Estrutura de persistência
@@ -55,7 +55,7 @@ A referência polimórfica de `Administracao.alvo_id` foi normalizada em três F
 ### Caminho recomendado
 
 - Docker Desktop / Docker Engine com Compose
-- Node.js compatível com Prisma 7 (`^20.19`, `^22.12` ou `^24`) e npm, caso a API seja executada fora do container
+- Node.js `^22.12` ou `^24` e npm, caso a API seja executada fora do container
 
 ## Configuração inicial
 
@@ -104,8 +104,8 @@ O Compose publica a porta interna `7340` na porta definida por `API_HOST_PORT`. 
 URLs padrão:
 
 - API: `http://localhost:7340`
-- Swagger: `http://localhost:7340/docs`
-- JSON Swagger: `http://localhost:7340/docs.json`
+- Scalar: `http://localhost:7340/docs`
+- OpenAPI JSON: `http://localhost:7340/docs.json`
 - PostgreSQL: `localhost:5432`
 - PostgreSQL exclusivo de testes: `localhost:5433`
 
@@ -302,7 +302,15 @@ Quando o frontend estiver totalmente estabilizado, o grupo pode decidir em uma m
 
 ## Documentação da API
 
-Contrato funcional base:
+Contrato vigente:
+
+- [Contratos e requisitos atuais](./documentacao/contratos-requisitos-atuais.md): comportamento HTTP, autorização, persistência e matriz de evidências.
+- `/docs`: Scalar com bundle instalado localmente, sem CDN, fontes externas, proxy, telemetria ou persistência de autorização.
+- `/docs.json`: mesmo OpenAPI 3 consumido pela interface; download importável por clientes HTTP.
+- `src/docs/paths/` define as operações; os schemas de escrita em `src/docs/schemas/currentContracts.js` derivam dos validators Zod. Regras de serviço e refinamentos condicionais continuam descritos em texto.
+- `OPENAPI_DEV_URL` e `OPENAPI_PROD_URL` configuram servidores opcionais. Sem configuração, o cliente usa a origem da API (`/`). Substituem os antigos nomes `SWAGGER_*`.
+
+Referências funcionais históricas (reconciliar com o contrato vigente):
 
 - [Documentação da API Banco de Doação](./documentacao/Documenta%C3%A7%C3%A3o_da_api_Banco_de_Doa%C3%A7%C3%A3o.md)
 - [Especificação API REST DoaI](./documentacao/Especificacao_API_REST_DoaI.html)

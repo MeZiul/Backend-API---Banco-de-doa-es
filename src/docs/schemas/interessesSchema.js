@@ -21,7 +21,7 @@ const interessesSchemas = {
     InteresseUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439014" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Maria Silva" },
             email: { type: "string", format: "email", example: "maria@email.com" },
             cidade: { type: "string", example: "Cuiabá" },
@@ -31,7 +31,7 @@ const interessesSchemas = {
     InteresseItemResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Cadeira de escritório" },
             status: {
                 type: "string",
@@ -45,7 +45,7 @@ const interessesSchemas = {
     InteresseListagem: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439020" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             item_id: { $ref: "#/components/schemas/InteresseItemResumo" },
             usuario_interessado_id: { $ref: "#/components/schemas/InteresseUsuarioResumo" },
             usuario_doador_id: { $ref: "#/components/schemas/InteresseUsuarioResumo" },
@@ -72,7 +72,7 @@ const interessesSchemas = {
         type: "object",
         required: ["item_id"],
         properties: {
-            item_id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            item_id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             mensagem_interessado: {
                 type: "string",
                 nullable: true,

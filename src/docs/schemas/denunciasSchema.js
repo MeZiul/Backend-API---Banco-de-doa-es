@@ -21,7 +21,7 @@ const denunciasSchemas = {
     DenunciaUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "João Souza" },
             email: { type: "string", format: "email", example: "joao@email.com" },
             cidade: { type: "string", example: "Várzea Grande" },
@@ -32,7 +32,7 @@ const denunciasSchemas = {
     DenunciaItemResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439015" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             titulo: { type: "string", example: "Mesa de estudo" },
             status: {
                 type: "string",
@@ -45,7 +45,7 @@ const denunciasSchemas = {
     DenunciaListagem: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439016" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             denunciante_id: { $ref: "#/components/schemas/DenunciaUsuarioResumo" },
             tipo_alvo: { type: "string", enum: ["ITEM", "USUARIO"], example: "ITEM" },
             alvo_item_id: { $ref: "#/components/schemas/DenunciaItemResumo", nullable: true },
@@ -80,8 +80,8 @@ const denunciasSchemas = {
         required: ["tipo_alvo", "motivo"],
         properties: {
             tipo_alvo: { type: "string", enum: ["ITEM", "USUARIO"], example: "ITEM" },
-            alvo_item_id: { type: "string", nullable: true, example: "507f1f77bcf86cd799439015" },
-            alvo_usuario_id: { type: "string", nullable: true, example: "507f1f77bcf86cd799439013" },
+            alvo_item_id: { type: "string", nullable: true, example: "550e8400-e29b-41d4-a716-446655440000" },
+            alvo_usuario_id: { type: "string", nullable: true, example: "550e8400-e29b-41d4-a716-446655440000" },
             motivo: {
                 type: "string",
                 enum: ["CONTEUDO_INAPROPRIADO", "ITEM_PROIBIDO", "FRAUDE", "ASSEDIO", "SPAM", "OUTRO"],

@@ -22,7 +22,7 @@ const usuariosSchemas = {
         type: "object",
         description: "Versão limitada retornada para usuários comuns (sem email, cpf, telefone).",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Carlos Silva" },
             foto_perfil: { type: "string", nullable: true, example: null },
             bio: { type: "string", nullable: true, example: "Gosto de ajudar quem precisa." },
@@ -43,7 +43,7 @@ const usuariosSchemas = {
         type: "object",
         description: "Versão completa retornada para administradores ou para o próprio usuário.",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439012" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Carlos Silva" },
             email: { type: "string", format: "email", example: "carlos@email.com" },
             cpf: { type: "string", example: "111.111.111-11" },

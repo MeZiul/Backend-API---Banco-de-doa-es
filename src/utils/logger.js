@@ -69,6 +69,7 @@ class Logger {
         }
 
         return createLogger({
+            silent: !this.logEnabled,
             level: process.env.LOG_LEVEL || 'info',
             format: format.combine(
                 format.timestamp(),
