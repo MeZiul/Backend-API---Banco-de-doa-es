@@ -2,7 +2,7 @@ const authSchemas = {
     AuthUsuarioResumo: {
         type: "object",
         properties: {
-            _id: { type: "string", example: "507f1f77bcf86cd799439011" },
+            _id: { type: "string", example: "550e8400-e29b-41d4-a716-446655440000" },
             nome: { type: "string", example: "Carlos Souza" },
             email: { type: "string", format: "email", example: "carlos@email.com" },
             cpf: { type: "string", example: "12345678901" },

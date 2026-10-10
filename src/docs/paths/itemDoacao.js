@@ -23,7 +23,7 @@ Regras de negócio:
                 },
             },
             responses: {
-                201: commonResponses[201]("#/components/schemas/ItemDoacaoDetalhes"),
+                201: commonResponses[201]("#/components/schemas/ItemDoacaoEscritaResposta"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 498: commonResponses[498](),
@@ -31,6 +31,7 @@ Regras de negócio:
             },
         },
         get: {
+            security: [],
             tags: ["Itens de Doação"],
             summary: "Listar itens disponíveis",
             description: `Lista os itens cadastrados no sistema para doação.
@@ -41,11 +42,14 @@ Regras de negócio:
 - A listagem é paginada.
 - Pode ser filtrada opcionalmente por categoria, cidade e estado (UF).`,
             parameters: [
-                { name: "categoriaId", in: "query", schema: { type: "string" }, description: "ID da categoria do item" },
+                { name: "categoria_id", in: "query", schema: { type: "string" }, description: "ID da categoria do item" },
+                { name: "busca", in: "query", schema: { type: "string" }, description: "Busca textual" },
+                { name: "condicao_item", in: "query", schema: { type: "string", enum: ["NOVO", "SEMINOVO", "USADO_BOM", "USADO_REGULAR"] } },
                 { name: "cidade", in: "query", schema: { type: "string" }, description: "Nome da cidade" },
                 { name: "uf", in: "query", schema: { type: "string" }, description: "Sigla do estado" },
-                { name: "page", in: "query", schema: { type: "integer", default: 1 } },
-                { name: "limit", in: "query", schema: { type: "integer", default: 15 } },
+                { name: "page", in: "query", schema: { type: "integer", minimum: 1, default: 1 } },
+                { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } },
+                { name: "ordenacao", in: "query", schema: { type: "string", enum: ["recentes", "antigos", "visualizados", "interessados"], default: "recentes" } },
             ],
             responses: {
                 200: commonResponses[200]("#/components/schemas/ItemDoacaoPaginado"),
@@ -55,6 +59,7 @@ Regras de negócio:
     },
     "/itemdoacao/{id}": {
         get: {
+            security: [],
             tags: ["Itens de Doação"],
             summary: "Consultar detalhes de um item específico",
             description: `Retorna as informações completas de um item de doação.
@@ -87,7 +92,7 @@ Regras de negócio:
                 },
             },
             responses: {
-                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes"),
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoEscritaResposta"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
@@ -107,7 +112,7 @@ Regras de negócio:
             security: [{ bearerAuth: [] }],
             parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
             responses: {
-                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes", "Item cancelado com sucesso."),
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoEscritaResposta", "Item cancelado com sucesso."),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
@@ -130,7 +135,7 @@ Regras de negócio:
             security: [{ bearerAuth: [] }],
             parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
             responses: {
-                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes"),
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoEscritaResposta"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
@@ -153,7 +158,7 @@ Regras de negócio:
             security: [{ bearerAuth: [] }],
             parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
             responses: {
-                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes"),
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoEscritaResposta"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
@@ -179,16 +184,12 @@ Regras de negócio:
                 required: true,
                 content: {
                     "application/json": {
-                        schema: {
-                            type: "object",
-                            properties: { motivo: { type: "string", minLength: 10, description: "Justificativa obrigatória do cancelamento" } },
-                            required: ["motivo"]
-                        }
+                        schema: { $ref: "#/components/schemas/ItemDoacaoCancelar" }
                     },
                 },
             },
             responses: {
-                200: commonResponses[200]("#/components/schemas/ItemDoacaoDetalhes"),
+                200: commonResponses[200]("#/components/schemas/ItemDoacaoEscritaResposta"),
                 400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
@@ -197,27 +198,7 @@ Regras de negócio:
             },
         },
     },
-    "/itens/{id}/interesses": {
-        get: {
-            tags: ["Itens de Doação"],
-            summary: "Listar usuários interessados no item",
-            description: `Busca o histórico de manifestações de interesse feitas para um item específico.
-
-Regras de negócio:
-- A rota exige autenticação via token.
-- Trava de privacidade: Apenas o doador que criou o item ou um usuário ADMINISTRADOR pode acessar essa lista. Usuários comuns recebem erro de permissão negada.`,
-            security: [{ bearerAuth: [] }],
-            parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-            responses: {
-                200: commonResponses[200]("#/components/schemas/InteressePaginado"),
-                403: commonResponses[403](),
-                404: commonResponses[404](),
-                498: commonResponses[498](),
-                500: commonResponses[500](),
-            },
-        },
-    },
-"/itemdoacao/{id}/fotos": {
+    "/itemdoacao/{id}/fotos": {
         post: {
             tags: ["Itens de Doação"],
             summary: "Adicionar fotos ao item",
