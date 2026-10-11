@@ -1,0 +1,10 @@
+# Substitua apenas o caminho do checkout. A chave vem do ambiente do host.
+# Mescle este bloco à configuração local do Codex somente quando desejar ativar.
+[mcp_servers.doai_postman]
+command = "node"
+args = ["C:/CAMINHO/backend-api-banco-de-doacoes/tools/postman-mcp/start.mjs"]
+env_vars = ["POSTMAN_API_KEY"]
+# Comece pela inspeção da conta. runCollection e escrita não são expostos.
+enabled_tools = ["getAuthenticatedUser", "getWorkspaces", "getWorkspace", "getCollections", "getCollection", "getEnvironments", "getEnvironment"]
+startup_timeout_sec = 30
+enabled = false

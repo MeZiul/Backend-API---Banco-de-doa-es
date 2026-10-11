@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DoaI • Postman web</title><link rel="stylesheet" href="/docs/postman/style.css">
+  <script type="module" src="/docs/postman/runner.js"></script>
+</head>
+<body>
+<header><a href="/docs">DoaI / Documentação</a><h1>Postman web</h1><p>Execute o fluxo principal nesta API, revise as respostas e acompanhe as verificações.</p></header>
+<main>
+  <section aria-labelledby="access-title" id="access"><h2 id="access-title">Abrir coleção</h2>
+    <p>Informe um token Bearer de administrador ativo. Requisições criam dados reais na API desta página. Use contas de demonstração próprias.</p>
+    <form id="connect-form"><label for="access-token">Token administrativo</label><input id="access-token" type="password" autocomplete="off" required maxlength="4096"><button type="submit" id="connect">Abrir coleção</button></form>
+  </section>
+  <p id="status" role="status" aria-live="polite">Nenhuma requisição executada.</p>
+  <div id="workspace" hidden>
+    <section aria-labelledby="variables-title"><div class="section-heading"><h2 id="variables-title">Variáveis da sessão</h2><button id="logout" type="button">Sair e limpar</button></div>
+      <p>Tokens, senhas e IDs ficam somente na memória desta aba e são apagados ao sair ou recarregar. Preencha e-mails e senhas para os três papéis do fluxo.</p><div id="variables" class="variables"></div>
+    </section>
+    <div class="layout"><nav aria-label="Etapas da coleção"><h2>27 etapas</h2><ol id="requests"></ol></nav>
+      <section aria-labelledby="request-title"><h2 id="request-title">Requisição</h2>
+        <div class="request-line"><label>Método<select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label><label class="path">Caminho<input id="path" spellcheck="false" maxlength="4096"></label></div>
+        <label>Token<select id="token"><option value="">Sem Bearer</option></select></label>
+        <label>Formato<select id="mode"><option value="json">JSON</option><option value="multipart">Fotos (multipart)</option></select></label>
+        <label id="json-label">Corpo JSON<textarea id="body" rows="12" maxlength="65536" spellcheck="false"></textarea></label>
+        <label id="file-label" hidden>Fotos do item<input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+        <div class="actions"><button id="send" type="button">Enviar requisição</button><button id="run" type="button" class="secondary">Executar as 27 etapas</button><button id="stop" type="button" class="secondary" disabled>Parar</button></div>
+        <p>O fluxo usa os modelos originais de cada etapa e para na primeira falha. Alterações no editor afetam somente “Enviar requisição”. Scripts JavaScript da coleção não são executados; as verificações são declarativas.</p>
+        <h3>Verificações</h3><ul id="checks"></ul><h3>Resposta</h3><pre id="response" tabindex="0">Envie uma requisição para ver a resposta.</pre>
+      </section>
+    </div>
+    <section><h2>Histórico desta aba</h2><ol id="history"></ol></section>
+  </div>
+</main>
+</body></html>
