@@ -937,5 +937,121 @@ describe("AdministracaoService", () => {
 
     expect(itemDoacaoRepository.atualizarSeStatus).not.toHaveBeenCalled();
     expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).toHaveBeenCalledTimes(2);
+    expect(administracaoRepository.criar.mock.calls.every(([registro]) =>
+      registro.tipo_acao === "RESOLUCAO_DENUNCIA"
+    )).toBe(true);
+  });
+
+  test.each([
+    ["2026-11-01T00:00:00.000Z", "Descrição livre do administrador"],
+    [null, "Descrição livre do administrador"],
+    ["2026-11-01T00:00:00.000Z", null],
+  ])(
+    "Deve auditar suspensão efetiva e prazo %s sem alterar descrição %s da resolução",
+    async (prazo, descricao) => {
+      const denuncia = {
+        _id: testIds.denuncia, status: "EM_ANALISE", tipo_alvo: "USUARIO",
+        alvo_usuario_id: testIds.doador, denunciante_id: testIds.usuario,
+      };
+      denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
+      denunciaRepository.atualizarSeStatus.mockResolvedValue({ ...denuncia, status: "PROCEDENTE" });
+      usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.doador, situacao: "ATIVO" });
+      usuarioRepository.atualizarSeSituacao.mockImplementation(async (id, _situacao, dados) => ({ _id: id, ...dados }));
+      let dentroDaTransacao = false;
+      transactionManager.run.mockImplementation(async operation => {
+        dentroDaTransacao = true;
+        try { return await operation(); }
+        finally { dentroDaTransacao = false; }
+      });
+      administracaoRepository.criar.mockImplementation(async dados => {
+        expect(dentroDaTransacao).toBe(true);
+        return dados;
+      });
+
+      await service.resolverDenuncia(testIds.denuncia, {
+        resultado: "PROCEDENTE", acao_tomada: descricao, suspensao_ate: prazo,
+      }, createAdminUser());
+
+      expect(usuarioRepository.atualizarSeSituacao).toHaveBeenCalledWith(testIds.doador, "ATIVO",
+        expect.objectContaining({ situacao: "SUSPENSO", suspensao_ate: prazo }));
+      expect(administracaoRepository.criar).toHaveBeenCalledTimes(2);
+      expect(administracaoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+        tipo_acao: "BLOQUEIO_USUARIO", tipo_alvo: "USUARIO", alvo_id: testIds.doador,
+        suspensao_ate: prazo, acao_tomada: "Usuário suspenso.",
+        justificativa: `Denúncia procedente ${testIds.denuncia}.`,
+      }));
+      expect(administracaoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+        tipo_acao: "RESOLUCAO_DENUNCIA", alvo_id: testIds.denuncia,
+        acao_tomada: descricao,
+      }));
+      expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test("Deve auditar cancelamento efetivo mesmo sem descrição opcional", async () => {
+    const denuncia = { _id: testIds.denuncia, status: "EM_ANALISE", tipo_alvo: "ITEM", alvo_item_id: testIds.item };
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({ ...denuncia, status: "PROCEDENTE" });
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({ _id: testIds.item, status: "DISPONIVEL" });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({ _id: testIds.item, status: "CANCELADO" });
+    administracaoRepository.criar.mockImplementation(async dados => dados);
+
+    await service.resolverDenuncia(testIds.denuncia, { resultado: "PROCEDENTE" }, createAdminUser());
+
+    expect(administracaoRepository.criar).toHaveBeenCalledTimes(2);
+    expect(administracaoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+      tipo_acao: "CANCELAMENTO_ITEM", tipo_alvo: "ITEM", alvo_id: testIds.item,
+      acao_tomada: "Item cancelado.", suspensao_ate: null,
+    }));
+    expect(administracaoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+      tipo_acao: "RESOLUCAO_DENUNCIA", acao_tomada: null,
+    }));
+  });
+
+  test("Denúncia improcedente deve registrar somente a resolução", async () => {
+    const denuncia = { _id: testIds.denuncia, status: "EM_ANALISE", tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador };
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({ ...denuncia, status: "IMPROCEDENTE" });
+    administracaoRepository.criar.mockImplementation(async dados => dados);
+
+    await service.resolverDenuncia(testIds.denuncia, {
+      resultado: "IMPROCEDENTE", suspensao_ate: "2026-11-01T00:00:00.000Z",
+    }, createAdminUser());
+
+    expect(usuarioRepository.atualizarSeSituacao).not.toHaveBeenCalled();
+    expect(administracaoRepository.criar).toHaveBeenCalledTimes(1);
+    expect(administracaoRepository.criar).toHaveBeenCalledWith(expect.objectContaining({
+      tipo_acao: "RESOLUCAO_DENUNCIA", resultado_denuncia: "IMPROCEDENTE",
+    }));
+  });
+
+  test.each([1, 2])("Falha no registro de auditoria %s deve abortar a transação antes dos efeitos externos", async (falhaNaChamada) => {
+    const denuncia = { _id: testIds.denuncia, status: "EM_ANALISE", tipo_alvo: "USUARIO", alvo_usuario_id: testIds.doador };
+    denunciaRepository.buscarPorIdDetalhado.mockResolvedValue(denuncia);
+    denunciaRepository.atualizarSeStatus.mockResolvedValue({ ...denuncia, status: "PROCEDENTE" });
+    usuarioRepository.buscarPorId.mockResolvedValue({ _id: testIds.doador, situacao: "ATIVO" });
+    usuarioRepository.atualizarSeSituacao.mockResolvedValue({ _id: testIds.doador, situacao: "SUSPENSO" });
+    const erroAuditoria = new Error("Escrita de auditoria indisponível");
+    let chamadas = 0, erroTransacao;
+    administracaoRepository.criar.mockImplementation(async dados => {
+      if (++chamadas === falhaNaChamada) throw erroAuditoria;
+      return dados;
+    });
+    transactionManager.run.mockImplementation(async operation => {
+      try { return await operation(); }
+      catch (erro) { erroTransacao = erro; throw erro; }
+    });
+    service.autenticacaoService = { revogarSessoesUsuario: jest.fn() };
+
+    await expect(service.resolverDenuncia(testIds.denuncia, { resultado: "PROCEDENTE" }, createAdminUser()))
+      .rejects.toBe(erroAuditoria);
+
+    expect(erroTransacao).toBe(erroAuditoria);
+    expect(transactionManager.run).toHaveBeenCalledTimes(1);
+    expect(denunciaRepository.atualizarSeStatus).toHaveBeenCalledTimes(1);
+    expect(usuarioRepository.atualizarSeSituacao).toHaveBeenCalledTimes(1);
+    expect(service.autenticacaoService.revogarSessoesUsuario).not.toHaveBeenCalled();
+    expect(notificacaoService.criarNotificacoesComSeguranca).not.toHaveBeenCalled();
   });
 });

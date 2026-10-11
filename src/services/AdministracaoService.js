@@ -383,7 +383,19 @@ class AdministracaoService {
             }
 
             if (resultado === "PROCEDENTE") {
-                await this.aplicarAcaoProcedente(denuncia, dados);
+                const alvoAlterado = await this.aplicarAcaoProcedente(denuncia, dados);
+                if (alvoAlterado) {
+                    const suspensao = denuncia.tipo_alvo === "USUARIO";
+                    await this.registrarAcao({
+                        administrador_id: actorId,
+                        tipo_acao: suspensao ? "BLOQUEIO_USUARIO" : "CANCELAMENTO_ITEM",
+                        tipo_alvo: denuncia.tipo_alvo,
+                        alvo_id: this.getEntityId(alvoAlterado),
+                        justificativa: `Denúncia procedente ${this.getEntityId(denuncia)}.`,
+                        suspensao_ate: suspensao ? alvoAlterado.suspensao_ate ?? null : null,
+                        acao_tomada: suspensao ? "Usuário suspenso." : "Item cancelado.",
+                    });
+                }
             }
 
             await this.registrarAcao({
