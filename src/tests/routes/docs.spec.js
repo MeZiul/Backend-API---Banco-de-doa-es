@@ -25,7 +25,8 @@ describe("Scalar local e contrato OpenAPI", () => {
     expect(a.headers["content-security-policy"]).not.toContain("'unsafe-eval'");
     expect(a.headers["content-security-policy"].split(";").find(x => x.includes("script-src"))).not.toContain("'unsafe-inline'");
     expect(a.text.match(/<script/g)).toHaveLength(2);
-    expect(a.text.match(new RegExp(`nonce="${nonce}"`, "g"))).toHaveLength(3);
+    const nonceAttributes = [...a.text.matchAll(/\bnonce="([^"]+)"/g)].map(match => match[1]);
+    expect(nonceAttributes).toEqual([nonce, nonce, nonce]);
     expect(a.text).toContain('href="/docs.json"');
     expect(a.text).toContain('href="/docs/postman"');
     expect(a.text).toContain('src="/docs/assets/scalar.js"');
