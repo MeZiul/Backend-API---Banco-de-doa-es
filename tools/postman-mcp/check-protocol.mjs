@@ -21,5 +21,5 @@ try {
   const allowed = JSON.parse(template.match(/^enabled_tools = (\[[^\n]+\])$/m)[1]);
   assert.equal(allowed.length, 7);
   assert.ok(allowed.every((name) => name.startsWith('get') && result.tools.some((tool) => tool.name === name)));
-  console.log(`Protocolo MCP stdio PASS: ${result.tools.length} ferramentas padrão, incluindo getWorkspaces e ${result.tools.some(({ name }) => name === 'runCollection') ? 'runCollection' : 'sem runCollection'}; rede desativada e nenhuma conta autenticada.`);
+  console.log(`Protocolo MCP stdio PASS: ${result.tools.length} ferramentas disponíveis; a configuração de exemplo mantém ${allowed.length} leituras permitidas; rede desativada e nenhuma conta autenticada.`);
 } finally { await client.close(); }
