@@ -1,7 +1,19 @@
 node_modules/
 coverage/
 .git
-.env
+**/.env*
+**/*.log
+**/logs/**
+/uploads/
+/.local-preview/
+/.ai-memory/
 # A integração MCP e seu ambiente são exclusivos do host local do desenvolvedor.
 tools/postman-mcp/
 README.md
+
+# A API só precisa desta coleção em runtime; outras notas/documentos locais não
+# fazem parte do contexto enviado ao builder.
+documentacao/**
+!documentacao/postman/
+documentacao/postman/**
+!documentacao/postman/API-DOAI-FLUXO-PRINCIPAL.postman_collection.json

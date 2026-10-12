@@ -37,6 +37,7 @@ services:
     restart: unless-stopped
     build:
       context: .
+      target: development
       args:
         NODE_ENV: production
     env_file:

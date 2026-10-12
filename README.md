@@ -99,6 +99,8 @@ docker compose up --build -d
 
 O container da API aguarda o PostgreSQL ficar saudável, aplica as migrations com `prisma migrate deploy` e inicia o servidor.
 
+O Compose usa explicitamente o alvo `development` do Dockerfile e mantém esse fluxo para desenvolvimento. A imagem padrão do Dockerfile usa o alvo final `runtime`: ela leva o Prisma Client gerado durante o build e inicia com `node server.js`, sem executar migrations ao subir. O Prisma CLI pode permanecer instalado como peer opcional da árvore de runtime, mas não é invocado no entrypoint. Em produção, aplique as migrations como uma etapa explícita do processo de deploy da VM antes de ativar a nova imagem.
+
 O Compose publica a porta interna `7340` na porta definida por `API_HOST_PORT`. O valor padrão do exemplo é `7340`, portanto o desenvolvimento local continua usando `http://localhost:7340`.
 
 URLs padrão:
