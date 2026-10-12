@@ -46,6 +46,7 @@ COPY --from=build /node-app/documentacao/postman/API-DOAI-FLUXO-PRINCIPAL.postma
 
 # Verifica a árvore final depois da instalação e da cópia do cliente gerado.
 # Não instancia PrismaClient nem tenta conexão com banco.
+# O Prisma CLI pode permanecer como peer opcional; o entrypoint de runtime não o invoca.
 RUN test -f node_modules/.prisma/client/index.js \
     && test ! -d node_modules/jest \
     && test ! -d node_modules/babel-jest \
@@ -53,8 +54,6 @@ RUN test -f node_modules/.prisma/client/index.js \
     && test ! -d node_modules/supertest \
     && test ! -d node_modules/cross-env \
     && test ! -d node_modules/@babel/preset-env \
-    && test ! -d node_modules/prisma \
-    && test ! -e node_modules/.bin/prisma \
     && node --input-type=module -e 'import { Prisma, PrismaClient } from "@prisma/client"; import { PrismaPg } from "@prisma/adapter-pg"; import sharp from "sharp"; import { createRequire } from "node:module"; import path from "node:path"; import { statSync } from "node:fs"; import { verificarTodasParidades } from "./src/utils/verificarParidadeSchemas.js"; import { buildWebCollection } from "./src/postman/collection.js"; import { registerApiReference } from "./src/docs/scalar.js"; const expected = ["Usuario", "Administracao", "Avaliacao", "Categoria", "Denuncia", "Interesse", "ItemDoacao", "Notificacao"]; const models = Prisma.dmmf.datamodel.models.map(({ name }) => name); if (expected.some((name) => !models.includes(name))) throw new Error("Generated Prisma Client does not match the expected schema models"); verificarTodasParidades(); if (typeof PrismaClient !== "function" || typeof PrismaPg !== "function") throw new Error("Prisma runtime imports are unavailable"); if (typeof sharp !== "function" || !sharp.versions?.sharp) throw new Error("sharp runtime load failed"); const require = createRequire(import.meta.url); const scalar = path.join(path.dirname(require.resolve("@scalar/api-reference")), "browser", "standalone.js"); if (typeof registerApiReference !== "function" || !statSync(scalar).isFile()) throw new Error("Scalar runtime asset is missing"); const requests = buildWebCollection().requests.length; if (requests !== 27) throw new Error("Postman runtime collection is incomplete"); console.log(JSON.stringify({ prismaVersion: Prisma.prismaVersion.client, prismaModels: models.length, parityModels: expected.length, collectionRequests: requests, sharpLoaded: true, scalarBundlePresent: true, databaseConnectionAttempted: false }));'
 
 RUN mkdir -p /node-app/uploads
