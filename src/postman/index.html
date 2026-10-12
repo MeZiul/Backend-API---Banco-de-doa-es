@@ -17,7 +17,14 @@
     <section aria-labelledby="variables-title"><div class="section-heading"><h2 id="variables-title">Variáveis da sessão</h2><button id="logout" type="button">Sair e limpar</button></div>
       <p>Tokens, senhas e IDs ficam somente na memória desta aba e são apagados ao sair ou recarregar. Preencha e-mails e senhas para os três papéis do fluxo.</p><div id="variables" class="variables"></div>
     </section>
-    <div class="layout"><nav aria-label="Etapas da coleção"><h2>27 etapas</h2><ol id="requests"></ol></nav>
+    <section class="run-panel" aria-labelledby="run-title">
+      <div class="section-heading"><div><h2 id="run-title">Execução do fluxo</h2><p id="run-current" role="status" aria-live="polite">Pronto para executar a coleção.</p></div><strong id="run-count">0 / 27</strong></div>
+      <progress id="run-progress" max="27" value="0" aria-label="Progresso das etapas"></progress>
+      <p id="run-time" aria-hidden="true">Sem requisição em andamento.</p>
+      <div class="actions recovery-actions"><button id="resume" type="button" class="secondary" disabled>Continuar após a etapa com falha</button><button id="retry" type="button" class="secondary" disabled>Reexecutar a etapa com falha</button></div>
+      <p id="recovery-note" class="recovery-note" hidden></p>
+    </section>
+    <div class="layout"><nav aria-label="Etapas da coleção"><div class="nav-heading"><h2>Etapas <span id="step-total">27</span></h2><label for="filter">Filtrar etapas<input id="filter" type="search" autocomplete="off" placeholder="Ex.: denúncia, login"></label></div><ol id="requests"></ol></nav>
       <section aria-labelledby="request-title"><h2 id="request-title">Requisição</h2>
         <div class="request-line"><label>Método<select id="method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></label><label class="path">Caminho<input id="path" spellcheck="false" maxlength="4096"></label></div>
         <label>Token<select id="token"><option value="">Sem Bearer</option></select></label>
@@ -25,8 +32,10 @@
         <label id="json-label">Corpo JSON<textarea id="body" rows="12" maxlength="65536" spellcheck="false"></textarea></label>
         <label id="file-label" hidden>Fotos do item<input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
         <div class="actions"><button id="send" type="button">Enviar requisição</button><button id="run" type="button" class="secondary">Executar as 27 etapas</button><button id="stop" type="button" class="secondary" disabled>Parar</button></div>
-        <p>O fluxo usa os modelos originais de cada etapa e para na primeira falha. Alterações no editor afetam somente “Enviar requisição”. Scripts JavaScript da coleção não são executados; as verificações são declarativas.</p>
-        <h3>Verificações</h3><ul id="checks"></ul><h3>Resposta</h3><pre id="response" tabindex="0">Envie uma requisição para ver a resposta.</pre>
+        <p>O fluxo para na primeira falha e não repete etapas automaticamente. Se uma escrita ficar sem resposta confiável, confira o efeito na API; repetir ou avançar após ela exige confirmação. Alterações no editor afetam somente “Enviar requisição”. Scripts da coleção não são executados; as verificações são declarativas.</p>
+        <h3>Verificações</h3><ul id="checks"></ul><h3>Resposta da etapa selecionada</h3>
+        <label id="attempt-picker" hidden>Tentativa exibida<select id="attempt-select"></select></label>
+        <pre id="response" tabindex="0">Selecione uma etapa para ver sua resposta.</pre>
       </section>
     </div>
     <section><h2>Histórico desta aba</h2><ol id="history"></ol></section>
