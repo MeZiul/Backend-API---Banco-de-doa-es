@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node start.mjs",
     "check": "node start.mjs --check",
-    "check:protocol": "node check-protocol.mjs"
+    "check:protocol": "node check-protocol.mjs",
+    "check:security": "node check-security.mjs"
   },
   "dependencies": {
     "@postman/postman-mcp-server": "2.13.0"
@@ -17,7 +18,8 @@
     "lodash": "4.18.1",
     "node-forge": "1.4.0",
     "qs": "6.16.0",
-    "underscore": "1.13.8"
+    "underscore": "1.13.8",
+    "jose@4": "4.15.5"
   },
   "engines": { "node": ">=20.0.0" }
 }
