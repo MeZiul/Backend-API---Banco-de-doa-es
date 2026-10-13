@@ -54,12 +54,13 @@ O formato `Authorization: Bearer <token>` permanece, mas o valor agora é uma se
 
 O handler oficial está montado em `/api/auth/*splat` antes de `express.json()`, como exige a integração com Express 5. Por nova orientação em 12/10/2026, o login nativo `/api/auth/sign-in/email` está habilitado e aceita `{ email, password, rememberMe }`, retornando o objeto nativo `{ token, user }` (sem o envelope `data` das rotas legadas). Ele compartilha o limite de tentativas com `/auth/login` e valida origens fornecidas contra as origens confiáveis do Better Auth. Chamadas server-side e Postman podem omitir Origin.
 
-O hook `databaseHooks.session.create.before` consulta a situação atual do usuário e rejeita contas suspensas, inativas ou indisponíveis antes de gravar uma sessão. O frontend chama `signIn.email` pelo SDK dentro de uma Server Action, mantendo seu cookie HttpOnly e as consultas SSR autenticadas por bearer. As telas existentes e o cadastro com CPF permanecem preservados.
+O hook `databaseHooks.session.create.before` consulta a situação atual do usuário e rejeita contas suspensas, inativas ou indisponíveis antes de gravar uma sessão. O frontend chama cadastro, login, sessão, logout e recuperação pelo SDK dentro de Server Actions, mantendo seu cookie HttpOnly e as consultas SSR autenticadas por bearer. As telas existentes e as regras do cadastro com CPF permanecem preservadas.
+
+Os fluxos nativos de cadastro e recuperação usam `/api/auth/sign-up/email`, `/api/auth/request-password-reset` e `/api/auth/reset-password`. O hook de entrada valida CPF, nome, e-mail, UF e senha, normaliza os campos e rejeita propriedades que tentem definir perfil, situação ou contadores. A redefinição segue a mesma política de senha e revoga as sessões anteriores. Cadastro não cria sessão automática; limite de tentativas e validação de origem também se aplicam a esses fluxos.
 
 Os outros caminhos nativos que poderiam contornar as regras do DoaI continuam desabilitados em `src/config/betterAuth.js`:
 
-- cadastro por e-mail;
-- recuperação e alteração de senha;
+- alteração direta de senha fora do fluxo validado de redefinição;
 - alteração de e-mail/usuário;
 - exclusão de usuário.
 
