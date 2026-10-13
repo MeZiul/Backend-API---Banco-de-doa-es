@@ -188,3 +188,12 @@ analise-banco-de-doacoes.html
 AGENTS.md
 /.ai-memory
 /docs
+
+# Acompanhamento privado dos agentes e resultados locais
+CLAUDE.md
+/.local-preview/
+/outputs/
+/documentacao/auditoria-dependencias-*/
+/documentacao/rnf-*-resultado.json
+/documentacao/rnf-*.md
+/documentacao/review-requisitos.md

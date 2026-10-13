@@ -11,6 +11,16 @@ export const loginLimiter = rateLimit({
     }
 });
 
+export const registrationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+        message: "Muitas tentativas de cadastro. Tente novamente mais tarde."
+    }
+});
+
 export const forgotPasswordLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     limit: 5,
@@ -19,5 +29,15 @@ export const forgotPasswordLimiter = rateLimit({
     message: {
         message:
             "Muitas solicitações de recuperação de senha. Tente novamente mais tarde."
+    }
+});
+
+export const passwordResetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+        message: "Muitas tentativas de redefinição. Tente novamente mais tarde."
     }
 });
