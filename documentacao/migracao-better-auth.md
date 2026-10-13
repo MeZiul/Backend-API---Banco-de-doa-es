@@ -42,6 +42,7 @@ Continuam disponíveis:
 
 - `POST /usuario`;
 - `POST /auth/login`;
+- `POST /api/auth/sign-in/email` (login nativo Better Auth);
 - `POST /auth/logout`;
 - `POST /auth/refresh-token`;
 - `POST /auth/esqueci-senha`;
@@ -51,14 +52,18 @@ O formato `Authorization: Bearer <token>` permanece, mas o valor agora é uma se
 
 ## Proteção das regras de domínio
 
-O handler oficial está montado em `/api/auth/*splat` antes de `express.json()`, como exige a integração com Express 5. Entretanto, os caminhos nativos que poderiam contornar as regras do DoaI são desabilitados em `src/config/betterAuth.js`:
+O handler oficial está montado em `/api/auth/*splat` antes de `express.json()`, como exige a integração com Express 5. Por nova orientação em 12/10/2026, o login nativo `/api/auth/sign-in/email` está habilitado e aceita `{ email, password, rememberMe }`, retornando o objeto nativo `{ token, user }` (sem o envelope `data` das rotas legadas). Ele compartilha o limite de tentativas com `/auth/login` e valida origens fornecidas contra as origens confiáveis do Better Auth. Chamadas server-side e Postman podem omitir Origin.
 
-- cadastro e login por e-mail;
+O hook `databaseHooks.session.create.before` consulta a situação atual do usuário e rejeita contas suspensas, inativas ou indisponíveis antes de gravar uma sessão. O frontend chama `signIn.email` pelo SDK dentro de uma Server Action, mantendo seu cookie HttpOnly e as consultas SSR autenticadas por bearer. As telas existentes e o cadastro com CPF permanecem preservados.
+
+Os outros caminhos nativos que poderiam contornar as regras do DoaI continuam desabilitados em `src/config/betterAuth.js`:
+
+- cadastro por e-mail;
 - recuperação e alteração de senha;
 - alteração de e-mail/usuário;
 - exclusão de usuário.
 
-As chamadas server-side `auth.api.*` continuam disponíveis ao `AutenticacaoService`. Assim, o projeto usa o motor e a persistência do Better Auth sem abrir uma segunda API que ignore CPF, Zod, situação ou autorização.
+As chamadas server-side `auth.api.*` continuam disponíveis ao `AutenticacaoService`. O login nativo também usa o hook de situação, enquanto as operações de domínio preservam CPF, Zod e autorização.
 
 ## Migração dos dados
 
@@ -117,5 +122,5 @@ Evidência da validação integrada em 25/08/2026:
 - migração de credencial legada, repositories Prisma e rollback aprovados no PostgreSQL de testes;
 - imagem Docker construída e iniciada com migrations aplicadas;
 - `/docs/` e `/docs.json` responderam HTTP `200` no container;
-- endpoint nativo de login bloqueado com HTTP `404`;
+- endpoint nativo de login bloqueado com HTTP `404` (evidência histórica; habilitado pela orientação de 12/10/2026 acima);
 - senha incorreta, refresh, revogação no logout e bloqueio de conta suspensa validados por HTTP real.
