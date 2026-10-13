@@ -267,7 +267,7 @@ Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativ
         post: {
             tags: ["Autenticação"],
             summary: "Solicitar redefinição de senha nativa",
-            description: `Solicita a criação de um token temporário sem revelar se o e-mail existe. A resposta é genérica e não retorna o token. O envio do e-mail depende da disponibilidade/configuração de SMTP; HTTP 200 não comprova entrega. O handler atual monta o link de recuperação com FRONTEND_URL; alinhe a página de redefinição a essa origem.
+            description: `Solicita a criação de um token temporário. Quando retorna HTTP 200, a resposta é genérica, não revela se o e-mail existe e não retorna o token. A entrega depende da disponibilidade/configuração do serviço de e-mail; HTTP 200 não comprova entrega. O link enviado atualmente usa FRONTEND_URL e aponta para /redefinir-senha.
 
 Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
             security: [],

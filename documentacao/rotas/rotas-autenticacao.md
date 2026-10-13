@@ -21,7 +21,7 @@ Use `/docs` (Scalar) para os schemas OpenAPI completos dos endpoints nativos. As
 - `POST /api/auth/sign-in/email`: recebe `email` e `password`; cria sessão e devolve token opaco no body (`token`) e no header `set-auth-token`, além do cookie Better Auth para clientes de navegador.
 - `GET /api/auth/get-session`: consulta a sessão pelo cookie ou Bearer. O Bearer é opcional; sem sessão válida a resposta é HTTP 200 com body `null`.
 - `POST /api/auth/sign-out`: envie `Authorization: Bearer <token-opaco>` para revogar a sessão persistida; a resposta expira o cookie Better Auth quando presente.
-- `POST /api/auth/request-password-reset`: recebe `email` e `redirectTo` opcional. A resposta não revela se o e-mail existe nem retorna o token. A entrega do link depende da configuração/disponibilidade do serviço de e-mail; HTTP 200 não comprova entrega. O handler atual monta o link com a origem `FRONTEND_URL`.
+- `POST /api/auth/request-password-reset`: recebe `email` e `redirectTo` opcional. Quando retorna HTTP 200, a resposta genérica não revela se o e-mail existe nem retorna o token. A entrega do link depende da configuração/disponibilidade do serviço de e-mail; HTTP 200 não comprova entrega. O link enviado atualmente usa `FRONTEND_URL` e aponta para `/redefinir-senha`.
 - `POST /api/auth/reset-password`: recebe `newPassword` e o token temporário de uso único no body ou na query. Após a redefinição, as sessões persistidas anteriores são revogadas.
 
 Nas chamadas POST nativas em produção, envie `Origin` da aplicação cadastrada em `trustedOrigins`; origem ausente ou não confiável pode ser recusada com HTTP 403. Erros Better Auth são retornados diretamente como `{ code, message }` (podem incluir `issues`), sem o envelope legado `{ data, message, errors }`.
