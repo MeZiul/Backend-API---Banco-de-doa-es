@@ -64,11 +64,19 @@ describe("Scalar local e contrato OpenAPI", () => {
     expect(res.headers["content-security-policy"]).not.toContain("nonce-");
     const spec = res.body;
     expect(spec.openapi).toBe("3.0.0");
-    expect(Object.keys(spec.paths)).toHaveLength(50);
+    expect(Object.keys(spec.paths)).toHaveLength(56);
     const documented = Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods).map(method => `${method} ${path}`));
-    expect(documented).toHaveLength(71);
+    expect(documented).toHaveLength(77);
     const registered = walkRoutes(app.router.stack).filter(domainOperation);
-    expect(documented.sort()).toEqual([...new Set(registered)].sort());
+    expect(documented.filter(domainOperation).sort()).toEqual([...new Set(registered)].sort());
+    expect(documented.filter(operation => operation.includes(" /api/auth/")).sort()).toEqual([
+      "get /api/auth/get-session",
+      "post /api/auth/request-password-reset",
+      "post /api/auth/reset-password",
+      "post /api/auth/sign-in/email",
+      "post /api/auth/sign-out",
+      "post /api/auth/sign-up/email",
+    ]);
     const refs = [...JSON.stringify(spec).matchAll(/"\$ref":"#\/components\/schemas\/([^"]+)"/g)].map(match => match[1]);
     for (const name of refs) expect(spec.components.schemas[name]).toBeDefined();
     for (const [path, methods] of Object.entries(spec.paths)) for (const operation of Object.values(methods)) {
@@ -90,6 +98,53 @@ describe("Scalar local e contrato OpenAPI", () => {
     expect(spec.components.schemas.AvaliacaoPutPatch.properties).not.toHaveProperty("avaliado_id");
     expect(spec.components.schemas.UsuarioCompleto.readOnly).toBe(true);
     expect(spec.components.schemas.ItemDoacaoPost.properties).not.toHaveProperty("status");
+  });
+
+  test("documenta contratos nativos Better Auth e valida exemplos OpenAPI", async () => {
+    const { body: spec } = await request(app).get("/docs.json");
+    const signup = spec.paths["/api/auth/sign-up/email"].post;
+    const signin = spec.paths["/api/auth/sign-in/email"].post;
+    const getSession = spec.paths["/api/auth/get-session"].get;
+    const signout = spec.paths["/api/auth/sign-out"].post;
+    const requestReset = spec.paths["/api/auth/request-password-reset"].post;
+    const resetPassword = spec.paths["/api/auth/reset-password"].post;
+    const signupExample = signup.requestBody.content["application/json"].example;
+    const resetExample = resetPassword.requestBody.content["application/json"].example;
+
+    for (const operation of [signup, signin, signout, requestReset, resetPassword]) {
+      expect(operation.parameters).toContainEqual(expect.objectContaining({
+        name: "Origin",
+        in: "header",
+        required: true,
+      }));
+    }
+    expect(signup.security).toEqual([]);
+    expect(signin.security).toEqual([]);
+    expect(getSession.security).toEqual([{ bearerAuth: [] }, {}]);
+    expect(signout.security).toEqual([{ bearerAuth: [] }]);
+    expect(signin.responses[200].headers).toHaveProperty("Set-Cookie");
+    expect(signin.responses[200].headers).toHaveProperty("set-auth-token");
+    expect(getSession.responses[200].content["application/json"].schema.$ref).toBe("#/components/schemas/NativeAuthGetSessionResponse");
+    expect(signout.responses[200].headers).toHaveProperty("Set-Cookie");
+    expect(resetPassword.parameters).toContainEqual(expect.objectContaining({ name: "token", in: "query", required: false }));
+    expect(spec.components.schemas.NativeAuthResetPasswordRequest.required).toEqual(["newPassword"]);
+    expect(signup.responses[200].content["application/json"].schema.$ref).toBe("#/components/schemas/NativeAuthSignUpEmailResponse");
+    expect(spec.components.schemas.NativeAuthSignUpEmailRequest.additionalProperties).toBe(false);
+    expect(spec.components.schemas.NativeAuthGetSessionResponse.nullable).toBe(true);
+    expect(spec.components.schemas.NativeAuthErrorResponse.required).toEqual(["code", "message"]);
+    for (const operation of [signup, signin, signout, requestReset, resetPassword]) {
+      expect(operation.responses[403].content["application/json"].schema.$ref).toBe("#/components/schemas/NativeAuthErrorResponse");
+    }
+    for (const operation of [signup, signin, requestReset, resetPassword]) {
+      expect(operation.responses[429].content["application/json"].schema.$ref).toBe("#/components/schemas/NativeAuthRateLimitResponse");
+    }
+    const signupPasswordPattern = new RegExp(spec.components.schemas.NativeAuthSignUpEmailRequest.properties.password.pattern);
+    const resetPasswordPattern = new RegExp(spec.components.schemas.NativeAuthResetPasswordRequest.properties.newPassword.pattern);
+    expect(signupPasswordPattern.test(signupExample.password)).toBe(true);
+    expect(signupPasswordPattern.test("fraca123")).toBe(false);
+    expect(resetPasswordPattern.test(resetExample.newPassword)).toBe(true);
+    expect(resetPasswordPattern.test("fraca123")).toBe(false);
+    expect(requestReset.requestBody.content["application/json"].example.email).toMatch(/@example\.invalid$/);
   });
 
   test("API protegida continua exigindo sessão", async () => {

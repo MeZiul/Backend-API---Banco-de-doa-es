@@ -1,5 +1,31 @@
 import commonResponses from "../schemas/swaggerCommonResponses.js";
 
+const nativeAuthErrorResponse = (description) => ({
+    description,
+    content: {
+        "application/json": {
+            schema: { $ref: "#/components/schemas/NativeAuthErrorResponse" },
+        },
+    },
+});
+
+const nativeAuthRateLimitResponse = (description) => ({
+    description,
+    content: {
+        "application/json": {
+            schema: { $ref: "#/components/schemas/NativeAuthRateLimitResponse" },
+        },
+    },
+});
+
+const nativeOriginParameter = () => ({
+    name: "Origin",
+    in: "header",
+    required: true,
+    description: "Em produção, envie a origem da aplicação cadastrada em trustedOrigins. Substitua o domínio de exemplo por uma origem permitida; POSTs nativos sem Origin ou com origem não confiável podem retornar 403.",
+    schema: { type: "string", format: "uri", example: "https://frontend.example.invalid" },
+});
+
 const authPaths = {
     "/auth/login": {
         post: {
@@ -124,6 +150,179 @@ Regras de negócio:
                 403: commonResponses[403](),
                 498: commonResponses[498](),
                 500: commonResponses[500](),
+            },
+        },
+    },
+    "/api/auth/sign-up/email": {
+        post: {
+            tags: ["Autenticação"],
+            summary: "Cadastro nativo com e-mail",
+            description: `Cria um usuário pelo endpoint usado pelo SDK Better Auth. O objeto é estrito: somente os campos descritos no schema são aceitos. CPF precisa ser válido e ainda não cadastrado; a senha segue a política DoaI.
+
+O cadastro está configurado com autoSignIn=false: a resposta contém token=null e não cria sessão. Envie Origin de trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
+            security: [],
+            parameters: [nativeOriginParameter()],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/NativeAuthSignUpEmailRequest" },
+                        example: {
+                            name: "Ana Exemplo",
+                            email: "ana.exemplo@example.invalid",
+                            password: "Exemplo@123",
+                            cpf: "52998224725",
+                            telefone: "(65) 90000-0000",
+                            cidade: "Cuiabá",
+                            uf: "MT",
+                            bio: "Perfil de demonstração.",
+                        },
+                    },
+                },
+            },
+            responses: {
+                200: {
+                    description: "Usuário criado; nenhum login automático ou sessão é criado.",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthSignUpEmailResponse" } } },
+                },
+                400: nativeAuthErrorResponse("Dados inválidos, CPF inválido ou senha fora da política. Body nativo {code,message} (com issues quando aplicável)."),
+                403: nativeAuthErrorResponse("Origin ausente/não confiável em chamada protegida por CSRF, ou acesso recusado."),
+                409: nativeAuthErrorResponse("CPF já cadastrado."),
+                429: nativeAuthRateLimitResponse("Limite de cadastros excedido."),
+                500: nativeAuthErrorResponse("Falha inesperada no Better Auth."),
+            },
+        },
+    },
+    "/api/auth/sign-in/email": {
+        post: {
+            tags: ["Autenticação"],
+            summary: "Login nativo com e-mail",
+            description: `Autentica pelo SDK Better Auth e cria uma sessão persistida. A resposta contém o token opaco também disponível no header set-auth-token e instala o cookie de sessão para clientes de navegador. O token não é JWT; informe-o no campo HTTP Bearer do Scalar ou em Authorization: Bearer <token>.
+
+Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
+            security: [],
+            parameters: [nativeOriginParameter()],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/NativeAuthSignInEmailRequest" },
+                        example: { email: "ana.exemplo@example.invalid", password: "Exemplo@123" },
+                    },
+                },
+            },
+            responses: {
+                200: {
+                    description: "Sessão criada; token opaco no body e em set-auth-token, além do cookie para navegador.",
+                    headers: {
+                        "Set-Cookie": { description: "Cookie de sessão Better Auth para clientes de navegador.", schema: { type: "string" } },
+                        "set-auth-token": { description: "Token opaco da sessão emitido pelo plugin Bearer.", schema: { type: "string", example: "<token-opaco-de-sessao>" } },
+                    },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthSignInEmailResponse" } } },
+                },
+                400: nativeAuthErrorResponse("E-mail ou corpo inválido."),
+                401: nativeAuthErrorResponse("Credenciais inválidas."),
+                403: nativeAuthErrorResponse("Origin ausente/não confiável em chamada protegida por CSRF, ou conta não ativa."),
+                429: nativeAuthRateLimitResponse("Limite de tentativas de login excedido."),
+                500: nativeAuthErrorResponse("Falha inesperada no Better Auth."),
+            },
+        },
+    },
+    "/api/auth/get-session": {
+        get: {
+            tags: ["Autenticação"],
+            summary: "Consultar sessão nativa atual",
+            description: `Consulta a sessão atual por cookie ou Bearer. A autenticação Bearer é opcional: quando não há sessão válida, a resposta HTTP 200 tem body null. GET não exige Origin.`,
+            security: [{ bearerAuth: [] }, {}],
+            responses: {
+                200: {
+                    description: "Sessão e usuário atuais, ou null se não houver sessão válida.",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthGetSessionResponse" } } },
+                },
+                500: nativeAuthErrorResponse("Falha inesperada no Better Auth."),
+            },
+        },
+    },
+    "/api/auth/sign-out": {
+        post: {
+            tags: ["Autenticação"],
+            summary: "Encerrar sessão nativa",
+            description: `Encerra a sessão indicada pelo Bearer opaco ou cookie Better Auth. O plugin Bearer converte Authorization em cookie de sessão para o handler e o logout revoga a sessão persistida; envie o token com o prefixo Bearer. A resposta limpa o cookie de sessão.
+
+Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
+            security: [{ bearerAuth: [] }],
+            parameters: [nativeOriginParameter()],
+            responses: {
+                200: {
+                    description: "Logout concluído; cookie de sessão é expirado quando presente.",
+                    headers: { "Set-Cookie": { description: "Expira o cookie de sessão Better Auth quando presente.", schema: { type: "string" } } },
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthSignOutResponse" } } },
+                },
+                403: nativeAuthErrorResponse("Origin ausente/não confiável em chamada protegida por CSRF."),
+                500: nativeAuthErrorResponse("Falha inesperada no Better Auth."),
+            },
+        },
+    },
+    "/api/auth/request-password-reset": {
+        post: {
+            tags: ["Autenticação"],
+            summary: "Solicitar redefinição de senha nativa",
+            description: `Solicita a criação de um token temporário sem revelar se o e-mail existe. A resposta é genérica e não retorna o token. O envio do e-mail depende da disponibilidade/configuração de SMTP; HTTP 200 não comprova entrega. O handler atual monta o link de recuperação com FRONTEND_URL; alinhe a página de redefinição a essa origem.
+
+Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
+            security: [],
+            parameters: [nativeOriginParameter()],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/NativeAuthRequestPasswordResetRequest" },
+                        example: { email: "ana.exemplo@example.invalid", redirectTo: "https://frontend.example.invalid/redefinir-senha" },
+                    },
+                },
+            },
+            responses: {
+                200: {
+                    description: "Resposta genérica, sem revelar se o e-mail está cadastrado e sem incluir o token.",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthRequestPasswordResetResponse" } } },
+                },
+                400: nativeAuthErrorResponse("E-mail ou corpo inválido."),
+                403: nativeAuthErrorResponse("Origin ausente/não confiável ou redirectTo não confiável."),
+                429: nativeAuthRateLimitResponse("Limite de solicitações excedido."),
+                500: nativeAuthErrorResponse("Falha inesperada no fluxo de recuperação ou no envio configurado."),
+            },
+        },
+    },
+    "/api/auth/reset-password": {
+        post: {
+            tags: ["Autenticação"],
+            summary: "Redefinir senha pelo fluxo nativo",
+            description: `Consome o token temporário e substitui a senha. O body aceita somente newPassword e token opcional; um token deve ser enviado no body ou na query. A senha deve ter 8–128 caracteres e incluir maiúscula, minúscula, número e caractere especial permitido. O token é de uso único; a configuração revoga todas as sessões anteriores do usuário.
+
+Envie Origin da aplicação cadastrada em trustedOrigins nas chamadas POST nativas em produção. Erros nativos usam {code,message} diretamente, sem o envelope legado {data,message,errors}.`,
+            security: [],
+            parameters: [
+                nativeOriginParameter(),
+                { name: "token", in: "query", required: false, description: "Token de uso único; pode ser enviado aqui ou no body.", schema: { type: "string" } },
+            ],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: { $ref: "#/components/schemas/NativeAuthResetPasswordRequest" },
+                        example: { newPassword: "NovaSenha@123", token: "<token-temporario-de-recuperacao>" },
+                    },
+                },
+            },
+            responses: {
+                200: {
+                    description: "Senha alterada e sessões persistidas anteriores revogadas.",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/NativeAuthResetPasswordResponse" } } },
+                },
+                400: nativeAuthErrorResponse("Token inválido/ausente ou senha fora da política."),
+                403: nativeAuthErrorResponse("Origin ausente/não confiável."),
+                429: nativeAuthRateLimitResponse("Limite de redefinições excedido."),
+                500: nativeAuthErrorResponse("Falha inesperada no Better Auth."),
             },
         },
     },
