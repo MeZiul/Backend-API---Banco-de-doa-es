@@ -11,7 +11,22 @@ Este documento descreve o contrato público de autenticação da API DoaI após 
 - O bearer é um token de sessão opaco, não um JWT.
 - O estado e o perfil atuais do usuário são consultados no banco a cada operação protegida.
 
-Os endpoints nativos do Better Auth que poderiam alterar identidade ou credenciais estão bloqueados no handler `/api/auth/*`. Cadastro, login, recuperação, atualização e exclusão devem passar pelas rotas do DoaI para preservar Zod, CPF, permissões e regras de situação.
+O SDK do frontend usa seis endpoints nativos do Better Auth. Os contratos legados abaixo permanecem disponíveis para compatibilidade com a collection Postman; o fluxo nativo também passa pelos guards de CPF/senha e pelo controle de sessão do DoaI.
+
+## Fluxo nativo Better Auth usado pelo SDK
+
+Use `/docs` (Scalar) para os schemas OpenAPI completos dos endpoints nativos. As seis rotas são:
+
+- `POST /api/auth/sign-up/email`: body estrito com `name`, `email`, `password`, `cpf`, `cidade` e `uf`; `telefone` e `bio` são opcionais. O CPF precisa ser válido e único; a senha exige maiúscula, minúscula, número e caractere especial permitido. `autoSignIn=false`: a resposta retorna `token: null` e não cria sessão.
+- `POST /api/auth/sign-in/email`: recebe `email` e `password`; cria sessão e devolve token opaco no body (`token`) e no header `set-auth-token`, além do cookie Better Auth para clientes de navegador.
+- `GET /api/auth/get-session`: consulta a sessão pelo cookie ou Bearer. O Bearer é opcional; sem sessão válida a resposta é HTTP 200 com body `null`.
+- `POST /api/auth/sign-out`: envie `Authorization: Bearer <token-opaco>` para revogar a sessão persistida; a resposta expira o cookie Better Auth quando presente.
+- `POST /api/auth/request-password-reset`: recebe `email` e `redirectTo` opcional. Quando retorna HTTP 200, a resposta genérica não revela se o e-mail existe nem retorna o token. A entrega do link depende da configuração/disponibilidade do serviço de e-mail; HTTP 200 não comprova entrega. O link enviado atualmente usa `FRONTEND_URL` e aponta para `/redefinir-senha`.
+- `POST /api/auth/reset-password`: recebe `newPassword` e o token temporário de uso único no body ou na query. Após a redefinição, as sessões persistidas anteriores são revogadas.
+
+Nas chamadas POST nativas em produção, envie `Origin` da aplicação cadastrada em `trustedOrigins`; origem ausente ou não confiável pode ser recusada com HTTP 403. Erros Better Auth são retornados diretamente como `{ code, message }` (podem incluir `issues`), sem o envelope legado `{ data, message, errors }`.
+
+Os tokens de sessão nativos e legados são opacos e revogáveis, não são JWT e não devem ser decodificados pelo cliente.
 
 ## `POST /auth/login`
 

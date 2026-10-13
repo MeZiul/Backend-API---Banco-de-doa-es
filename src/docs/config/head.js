@@ -49,7 +49,9 @@ const getOpenApiOptions = () => ({
       version: "1.0-alpha",
       description: `API de doações com persistência PostgreSQL/Prisma e sessões opacas Better Auth.
 
-Use POST /usuario para cadastro e POST /auth/login para obter o token; envie Authorization: Bearer <token> nas rotas protegidas. O token não é JWT. Logout e troca de senha revogam sessões persistidas. Não há credenciais reais nesta documentação.
+O frontend usa os endpoints nativos Better Auth documentados em /api/auth/sign-up/email, /api/auth/sign-in/email, /api/auth/get-session, /api/auth/sign-out, /api/auth/request-password-reset e /api/auth/reset-password. O cadastro exige name, email, password, CPF válido, cidade e UF; seu retorno tem token=null porque autoSignIn=false. Em produção, POSTs nativos exigem Origin da aplicação cadastrada em trustedOrigins. Erros nativos usam {code,message} diretamente, sem o envelope legado.
+
+As rotas /usuario e /auth/* continuam disponíveis para compatibilidade com a collection Postman. O login nativo devolve token opaco em token e set-auth-token; informe-o no campo HTTP Bearer do Scalar para usar rotas protegidas. O token não é JWT. Logout e redefinição de senha revogam sessões persistidas. Exemplos usam apenas valores sintéticos, sem credenciais reais.
 
 Fluxo: criar item → manifestar interesse → doador aceitar → RESERVADO → doador confirmar entrega → AGUARDANDO_CONFIRMACAO → interessado confirmar recebimento → DOADO. A conclusão incrementa total_doacoes uma vez na mesma transação. Cancelamento e disputa de estado obedecem às regras de cada rota.
 
@@ -68,7 +70,7 @@ Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. Obje
       {
         name: "Autenticação",
         description:
-          "Rotas para login, recuperação de senha, logout e rotação de sessão opaca.",
+          "Rotas Better Auth nativas do SDK e rotas /auth legadas mantidas para compatibilidade; sessões usam token opaco, não JWT.",
       },
       {
         name: "Administração",
@@ -135,7 +137,7 @@ Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. Obje
           scheme: "bearer",
           bearerFormat: "BetterAuthSession",
           description:
-            "Token opaco e revogável retornado por POST /auth/login. Informe o token no campo HTTP Bearer do Scalar; o cliente acrescenta o prefixo Bearer.",
+            "Token opaco e revogável retornado por POST /api/auth/sign-in/email (body token ou header set-auth-token) ou POST /auth/login. Não é JWT. Informe o valor sem prefixo no campo HTTP Bearer do Scalar; o cliente acrescenta Bearer.",
         },
       },
       schemas: {
