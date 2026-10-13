@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import AutenticacaoService from "../../services/AutenticacaoService.js";
+import AutenticacaoService, { mapBetterAuthError } from "../../services/AutenticacaoService.js";
 
 const fixedNow = new Date("2026-08-25T18:00:00.000Z");
 
@@ -10,6 +10,14 @@ const createApiError = (code, statusCode = 400) => {
   error.body = { code };
   return error;
 };
+
+test("mantém prazo e motivo de suspensão no erro legado sem criar sessão", () => {
+  const error = createApiError("ACCOUNT_SUSPENDED", 403);
+  error.body.message = "Conta suspensa até 20/10/2026. Motivo: Validação de compatibilidade";
+  const mapped = mapBetterAuthError(error);
+  expect(mapped.statusCode).toBe(403);
+  expect(mapped.customMessage).toBe(error.body.message);
+});
 
 describe("AutenticacaoService", () => {
   let api;
