@@ -34,7 +34,7 @@ import perfil from "./perfilRoutes.js";
 dotenv.config();
 
 const routes = (app) => {
-  if (process.env.DEBUGLOG) {
+  if (process.env.DEBUGLOG === "true") {
     app.use(logRoutes);
   }
   // rota para encaminhar da raiz para /docs
