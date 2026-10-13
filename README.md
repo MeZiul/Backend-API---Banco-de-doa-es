@@ -289,7 +289,7 @@ Os contratos públicos do DoaI foram preservados:
 - `POST /auth/refresh-token`: rotaciona o token atual e invalida imediatamente o anterior;
 - `POST /auth/esqueci-senha` e `PUT /auth/redefinir-senha`: recuperação com tokens temporários do Better Auth.
 
-O handler oficial existe em `/api/auth/*`, mas os endpoints nativos que alterariam cadastro, credenciais ou dados do usuário são bloqueados. Isso impede contornar os schemas Zod, as regras de CPF, a situação da conta e a autorização do domínio. Use sempre as rotas públicas do DoaI listadas acima.
+O frontend usa o SDK Better Auth nos endpoints nativos `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, `/api/auth/get-session`, `/api/auth/sign-out`, `/api/auth/request-password-reset` e `/api/auth/reset-password`. A configuração e os hooks da API mantêm as regras de CPF, senha, situação da conta e autorização do domínio. As rotas listadas acima continuam disponíveis para compatibilidade com a coleção Postman.
 
 ## Compatibilidade de IDs
 
@@ -306,7 +306,7 @@ Quando o frontend estiver totalmente estabilizado, o grupo pode decidir em uma m
 
 Contrato vigente:
 
-- [Contratos e requisitos atuais](./documentacao/contratos-requisitos-atuais.md): comportamento HTTP, autorização, persistência e matriz de evidências.
+- [Contratos e requisitos atuais](./documentacao/contratos-requisitos-atuais.md): comportamento HTTP, autorização e persistência.
 - `/docs`: Scalar com bundle instalado localmente, sem CDN, fontes externas, proxy, telemetria ou persistência de autorização.
 - `/docs.json`: mesmo OpenAPI 3 consumido pela interface; download importável por clientes HTTP.
 - `src/docs/paths/` define as operações; os schemas de escrita em `src/docs/schemas/currentContracts.js` derivam dos validators Zod. Regras de serviço e refinamentos condicionais continuam descritos em texto.
