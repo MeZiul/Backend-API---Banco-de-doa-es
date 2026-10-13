@@ -1,6 +1,11 @@
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "../config/betterAuth.js";
-import { loginLimiter } from "../middlewares/rateLimiters.js";
+import {
+  forgotPasswordLimiter,
+  loginLimiter,
+  passwordResetLimiter,
+  registrationLimiter,
+} from "../middlewares/rateLimiters.js";
 
 async function validateBetterAuthOrigin(req, res, next) {
   const origin = req.get("origin");
@@ -26,7 +31,25 @@ async function validateBetterAuthOrigin(req, res, next) {
 
 function registerBetterAuthRoutes(app) {
   const handler = toNodeHandler(auth);
+  app.post(
+    "/api/auth/sign-up/email",
+    registrationLimiter,
+    validateBetterAuthOrigin,
+    handler,
+  );
   app.post("/api/auth/sign-in/email", loginLimiter, validateBetterAuthOrigin, handler);
+  app.post(
+    "/api/auth/request-password-reset",
+    forgotPasswordLimiter,
+    validateBetterAuthOrigin,
+    handler,
+  );
+  app.post(
+    "/api/auth/reset-password",
+    passwordResetLimiter,
+    validateBetterAuthOrigin,
+    handler,
+  );
   app.all("/api/auth/*splat", handler);
 }
 
