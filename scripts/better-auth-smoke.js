@@ -44,7 +44,10 @@ async function run() {
       body: JSON.stringify({ email, password: "SmokeAuth@123" }),
     }),
   );
-  assert.equal(nativeLogin.status, 404);
+  assert.equal(nativeLogin.status, 200);
+  const nativePayload = await nativeLogin.json();
+  assert.ok(nativePayload.token);
+  assert.equal(nativePayload.user.id, userId);
 
   const login = await auth.api.signInEmail({
     body: { email, password: "SmokeAuth@123" },

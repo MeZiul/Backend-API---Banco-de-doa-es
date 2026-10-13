@@ -1,6 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
+import { createSessionStatusGuard } from "./sessionStatusGuard.js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { bearer } from "better-auth/plugins";
 import MailService from "../infra/MailService.js";
@@ -48,7 +49,6 @@ export const auth = betterAuth({
   trustedOrigins: getTrustedOrigins(),
   disabledPaths: [
     "/sign-up/email",
-    "/sign-in/email",
     "/request-password-reset",
     "/reset-password",
     "/change-password",
@@ -60,6 +60,13 @@ export const auth = betterAuth({
     provider: "postgresql",
     transaction: true,
   }),
+  databaseHooks: {
+    session: {
+      create: {
+        before: createSessionStatusGuard(),
+      },
+    },
+  },
   user: {
     modelName: "usuario",
     fields: {

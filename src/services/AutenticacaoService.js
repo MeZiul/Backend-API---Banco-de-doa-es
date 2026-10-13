@@ -25,6 +25,9 @@ function mapBetterAuthError(error, fallbackMessage) {
   const statusCode = error.statusCode || 400;
   const messages = {
     INVALID_EMAIL_OR_PASSWORD: "E-mail ou senha incorretos.",
+    ACCOUNT_SUSPENDED: "Conta suspensa.",
+    ACCOUNT_INACTIVE: "Conta inativa.",
+    ACCOUNT_UNAVAILABLE: "Conta indisponível.",
     INVALID_TOKEN: "Token inválido ou expirado.",
     PASSWORD_TOO_SHORT: "A senha deve ter no mínimo 8 caracteres.",
     USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL:

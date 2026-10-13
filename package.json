@@ -27,6 +27,7 @@
     "test:auth:migration": "cross-env NODE_ENV=test node scripts/better-auth-migration-smoke.js",
     "pretest:auth": "npm run prisma:generate",
     "test:auth": "cross-env NODE_ENV=test BETTER_AUTH_SECRET=doai-test-secret-not-for-production-2026 node scripts/better-auth-smoke.js",
+    "test:auth:guard": "node --test scripts/better-auth-session-guard.test.mjs",
     "pretest:auth:http": "npm run prisma:generate",
     "test:auth:http": "cross-env NODE_ENV=test BETTER_AUTH_SECRET=doai-test-secret-not-for-production-2026 node scripts/better-auth-http-smoke.js",
     "test:compat": "node --test scripts/prisma-compat.test.mjs",

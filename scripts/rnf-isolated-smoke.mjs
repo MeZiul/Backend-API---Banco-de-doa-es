@@ -56,8 +56,8 @@ try {
   const response = await req('/itemdoacao?limit=1');
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff'); assert.ok(response.headers.get('content-security-policy')); assert.ok(response.headers.get('ratelimit'));
   checks.push('Helmet and rate-limit headers present on real HTTP');
-  assert.equal((await req('/perfil')).status, 498); assert.equal((await req('/api/auth/sign-in/email', { method: 'POST' })).status, 404);
-  checks.push('Protected profile rejects anonymous with contract498 and native auth bypass stays blocked');
+  assert.equal((await req('/perfil')).status, 498); assert.equal((await req('/api/auth/sign-in/email', { method: 'POST' })).status, 400);
+  checks.push('Protected profile rejects anonymous with contract498 and native sign-in rejects a missing body');
   for (let i = 0; i < 11; i++) { const response = await req('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'invalid', senha: 'invalid' }) }); assert.equal(response.status, i === 10 ? 429 : 400); await response.arrayBuffer(); }
   checks.push('Login limiter rejects the eleventh invalid attempt');
   while (requests < 300) { const response = await req('/robots.txt'); assert.equal(response.status, 200); await response.arrayBuffer(); }
