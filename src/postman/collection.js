@@ -56,7 +56,7 @@ export function buildWebCollection() {
       const token = request.auth?.bearer?.find(({ key }) => key === 'token')?.value || authorization?.replace(/^Bearer\s+/i, '');
       return {
         id: n, name: item.name, method: request.method,
-        path: request.url.raw.replace(/^https:\/\/api\.doai\.fs\.fslab\.dev(?=\/)/, ''),
+        path: request.url.raw.replace(/^https:\/\/(?:api\.doai\.fs\.fslab\.dev|doai\.app\.fslab\.dev)(?=\/)/, ''),
         body: request.body?.raw || '',
         tokenVariable: token?.match(/^\{\{(\w+)\}\}$/)?.[1] || '',
         scriptsOmitted: item.event?.length || 0,
