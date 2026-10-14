@@ -8,12 +8,28 @@ import {
     testIds,
 } from "../test.js";
 
+const mockRevogarSessoesUsuario = jest.fn();
+
 jest.mock("../../repositories/PerfilRepository.js", () => ({
     __esModule: true,
     default: {
         atualizar: jest.fn(),
         buscarPorId: jest.fn(),
         buscarPorEmail: jest.fn(),
+    },
+}));
+
+jest.mock("../../containers/services.autenticacao.container.js", () => ({
+    __esModule: true,
+    autenticacaoService: {
+        revogarSessoesUsuario: mockRevogarSessoesUsuario,
+    },
+}));
+
+jest.mock("../../infra/PrismaTransactionManager.js", () => ({
+    __esModule: true,
+    default: {
+        run: (operation) => operation(),
     },
 }));
 
@@ -37,6 +53,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     Object.values(PerfilRepository).forEach((mockFn) => mockFn.mockReset?.());
+    mockRevogarSessoesUsuario.mockReset().mockResolvedValue(undefined);
 });
 
 describe("Rotas de Perfil (Mock Nativo)", () => {
@@ -82,6 +99,7 @@ describe("Rotas de Perfil (Mock Nativo)", () => {
             testIds.usuario,
             { situacao: "INATIVO" },
         );
+        expect(mockRevogarSessoesUsuario).toHaveBeenCalledWith(testIds.usuario);
     });
 
     describe("PATCH /admin/usuarios/:id/perfil — gerenciarAcesso", () => {

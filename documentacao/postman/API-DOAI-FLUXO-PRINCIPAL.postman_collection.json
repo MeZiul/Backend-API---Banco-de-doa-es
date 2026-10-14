@@ -9,7 +9,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "https://api.doai.fs.fslab.dev",
+      "value": "https://doai.app.fslab.dev",
       "type": "string"
     },
     {
@@ -109,12 +109,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/docs.json",
+              "raw": "https://doai.app.fslab.dev/docs.json",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -176,12 +175,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "raw": "https://doai.app.fslab.dev/auth/login",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -199,12 +197,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/categorias?ativo=true&page=1&limite=100",
+              "raw": "https://doai.app.fslab.dev/categorias?ativo=true&page=1&limite=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -294,12 +291,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao",
+              "raw": "https://doai.app.fslab.dev/itemdoacao",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -347,12 +343,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "raw": "https://doai.app.fslab.dev/auth/login",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -370,12 +365,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao?busca=Bicicleta&page=1&limit=20",
+              "raw": "https://doai.app.fslab.dev/itemdoacao?busca=Bicicleta&page=1&limit=20",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -437,12 +431,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "raw": "https://doai.app.fslab.dev/itemdoacao/{{itemId}}",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -499,12 +492,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/interesses",
+              "raw": "https://doai.app.fslab.dev/interesses",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -548,12 +540,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/interesses?itemId={{itemId}}&page=1&limit=10",
+              "raw": "https://doai.app.fslab.dev/interesses?itemId={{itemId}}&page=1&limit=10",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -590,12 +581,11 @@
               }
             ],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/notificacoes?page=1&limit=100",
+              "raw": "https://doai.app.fslab.dev/notificacoes?page=1&limit=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -669,12 +659,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/interesses/recebidos?itemId={{itemId}}&page=1&limit=10",
+              "raw": "https://doai.app.fslab.dev/interesses/recebidos?itemId={{itemId}}&page=1&limit=10",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -742,12 +731,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/interesses/{{interesseId}}/aceitar",
+              "raw": "https://doai.app.fslab.dev/interesses/{{interesseId}}/aceitar",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -772,12 +760,11 @@
               }
             ],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/notificacoes?page=1&limit=100",
+              "raw": "https://doai.app.fslab.dev/notificacoes?page=1&limit=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -836,12 +823,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "raw": "https://doai.app.fslab.dev/itemdoacao/{{itemId}}",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -881,12 +867,11 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}/confirmar-entrega",
+              "raw": "https://doai.app.fslab.dev/itemdoacao/{{itemId}}/confirmar-entrega",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -927,12 +912,11 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}/confirmar-recebimento",
+              "raw": "https://doai.app.fslab.dev/itemdoacao/{{itemId}}/confirmar-recebimento",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -963,12 +947,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/itemdoacao/{{itemId}}",
+              "raw": "https://doai.app.fslab.dev/itemdoacao/{{itemId}}",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1023,12 +1006,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/avaliacoes",
+              "raw": "https://doai.app.fslab.dev/avaliacoes",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1082,12 +1064,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/avaliacoes",
+              "raw": "https://doai.app.fslab.dev/avaliacoes",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1142,12 +1123,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/denuncias",
+              "raw": "https://doai.app.fslab.dev/denuncias",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1194,12 +1174,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/auth/login",
+              "raw": "https://doai.app.fslab.dev/auth/login",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1223,12 +1202,11 @@
               }
             ],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/notificacoes?page=1&limit=100",
+              "raw": "https://doai.app.fslab.dev/notificacoes?page=1&limit=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1304,12 +1282,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/admin/denuncias?status=EM_ANALISE&page=1&limit=10",
+              "raw": "https://doai.app.fslab.dev/admin/denuncias?status=EM_ANALISE&page=1&limit=10",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1377,12 +1354,11 @@
               }
             },
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/admin/denuncias/{{denunciaId}}/resolver",
+              "raw": "https://doai.app.fslab.dev/admin/denuncias/{{denunciaId}}/resolver",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1408,12 +1384,11 @@
               }
             ],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/notificacoes?page=1&limit=100",
+              "raw": "https://doai.app.fslab.dev/notificacoes?page=1&limit=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1466,12 +1441,11 @@
               }
             ],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/notificacoes?page=1&limit=100",
+              "raw": "https://doai.app.fslab.dev/notificacoes?page=1&limit=100",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
@@ -1540,12 +1514,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://api.doai.fs.fslab.dev/admin/usuarios/{{anaId}}",
+              "raw": "https://doai.app.fslab.dev/admin/usuarios/{{anaId}}",
               "protocol": "https",
               "host": [
-                "api",
                 "doai",
-                "fs",
+                "app",
                 "fslab",
                 "dev"
               ],
