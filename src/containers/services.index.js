@@ -12,6 +12,7 @@
 // ── Autenticação / Usuário ───────────────────────────────────────
 export { autenticacaoService } from "./services.autenticacao.container.js";
 export { usuarioService }     from "./services.usuario.container.js";
+export { perfilService }      from "./services.perfil.container.js";
 
 // ── Domínio principal ────────────────────────────────────────────
 export { categoriaService }   from "./services.categoria.container.js";

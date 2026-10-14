@@ -1,9 +1,14 @@
-import PerfilRepository from "../repositories/PerfilRepository.js";
 import { CustomError } from "../utils/helpers/index.js";
 
 class PerfilService {
-    constructor(repository) {
-        this.repository = repository;
+    constructor({
+        perfilRepository,
+        autenticacaoService,
+        transactionManager,
+    }) {
+        this.repository = perfilRepository;
+        this.autenticacaoService = autenticacaoService;
+        this.transactionManager = transactionManager;
     }
 
     alterarAcessoUsuario = async (usuarioId, dadosControle) => {
@@ -14,17 +19,19 @@ class PerfilService {
             });
         }
 
+        return this.transactionManager.run(async () => {
+            const usuarioAtualizado = await this.repository.atualizar(usuarioId, dadosControle);
 
-        const usuarioAtualizado = await this.repository.atualizar(usuarioId, dadosControle);
+            if (!usuarioAtualizado) {
+                throw new CustomError({
+                    statusCode: 404,
+                    customMessage: "Usuário alvo não encontrado."
+                });
+            }
 
-        if (!usuarioAtualizado) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: "Usuário alvo não encontrado."
-            });
-        }
-
-        return usuarioAtualizado;
+            await this.autenticacaoService.revogarSessoesUsuario(usuarioId);
+            return usuarioAtualizado;
+        });
     }
 
     buscarPerfil = async (usuarioId) => {
@@ -57,18 +64,21 @@ class PerfilService {
     }
 
     desativarPerfil = async (usuarioId) => {
-        const usuario = await this.buscarPerfil(usuarioId);
+        return this.transactionManager.run(async () => {
+            const usuario = await this.buscarPerfil(usuarioId);
 
-        if (usuario.situacao === "INATIVO") {
-            throw new CustomError({
-                statusCode: 400,
-                customMessage: "A conta já está inativa.",
-            });
-        }
+            if (usuario.situacao === "INATIVO") {
+                throw new CustomError({
+                    statusCode: 400,
+                    customMessage: "A conta já está inativa.",
+                });
+            }
 
-        await this.repository.atualizar(usuarioId, { situacao: "INATIVO" });
-        return { message: "Conta desativada com sucesso." };
+            await this.repository.atualizar(usuarioId, { situacao: "INATIVO" });
+            await this.autenticacaoService.revogarSessoesUsuario(usuarioId);
+            return { message: "Conta desativada com sucesso." };
+        });
     }
-
 }
-export default new PerfilService(PerfilRepository);
+
+export default PerfilService;

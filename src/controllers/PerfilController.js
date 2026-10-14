@@ -1,4 +1,4 @@
-import PerfilService from "../services/PerfilService.js";
+import { perfilService } from "../containers/services.index.js";
 import CommonResponse from "../utils/helpers/CommonResponse.js";
 import { atualizarPerfilSchema, gerenciarPerfilSchema } from "../utils/validators/schemas/zod/GerenciarPerfilSchema.js";
 
@@ -6,7 +6,7 @@ class PerfilController {
 
     buscar = async (req, res, next) => {
         try {
-            const usuario = await PerfilService.buscarPerfil(req.user.id);
+            const usuario = await perfilService.buscarPerfil(req.user.id);
             return CommonResponse.success(res, usuario);
         } catch (error) {
             next(error);
@@ -16,7 +16,7 @@ class PerfilController {
     atualizar = async (req, res, next) => {
         try {
             const dados = atualizarPerfilSchema.parse(req.body);
-            const usuario = await PerfilService.atualizarPerfil(req.user.id, dados);
+            const usuario = await perfilService.atualizarPerfil(req.user.id, dados);
             return CommonResponse.success(res, usuario);
         } catch (error) {
             next(error);
@@ -25,7 +25,7 @@ class PerfilController {
 
     desativar = async (req, res, next) => {
         try {
-            await PerfilService.desativarPerfil(req.user.id);
+            await perfilService.desativarPerfil(req.user.id);
             return res.status(204).send();
         } catch (error) {
             next(error);
@@ -38,7 +38,7 @@ class PerfilController {
 
             const dadosValidados = gerenciarPerfilSchema.parse(req.body);
 
-            const usuarioAtualizado = await PerfilService.alterarAcessoUsuario(id, dadosValidados);
+            const usuarioAtualizado = await perfilService.alterarAcessoUsuario(id, dadosValidados);
 
 
             return CommonResponse.success(res, usuarioAtualizado);
