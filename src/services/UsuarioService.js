@@ -21,8 +21,9 @@ class UsuarioService {
     if (emailExiste) {
       throw new CustomError({
         statusCode: 409,
-        customMessage:
-          "E-mail já cadastrado. Faça login ou recupere sua senha.",
+        errorType: 'emailAlreadyExists',
+        field: 'email',
+        customMessage: 'E-mail já cadastrado. Faça login ou recupere sua senha.'
       });
     }
 
@@ -39,7 +40,9 @@ class UsuarioService {
     if (cpfExiste) {
       throw new CustomError({
         statusCode: 409,
-        customMessage: "CPF já cadastrado. Faça login ou recupere sua senha.",
+        errorType: 'cpfAlreadyExists',
+        field: 'cpf',
+        customMessage: 'CPF já cadastrado. Faça login ou recupere sua senha.'
       });
     }
 
@@ -52,7 +55,9 @@ class UsuarioService {
       if (cpfCadastrado) {
         throw new CustomError({
           statusCode: 409,
-          customMessage: "CPF já cadastrado. Faça login ou recupere sua senha.",
+          errorType: 'cpfAlreadyExists',
+          field: 'cpf',
+          customMessage: 'CPF já cadastrado. Faça login ou recupere sua senha.'
         });
       }
       throw error;
@@ -87,7 +92,9 @@ class UsuarioService {
       if (emailExiste && emailExiste._id.toString() !== id) {
         throw new CustomError({
           statusCode: 409,
-          customMessage: "Este e-mail está em uso .",
+          errorType: 'emailAlreadyExists',
+          field: 'email',
+          customMessage: 'Este e-mail já está em uso.'
         });
       }
     }

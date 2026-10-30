@@ -8,6 +8,7 @@ import StatusService from './StatusService.js';
 import { v4 as uuidv4 } from 'uuid';
 import AuthenticationError from '../errors/AuthenticationError.js';
 import CustomError from './CustomError.js';
+import { mapPrismaError } from '../errors/prismaErrorMapper.js';
 
 /**
  * Middleware para tratamento centralizado de erros.
@@ -84,40 +85,25 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Erros conhecidos do Prisma/PostgreSQL que podem escapar dos repositories.
-  if (err.code === 'P2002') {
-    const target = Array.isArray(err?.meta?.target) ? err.meta.target : [];
-    const field = target[0] || 'campo';
-    logger.warn('Restrição única do Prisma', { target, path: req.path, requestId });
-    return CommonResponse.error(
-      res,
-      409,
-      'duplicateEntry',
-      field,
-      [{ path: field, message: 'O valor informado já está em uso.' }],
-      'Entrada duplicada.'
-    );
-  }
 
-  if (err.code === 'P2003') {
-    logger.warn('Violação de integridade referencial do Prisma', { meta: err.meta, path: req.path, requestId });
-    return CommonResponse.error(
-      res,
-      409,
-      'referentialIntegrity',
-      err?.meta?.field_name || null,
-      [{ message: 'A operação viola uma referência existente no banco de dados.' }],
-      'Operação não permitida por integridade referencial.'
-    );
-  }
+  // Converte erros conhecidos do Prisma para erros operacionais da API.
+  const prismaError = mapPrismaError(err);
 
-  if (err.code === 'P2025') {
+  if (prismaError) {
+    logger.warn('Erro conhecido do Prisma', {
+      code: err.code,
+      errorType: prismaError.errorType,
+      path: req.path,
+      requestId,
+    });
+
     return CommonResponse.error(
       res,
-      404,
-      'resourceNotFound',
-      null,
-      [{ message: 'Registro não encontrado.' }],
-      'Registro não encontrado.'
+      prismaError.statusCode,
+      prismaError.errorType,
+      prismaError.field || null,
+      prismaError.details || [],
+      prismaError.customMessage
     );
   }
 
