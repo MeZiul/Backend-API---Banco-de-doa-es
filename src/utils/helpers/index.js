@@ -10,6 +10,11 @@ export { default as asyncWrapper } from '../../middlewares/asyncWrapper.js';
 
 // Adicione outros exports conforme necessário
 
+export { getEntityId, getActorId } from "./entityHelper.js";
+export { isAdmin, ensureActorAtivo, ensureAdmin } from "./authorizationHelper.js";
+export { createConflictError, ensureExists, findOrThrow } from "./serviceHelper.js";
+export { criarNotificacao, notificar } from "./notificationHelper.js";
+
 /* Formas para importar
    import { CommonResponse, CustomError, HttpStatusCodes, errorHandler, messages, StatusService, asyncWrapper } from '../utils/helpers/index.js';
    import * as Helpers from '../utils/helpers/index.js';
