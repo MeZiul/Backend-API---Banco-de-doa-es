@@ -11,15 +11,6 @@ import dotenv from "dotenv";
 import logRoutes from "../middlewares/LogRoutesMiddleware.js";
 
 // ── Rotas de domínio ────────────────────────────────────
-/*
-import usuarios from './usuarioRoutes.js';
-import instituicoes from './instituicaoRoutes.js';
-import filas from './filaRoutes.js';
-import senhas from './senhaRoutes.js';
-import qrCodes from './qrCodeRoutes.js';
-import auditorias from './auditoriaRoutes.js';
-import landingPage from './landingPageRoutes.js';
-import dashboard from './dashboardRoutes.js'; */
 import usuario from "./usuarioRoutes.js";
 import categoria from "./categoriaRoutes.js";
 import avaliacao from "./avaliacaoRoutes.js";
