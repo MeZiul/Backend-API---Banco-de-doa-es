@@ -62,7 +62,11 @@ class InteresseService {
             });
         }
 
-        return interesse;
+        // O telefone só pode ser exibido após o aceite.
+        const incluirTelefone = interesse.status === "ACEITO";
+
+        // Busca novamente os detalhes, incluindo os telefones somente quando o interesse estiver aceito.
+        return this.repository.buscarPorIdDetalhado(id, { incluirTelefone });
     }
 
     async criar(dados, usuario) {
@@ -226,7 +230,8 @@ class InteresseService {
             })),
         ]);
 
-        return this.repository.buscarPorIdDetalhado(interesseAceito._id);
+        // Após a confirmação do aceite, retorna os dados do interesse com os telefones dos participantes.
+        return this.repository.buscarPorIdDetalhado(interesseAceito._id, { incluirTelefone: true });
     }
 
     async recusar(id, dados = {}, usuario) {

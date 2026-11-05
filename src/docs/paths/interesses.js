@@ -98,7 +98,8 @@ Regras de negócio:
 Regras de negócio:
 - A rota exige autenticação.
 - O acesso é permitido apenas ao interessado, ao doador responsável pelo item ou ao administrador.
-- Caso o interesse não exista, retorna erro apropriado.`,
+- Caso o interesse não exista, retorna erro apropriado.
+- O telefone dos participantes só é retornado quando o interesse estiver ACEITO e o solicitante possuir autorização.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -148,7 +149,8 @@ Regras de negócio:
 - O interesse deve estar PENDENTE.
 - O item precisa estar DISPONIVEL.
 - Ao aceitar, o interesse vira ACEITO, o item vira RESERVADO e os demais interesses pendentes do item são recusados automaticamente.
-- A reserva é condicional: somente uma tentativa concorrente pode vencer.`,
+- A reserva é condicional: somente uma tentativa concorrente pode vencer.
+- Após o aceite, a resposta inclui os telefones do interessado e do doador para facilitar o contato entre os participantes.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
