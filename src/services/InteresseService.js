@@ -1,4 +1,4 @@
-import { CustomError, messages } from "../utils/helpers/index.js";
+import { CustomError, messages, getEntityId, getActorId, isAdmin, ensureActorAtivo, createConflictError, findOrThrow, criarNotificacao, notificar } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class InteresseService {
@@ -363,16 +363,7 @@ class InteresseService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemDoacaoRepository.buscarPorId(id);
-
-        if (!item) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Item"),
-            });
-        }
-
-        return item;
+        return findOrThrow(() => this.itemDoacaoRepository.buscarPorId(id), "Item");
     }
 
     async ensureUsuarioAtivo(id) {
@@ -428,8 +419,7 @@ class InteresseService {
     }
 
     isAdmin(usuario) {
-        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
-        return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
+        return isAdmin(usuario);
     }
 
     isDuplicateKeyError(error) {
@@ -437,49 +427,23 @@ class InteresseService {
     }
 
     createConflictError(customMessage) {
-        return new CustomError({
-            statusCode: 409,
-            customMessage,
-        });
+        return createConflictError(customMessage);
     }
 
     ensureActorAtivo(usuario) {
-        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
-            });
-        }
-
+        return ensureActorAtivo(usuario);
     }
 
     getActorId(usuario) {
-        const actorId = usuario?.id || usuario?._id?.toString?.();
-
-        if (!actorId) {
-            throw new CustomError({
-                statusCode: 401,
-                customMessage: "Usuário autenticado não informado.",
-            });
-        }
-
-        return actorId.toString();
+        return getActorId(usuario);
     }
 
     getEntityId(entidade) {
-        const entityId = entidade?._id ?? entidade;
-        return entityId?.toString?.() ?? entityId;
+        return getEntityId(entidade);
     }
 
-    criarNotificacao({ usuarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId }) {
-        return {
-            usuario_id: this.getEntityId(usuarioId),
-            tipo,
-            titulo,
-            mensagem,
-            referencia_tipo: referenciaTipo,
-            referencia_id: this.getEntityId(referenciaId),
-        };
+    criarNotificacao(dados) {
+        return criarNotificacao(dados);
     }
 
     async listarRecusadosParaNotificacao(itemId, interesseId, dataResposta) {
@@ -491,15 +455,7 @@ class InteresseService {
     }
 
     async notificar(notificacoes) {
-        if (notificacoes.length === 0) {
-            return [];
-        }
-
-        try {
-            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(notificacoes);
-        } catch {
-            return [];
-        }
+        return notificar(this.notificacaoService, notificacoes);
     }
 }
 

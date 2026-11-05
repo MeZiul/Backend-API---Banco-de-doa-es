@@ -1,4 +1,4 @@
-import { CustomError, messages } from "../utils/helpers/index.js";
+import { CustomError, messages, getEntityId, getActorId, ensureAdmin, ensureActorAtivo, createConflictError, findOrThrow, criarNotificacao, notificar } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class AdministracaoService {
@@ -544,70 +544,27 @@ class AdministracaoService {
     }
 
     async ensureUsuarioExists(id) {
-        const usuario = await this.usuarioRepository.buscarPorId(id);
-
-        if (!usuario) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Usuário"),
-            });
-        }
-
-        return usuario;
+        return findOrThrow(() => this.usuarioRepository.buscarPorId(id), "Usuário");
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemDoacaoRepository.buscarPorId(id);
-
-        if (!item) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Item"),
-            });
-        }
-
-        return item;
+        return findOrThrow(() => this.itemDoacaoRepository.buscarPorId(id), "Item");
     }
 
     async ensureDenunciaExists(id) {
-        const denuncia = await this.denunciaRepository.buscarPorIdDetalhado(id);
-
-        if (!denuncia) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Denúncia"),
-            });
-        }
-
-        return denuncia;
+        return findOrThrow(() => this.denunciaRepository.buscarPorIdDetalhado(id), "Denúncia");
     }
 
     ensureAdmin(usuario) {
-        this.ensureActorAtivo(usuario);
-        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
-
-        if (usuario?.perfil !== "ADMINISTRADOR" && !papeis.includes("ADMINISTRADOR")) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Apenas administradores podem realizar esta operação.",
-            });
-        }
+        return ensureAdmin(usuario);
     }
 
     createConflictError(customMessage) {
-        return new CustomError({
-            statusCode: 409,
-            customMessage,
-        });
+        return createConflictError(customMessage);
     }
 
     ensureActorAtivo(usuario) {
-        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
-            });
-        }
+        return ensureActorAtivo(usuario);
     }
 
     ensureAlvoDiferenteDoAtor(usuarioId, usuarioAdmin, acao) {
@@ -620,21 +577,11 @@ class AdministracaoService {
     }
 
     getActorId(usuario) {
-        const actorId = usuario?.id || usuario?._id?.toString?.();
-
-        if (!actorId) {
-            throw new CustomError({
-                statusCode: 401,
-                customMessage: "Usuário autenticado não informado.",
-            });
-        }
-
-        return actorId.toString();
+        return getActorId(usuario);
     }
 
     getEntityId(entidade) {
-        const entityId = entidade?._id ?? entidade;
-        return entityId?.toString?.() ?? entityId;
+        return getEntityId(entidade);
     }
 
     async listarInteressesAtivosDoItem(itemId) {
@@ -707,27 +654,12 @@ class AdministracaoService {
         return null;
     }
 
-    criarNotificacao({ usuarioId, tipo, titulo, mensagem, referenciaTipo, referenciaId }) {
-        return {
-            usuario_id: this.getEntityId(usuarioId),
-            tipo,
-            titulo,
-            mensagem,
-            referencia_tipo: referenciaTipo,
-            referencia_id: this.getEntityId(referenciaId),
-        };
+    criarNotificacao(dados) {
+        return criarNotificacao(dados);
     }
 
     async notificar(notificacoes) {
-        if (notificacoes.length === 0) {
-            return [];
-        }
-
-        try {
-            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(notificacoes);
-        } catch {
-            return [];
-        }
+        return notificar(this.notificacaoService, notificacoes);
     }
 
     getAlvoModel(tipoAlvo) {
