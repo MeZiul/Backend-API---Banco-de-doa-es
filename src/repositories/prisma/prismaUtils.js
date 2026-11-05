@@ -12,22 +12,42 @@ export function isPrismaUnique(error) {
   return error?.code === "P2002";
 }
 
+/**
+ * Adapta temporariamente erros de unicidade do Prisma ao formato utilizado pela camada legada do projeto.
+ *
+ * P2002 (Prisma) -> 11000 (formato legado MongoDB)
+ *
+ * Esta função deve permanecer enquanto Services ou Controllers ainda dependerem do código 11000.
+ *
+ * @param {Error} error - Erro original do Prisma.
+ * @returns {Error} Erro adaptado ou erro original.
+ */
 export function mapPrismaErrorToLegacy(error) {
-  if (!isPrismaUnique(error)) return error;
+  if (!isPrismaUnique(error)) {
+    return error;
+  }
 
-  const target = Array.isArray(error?.meta?.target)
+  const target = Array.isArray(error?.meta?.target) 
     ? error.meta.target
     : error?.meta?.target
-      ? [error.meta.target]
-      : [];
+      ? [error.meta.target] : [];
 
-  const legacyError = new Error(error?.message || "Restrição única violada.");
-  legacyError.name = error?.name || "UniqueConstraintError";
+  // Cria um erro com mensagem genérica sem expor detalhes internos do Prisma ou do banco.
+  const legacyError = new Error('Restrição de unicidade violada.');
+
+  legacyError.name = 'UniqueConstraintError';
   legacyError.code = 11000;
+
+  // Preserva os campos envolvidos na duplicidade sem incluir os valores reais informados.
   legacyError.keyValue = Object.fromEntries(
-    target.map((field) => [field, "duplicado"]),
+    target
+      .filter((field) => typeof field === 'string')
+      .map((field) => [field, 'duplicado'])
   );
+
+  // Mantém o erro original para diagnóstico interno.
   legacyError.cause = error;
+
   return legacyError;
 }
 
