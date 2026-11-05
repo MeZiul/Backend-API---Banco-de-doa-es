@@ -185,6 +185,97 @@ describe("InteresseService", () => {
     );
   });
 
+  test("Deve retornar telefones após aceitar um interesse", async () => {
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValueOnce({
+      _id: testIds.administracao,
+      status: "PENDENTE",
+      item_id: { _id: testIds.item },
+      usuario_interessado_id: { _id: testIds.interessado },
+      usuario_doador_id: { _id: testIds.doador }
+    }).mockResolvedValueOnce({
+      _id: testIds.administracao,
+      status: "ACEITO",
+      usuario_interessado_id: {
+        _id: testIds.interessado,
+        telefone: "65999999999"
+      },
+      usuario_doador_id: {
+        _id: testIds.doador,
+        telefone: "65888888888"
+      }
+    });
+
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      usuario_id: testIds.doador,
+      titulo: "Cadeira",
+      status: "DISPONIVEL"
+    });
+
+    itemDoacaoRepository.reservarSeDisponivel.mockResolvedValue({
+      _id: testIds.item,
+      status: "RESERVADO"
+    });
+
+    interesseRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO"
+    });
+
+    interesseRepository.recusarPendentesDoItem.mockResolvedValue({
+      modifiedCount: 0
+    });
+
+    interesseRepository.listarRecusadosDoAceite.mockResolvedValue([]);
+
+    const resultado = await service.aceitar(testIds.administracao, {}, createRegularUser({ id: testIds.doador }));
+
+    expect(interesseRepository.buscarPorIdDetalhado).toHaveBeenLastCalledWith(testIds.administracao, { incluirTelefone: true });
+
+    expect(resultado.usuario_interessado_id.telefone).toBe("65999999999");
+    expect(resultado.usuario_doador_id.telefone).toBe("65888888888");
+  });
+
+  test("Deve ocultar telefones enquanto o interesse estiver pendente", async () => {
+    interesseRepository.buscarPorIdDetalhado.mockImplementation(
+      async (id, { incluirTelefone = false } = {}) => ({
+        _id: id,
+        status: "PENDENTE",
+        usuario_interessado_id: {
+          _id: testIds.interessado,
+          ...(incluirTelefone ? { telefone: "65999999999" } : {})
+        },
+        usuario_doador_id: {
+          _id: testIds.doador,
+          ...(incluirTelefone ? { telefone: "65888888888" } : {})
+        }
+      })
+    );
+
+    const resultado = await service.buscarPorId(testIds.administracao, createRegularUser({ id: testIds.interessado }));
+
+    expect(interesseRepository.buscarPorIdDetalhado).toHaveBeenLastCalledWith(testIds.administracao, { incluirTelefone: false });
+
+    expect(resultado.usuario_interessado_id).not.toHaveProperty("telefone");
+    expect(resultado.usuario_doador_id).not.toHaveProperty("telefone");
+  });
+
+  test("Deve impedir terceiros de acessar telefones de interesse aceito", async () => {
+    interesseRepository.buscarPorIdDetalhado.mockResolvedValue({
+      _id: testIds.administracao,
+      status: "ACEITO",
+      usuario_interessado_id: { _id: testIds.interessado },
+      usuario_doador_id: { _id: testIds.doador }
+    });
+
+    await expect(service.buscarPorId(
+      testIds.administracao,
+      createRegularUser({ id: testIds.usuario }))
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    expect(interesseRepository.buscarPorIdDetalhado).not.toHaveBeenCalledWith(testIds.administracao, { incluirTelefone: true });
+  });
+
   test("Falha ao consultar destinatários não deve impedir aceite", async () => {
     interesseRepository.buscarPorIdDetalhado
       .mockResolvedValueOnce({

@@ -32,7 +32,7 @@ class InteresseRepository extends BaseRepository {
     return this.mapRecord(record);
   }
 
-  async buscarPorIdDetalhado(id) {
+  async buscarPorIdDetalhado(id, { incluirTelefone = false } = {}) {
     const record = await this.delegate.findUnique({
       where: { id: String(id) },
       include: {
@@ -47,10 +47,24 @@ class InteresseRepository extends BaseRepository {
           },
         },
         usuario_interessado: {
-          select: { id: true, nome: true, email: true, cidade: true, uf: true },
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            telefone: incluirTelefone,
+            cidade: true,
+            uf: true,
+          },
         },
         usuario_doador: {
-          select: { id: true, nome: true, email: true, cidade: true, uf: true },
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            telefone: incluirTelefone,
+            cidade: true,
+            uf: true,
+          },
         },
       },
     });
