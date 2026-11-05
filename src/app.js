@@ -17,9 +17,6 @@ import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
 import { configureTrustProxy } from './config/trustProxy.js';
 import { uploadsRoot } from './config/uploads.js';
-//import fileUpload from 'express-fileupload';
-//import path, { dirname } from 'path';
-//import { fileURLToPath } from 'url';
 
 const app = express();
 
