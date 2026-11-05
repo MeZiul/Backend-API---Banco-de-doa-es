@@ -66,7 +66,25 @@ const interessesSchemas = {
     InteresseDetalhes: {
         allOf: [
             { $ref: "#/components/schemas/InteresseListagem" },
-        ],
+            {
+                type: "object",
+                description: "Quando o interesse estiver ACEITO, os participantes autorizados recebem os telefones de contato.",
+                properties: {
+                    usuario_interessado_id: {
+                        oneOf: [
+                            { $ref: "#/components/schemas/InteresseUsuarioResumo" },
+                            { $ref: "#/components/schemas/InteresseUsuarioContato" }
+                        ]
+                    },
+                    usuario_doador_id: {
+                        oneOf: [
+                            { $ref: "#/components/schemas/InteresseUsuarioResumo" },
+                            { $ref: "#/components/schemas/InteresseUsuarioContato" }
+                        ]
+                    }
+                }
+            }
+        ]
     },
     InteressePost: {
         type: "object",
@@ -95,6 +113,22 @@ const interessesSchemas = {
         type: "array",
         items: { $ref: "#/components/schemas/InteresseListagem" },
     },
+    InteresseUsuarioContato: {
+        allOf: [
+            { $ref: "#/components/schemas/InteresseUsuarioResumo" },
+            {
+                type: "object",
+                properties: {
+                    telefone: {
+                        type: "string",
+                        nullable: true,
+                        example: "65999999999",
+                        description: "Disponível apenas aos participantes quando o interesse estiver ACEITO."
+                    }
+                }
+            }
+        ]
+    }
 };
 
 export default interessesSchemas;
