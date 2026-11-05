@@ -1,13 +1,13 @@
-import { CustomError } from "../utils/helpers/index.js";
+import { CustomError, getActorId, getEntityId, findOrThrow } from "../utils/helpers/index.js";
 
 class AvaliacaoService {
 
   constructor({ avaliacaoRepository, itemDoacaoRepository, interesseRepository, usuarioRepository, transactionManager }) {
-    this.repository             = avaliacaoRepository;
-    this.itemDoacaoRepository   = itemDoacaoRepository;
-    this.interesseRepository    = interesseRepository;
-    this.usuarioRepository      = usuarioRepository;
-    this.transactionManager     = transactionManager;
+    this.repository = avaliacaoRepository;
+    this.itemDoacaoRepository = itemDoacaoRepository;
+    this.interesseRepository = interesseRepository;
+    this.usuarioRepository = usuarioRepository;
+    this.transactionManager = transactionManager;
   }
 
   async criar(dados, usuarioId) {
@@ -100,7 +100,7 @@ class AvaliacaoService {
   async buscarPorId(id) {
     return this.ensureExists(id);
   }
-  
+
   async atualizar(id, dados, usuario) {
     return this.transactionManager.run(async () => {
       const avaliacao = await this._buscarParaEscrita(id, usuario);
@@ -235,21 +235,11 @@ class AvaliacaoService {
   }
 
   getActorId(usuario) {
-    const actorId = usuario?.id || usuario?._id;
-
-    if (!actorId) {
-      throw new CustomError({
-        statusCode: 401,
-        customMessage: "Usuário autenticado não informado.",
-      });
-    }
-
-    return this.getEntityId(actorId);
+    return getActorId(usuario);
   }
 
   getEntityId(entidade) {
-    const entityId = entidade?._id ?? entidade;
-    return entityId?.toString?.() ?? entityId;
+    return getEntityId(entidade);
   }
 }
 

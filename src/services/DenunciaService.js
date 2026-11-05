@@ -1,4 +1,4 @@
-import { CustomError, messages } from "../utils/helpers/index.js";
+import { CustomError, messages, getEntityId, getActorId, isAdmin, ensureAdmin, ensureActorAtivo, createConflictError, findOrThrow } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
 
 class DenunciaService {
@@ -222,16 +222,7 @@ class DenunciaService {
     }
 
     async ensureUsuarioExists(id) {
-        const usuario = await this.usuarioRepository.buscarPorId(id);
-
-        if (!usuario) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Usuário"),
-            });
-        }
-
-        return usuario;
+        return findOrThrow(() => this.usuarioRepository.buscarPorId(id), "Usuário");
     }
 
     async ensureUsuarioAtivo(id) {
@@ -248,16 +239,7 @@ class DenunciaService {
     }
 
     async ensureItemExists(id) {
-        const item = await this.itemDoacaoRepository.buscarPorId(id);
-
-        if (!item) {
-            throw new CustomError({
-                statusCode: 404,
-                customMessage: messages.error.resourceNotFound("Item"),
-            });
-        }
-
-        return item;
+        return findOrThrow(() => this.itemDoacaoRepository.buscarPorId(id), "Item");
     }
 
     ensureEmAnalise(denuncia, mensagem) {
@@ -282,19 +264,11 @@ class DenunciaService {
     }
 
     ensureAdmin(usuario) {
-        this.ensureActorAtivo(usuario);
-
-        if (!this.isAdmin(usuario)) {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Apenas administradores podem realizar esta operação.",
-            });
-        }
+        return ensureAdmin(usuario);
     }
 
     isAdmin(usuario) {
-        const papeis = Array.isArray(usuario?.papeis) ? usuario.papeis : [];
-        return usuario?.perfil === "ADMINISTRADOR" || papeis.includes("ADMINISTRADOR");
+        return isAdmin(usuario);
     }
 
     isDuplicateKeyError(error) {
@@ -302,10 +276,7 @@ class DenunciaService {
     }
 
     createConflictError(customMessage) {
-        return new CustomError({
-            statusCode: 409,
-            customMessage,
-        });
+        return createConflictError(customMessage);
     }
 
     async notificarAdministradoresNovaDenuncia(denuncia) {
@@ -329,30 +300,15 @@ class DenunciaService {
     }
 
     ensureActorAtivo(usuario) {
-        if (usuario?.situacao && usuario.situacao !== "ATIVO") {
-            throw new CustomError({
-                statusCode: 403,
-                customMessage: "Somente usuários ativos podem realizar operações protegidas.",
-            });
-        }
+        return ensureActorAtivo(usuario);
     }
 
     getActorId(usuario) {
-        const actorId = usuario?.id || usuario?._id?.toString?.();
-
-        if (!actorId) {
-            throw new CustomError({
-                statusCode: 401,
-                customMessage: "Usuário autenticado não informado.",
-            });
-        }
-
-        return actorId.toString();
+        return getActorId(usuario);
     }
 
     getEntityId(entidade) {
-        const entityId = entidade?._id ?? entidade;
-        return entityId?.toString?.() ?? entityId;
+        return getEntityId(entidade);
     }
 }
 
