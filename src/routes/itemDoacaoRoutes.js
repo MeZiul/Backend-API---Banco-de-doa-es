@@ -8,6 +8,7 @@ import asyncWrapper from "../middlewares/asyncWrapper.js";
 import { validate } from "../middlewares/validateMiddleware.js";
 import { itemDoacaoSchema } from "../utils/validators/schemas/zod/ItemDoacaoSchema.js";
 import { itemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/ItemDoacaoQuerySchema.js";
+import { cancelarItemSchema } from "../utils/validators/schemas/zod/CancelarItemSchema.js";
 
 const router = express.Router();
 
@@ -20,8 +21,9 @@ router
     .post("/itemdoacao", AuthMiddleware, validate(itemDoacaoSchema, 'body'),
         asyncWrapper(ItemDoacaoController.criar))
 
-    .put("/itemdoacao/:id/confirmar-entrega",     AuthMiddleware,
+    .put("/itemdoacao/:id/confirmar-entrega", AuthMiddleware,
         asyncWrapper(ItemDoacaoController.confirmarEntrega))
+        
     .put("/itemdoacao/:id/confirmar-recebimento", AuthMiddleware,
         asyncWrapper(ItemDoacaoController.confirmarRecebimento))
 
@@ -35,7 +37,8 @@ router
 
     .delete("/itemdoacao/:id/fotos/:fotoId", AuthMiddleware, asyncWrapper(ImagemItemController.deletar))
 
-    .patch("/itens/:id/cancelar", AuthMiddleware, asyncWrapper(ItemDoacaoController.cancelarItem))
+    .patch("/itens/:id/cancelar", AuthMiddleware, validate(cancelarItemSchema, "body"),
+        asyncWrapper(ItemDoacaoController.cancelarItem))
 
     .get("/itens/:id/interesses", AuthMiddleware, EnsureActiveUserMiddleware,
         asyncWrapper(ItemDoacaoController.listarInteresses));
