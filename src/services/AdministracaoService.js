@@ -1,5 +1,6 @@
 import { CustomError, messages, getEntityId, getActorId, ensureAdmin, ensureActorAtivo, createConflictError, findOrThrow, criarNotificacao, notificar } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
+import logger from "../utils/logger.js";
 
 class AdministracaoService {
     constructor({
@@ -585,13 +586,11 @@ class AdministracaoService {
     }
 
     async listarInteressesAtivosDoItem(itemId) {
-        if (!this.interesseRepository?.listarAtivosPorItem) {
-            return [];
-        }
-
         try {
             return await this.interesseRepository.listarAtivosPorItem(itemId);
-        } catch {
+        } catch (erro) {
+            // O cancelamento continua; só os avisos aos interessados deixam de sair.
+            logger.warn("Falha ao listar interesses ativos do item para notificação.", { erro: erro.message });
             return [];
         }
     }

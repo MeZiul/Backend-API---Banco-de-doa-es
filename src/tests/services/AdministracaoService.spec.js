@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AdministracaoService from "../../services/AdministracaoService.js";
+import logger from "../../utils/logger.js";
 import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("AdministracaoService", () => {
@@ -652,6 +653,7 @@ describe("AdministracaoService", () => {
   });
 
   test("Falha ao consultar destinatários não deve impedir cancelamento administrativo", async () => {
+    const aviso = jest.spyOn(logger, "warn").mockImplementation(() => logger);
     itemDoacaoRepository.buscarPorId.mockResolvedValue({
       _id: testIds.item,
       titulo: "Cadeira",
@@ -669,6 +671,11 @@ describe("AdministracaoService", () => {
     await expect(
       service.cancelarItem(testIds.item, {}, createAdminUser())
     ).resolves.toMatchObject({ status: "CANCELADO" });
+    expect(aviso).toHaveBeenCalledWith(
+      "Falha ao listar interesses ativos do item para notificação.",
+      { erro: "consulta indisponível" },
+    );
+    aviso.mockRestore();
   });
 
   test("Deve notificar interessados dos itens cancelados ao inativar usuário", async () => {

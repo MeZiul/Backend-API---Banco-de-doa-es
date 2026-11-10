@@ -184,7 +184,7 @@ class UsuarioService {
       suspensao_ate: new Date(suspensao_ate),
     });
 
-    await this.autenticacaoService?.revogarSessoesUsuario?.(id);
+    await this.autenticacaoService.revogarSessoesUsuario(id);
     return usuarioSuspenso;
   }
 

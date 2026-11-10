@@ -17,6 +17,7 @@ import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
 import { configureTrustProxy } from './config/trustProxy.js';
 import { uploadsRoot } from './config/uploads.js';
+import metricasMudanca from './middlewares/MetricasMudancaMiddleware.js';
 
 const app = express();
 
@@ -26,10 +27,8 @@ configureTrustProxy(app);
 // Conexão com o banco de dados.
 DbConnect.conectar()
     .then(() => logger.info('Conexão com o banco de dados estabelecida com sucesso.'))
-    .catch((error) => {
-        logger.error('Erro ao conectar com o banco de dados:', error);
-        process.exit(1); // Encerra o processo se a conexão falhar.
-    });
+    // O DbConnect já registra o erro; aqui só encerra o processo.
+    .catch(() => process.exit(1));
 
 /* ───────────── Segurança ───────────── */
 app.use(helmet());
@@ -70,6 +69,9 @@ app.get('/robots.txt', (req, res) => {
 });
 
 app.use(compression());
+
+// Avisa o dashboard em tempo real depois de cada escrita bem-sucedida (inclui o cadastro do Better Auth).
+app.use(metricasMudanca);
 
 // O handler do Better Auth deve receber o corpo bruto antes do parser JSON do Express.
 registerBetterAuthRoutes(app);

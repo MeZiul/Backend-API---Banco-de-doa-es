@@ -1,5 +1,6 @@
 import { CustomError, messages, getEntityId, getActorId, isAdmin, ensureAdmin, ensureActorAtivo, createConflictError, findOrThrow } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
+import logger from "../utils/logger.js";
 
 class DenunciaService {
     constructor({
@@ -284,7 +285,7 @@ class DenunciaService {
             const administradores = await this.usuarioRepository.listarAdministradoresAtivos();
             const denunciaId = this.getEntityId(denuncia);
 
-            return await this.notificacaoService?.criarNotificacoesComSeguranca?.(
+            return await this.notificacaoService.criarNotificacoesComSeguranca(
                 administradores.map((administrador) => ({
                     usuario_id: this.getEntityId(administrador),
                     tipo: TIPOS_NOTIFICACAO.SISTEMA,
@@ -293,8 +294,10 @@ class DenunciaService {
                     referencia_tipo: REFERENCIAS_NOTIFICACAO.DENUNCIA,
                     referencia_id: denunciaId,
                 }))
-            ) ?? [];
-        } catch {
+            );
+        } catch (erro) {
+            // A denúncia já foi registrada; só o aviso aos administradores falhou.
+            logger.warn("Falha ao notificar administradores sobre nova denúncia.", { erro: erro.message });
             return [];
         }
     }
