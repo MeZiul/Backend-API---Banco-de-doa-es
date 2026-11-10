@@ -454,6 +454,67 @@ Regras de negócio:
             },
         },
     },
+    "/admin/metricas": {
+        get: {
+            tags: ["Administração"],
+            summary: "Consultar métricas do dashboard",
+            description: `Retorna os contadores do dashboard administrativo numa única consulta.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR e conta ativa.
+- itens soma todos os status; disponiveis e doados contam os status DISPONIVEL e DOADO.
+- denuncias conta as denúncias EM_ANALISE.`,
+            security: [{ bearerAuth: [] }],
+            responses: {
+                200: {
+                    description: "Contadores atuais.",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    data: { $ref: "#/components/schemas/MetricasAdmin" },
+                                    message: { type: "string" },
+                                    errors: { type: "array", example: [] },
+                                },
+                            },
+                        },
+                    },
+                },
+                403: commonResponses[403](),
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
+    "/admin/metricas/stream": {
+        get: {
+            tags: ["Administração"],
+            summary: "Acompanhar métricas do dashboard em tempo real (SSE)",
+            description: `Abre um stream Server-Sent Events com os contadores do dashboard.
+
+Regras de negócio:
+- A rota exige autenticação com perfil ADMINISTRADOR e conta ativa.
+- Ao conectar, envia um comentário de preenchimento, retry: 5000 e o evento metricas com os contadores atuais.
+- Envia um novo evento metricas quando uma escrita bem-sucedida muda algum contador (mudanças próximas são agrupadas em 1 s) e confere de novo a cada 60 s.
+- Envia ": ping" a cada 25 s para manter a conexão aberta.
+- A cada envio confere se a conta continua administradora e ativa; caso contrário, encerra o stream.
+- A conexão é encerrada após 10 minutos; o cliente reconecta e se autentica de novo.
+- No máximo 3 conexões simultâneas por usuário (429 ao exceder).
+- Os avisos de mudança valem para uma instância da API.`,
+            security: [{ bearerAuth: [] }],
+            responses: {
+                200: {
+                    description: "Stream de eventos metricas (data com o mesmo formato de MetricasAdmin).",
+                    content: { "text/event-stream": { schema: { type: "string" } } },
+                },
+                403: commonResponses[403](),
+                429: { description: "Limite de conexões simultâneas atingido." },
+                498: commonResponses[498](),
+                500: commonResponses[500](),
+            },
+        },
+    },
 };
 
 export default administracaoPaths;

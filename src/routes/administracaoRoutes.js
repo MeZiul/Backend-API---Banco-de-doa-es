@@ -1,5 +1,6 @@
 import express from "express";
 import AdministracaoController from "../controllers/AdministracaoController.js";
+import MetricasController from "../controllers/MetricasController.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import EnsureAdminMiddleware from "../middlewares/EnsureAdminMiddleware.js";
@@ -23,6 +24,8 @@ router
     .delete("/admin/itens/:id", ...adminOnly, asyncWrapper(AdministracaoController.cancelarItem))
     .put("/admin/itens/:id/cancelar", ...adminOnly, asyncWrapper(AdministracaoController.cancelarItem))
     .get("/admin/denuncias", ...adminOnly, asyncWrapper(AdministracaoController.listarDenuncias))
-    .put("/admin/denuncias/:id/resolver", ...adminOnly, asyncWrapper(AdministracaoController.resolverDenuncia));
+    .put("/admin/denuncias/:id/resolver", ...adminOnly, asyncWrapper(AdministracaoController.resolverDenuncia))
+    .get("/admin/metricas", ...adminOnly, asyncWrapper(MetricasController.snapshot))
+    .get("/admin/metricas/stream", ...adminOnly, asyncWrapper(MetricasController.stream));
 
 export default router;

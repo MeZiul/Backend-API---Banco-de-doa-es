@@ -64,9 +64,9 @@ describe("Scalar local e contrato OpenAPI", () => {
     expect(res.headers["content-security-policy"]).not.toContain("nonce-");
     const spec = res.body;
     expect(spec.openapi).toBe("3.0.0");
-    expect(Object.keys(spec.paths)).toHaveLength(56);
+    expect(Object.keys(spec.paths)).toHaveLength(58);
     const documented = Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods).map(method => `${method} ${path}`));
-    expect(documented).toHaveLength(77);
+    expect(documented).toHaveLength(79);
     const registered = walkRoutes(app.router.stack).filter(domainOperation);
     expect(documented.filter(domainOperation).sort()).toEqual([...new Set(registered)].sort());
     expect(documented.filter(operation => operation.includes(" /api/auth/")).sort()).toEqual([
