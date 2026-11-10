@@ -148,6 +148,13 @@
       "/src/utils/helpers/index.js",
       "/src/utils/logger.js",
       "/src/services/ImagemItemService.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/tests/**",
+      "!src/seeds/**",
+      "!src/docs/**",
+      "!src/postman/**"
     ]
   },
   "engines": {

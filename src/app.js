@@ -17,7 +17,7 @@ import logger from './utils/logger.js';
 import CommonResponse from './utils/helpers/CommonResponse.js';
 import { configureTrustProxy } from './config/trustProxy.js';
 import { uploadsRoot } from './config/uploads.js';
-import metricasMudanca from './middlewares/MetricasMudancaMiddleware.js';
+// import metricasMudanca from './middlewares/MetricasMudancaMiddleware.js';
 
 const app = express();
 
@@ -71,7 +71,7 @@ app.get('/robots.txt', (req, res) => {
 app.use(compression());
 
 // Avisa o dashboard em tempo real depois de cada escrita bem-sucedida (inclui o cadastro do Better Auth).
-app.use(metricasMudanca);
+// app.use(metricasMudanca);
 
 // O handler do Better Auth deve receber o corpo bruto antes do parser JSON do Express.
 registerBetterAuthRoutes(app);
