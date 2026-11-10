@@ -11,11 +11,10 @@ class DbConnect {
     } catch (error) {
       logger.error(`Erro na conexão com o banco de dados: ${error.message}`);
       if (process.env.NODE_ENV !== "test") {
-        try {
-          SendMail.enviaEmailErrorDbConect(error, import.meta.url, new Date());
-        } catch {
-          // O erro de e-mail não deve ocultar o erro original de banco.
-        }
+        // O envio é aguardado para que uma falha no e-mail seja registrada,
+        // sem ocultar o erro original de banco.
+        await SendMail.enviaEmailErrorDbConect(error, import.meta.url, new Date())
+          .catch((erroEmail) => logger.warn(`Falha ao enviar o e-mail de erro de banco: ${erroEmail.message}`));
       }
       throw error;
     }
