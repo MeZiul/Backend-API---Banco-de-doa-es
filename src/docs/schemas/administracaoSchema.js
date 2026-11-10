@@ -228,6 +228,18 @@ const administracaoSchemas = {
     AdministracaoUsuariosPaginado: paginatedSchema("#/components/schemas/AdministracaoUsuarioResultado"),
     AdministracaoItensPaginado: paginatedSchema("#/components/schemas/AdministracaoItemResultado"),
     AdministracaoDenunciasPaginado: paginatedSchema("#/components/schemas/AdministracaoDenunciaResultado"),
+    MetricasAdmin: {
+        type: "object",
+        properties: {
+            usuarios: { type: "integer", example: 42, description: "Usuários cadastrados (todas as situações)" },
+            ativos: { type: "integer", example: 38, description: "Usuários na situação ATIVO" },
+            itens: { type: "integer", example: 120, description: "Itens em todos os status" },
+            disponiveis: { type: "integer", example: 57, description: "Itens DISPONIVEL" },
+            doados: { type: "integer", example: 31, description: "Itens DOADO" },
+            denuncias: { type: "integer", example: 4, description: "Denúncias EM_ANALISE" },
+            atualizado_em: { type: "string", format: "date-time" },
+        },
+    },
 };
 
 export default administracaoSchemas;
