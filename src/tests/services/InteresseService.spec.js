@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import InteresseService from "../../services/InteresseService.js";
+import logger from "../../utils/logger.js";
 import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("InteresseService", () => {
@@ -277,6 +278,7 @@ describe("InteresseService", () => {
   });
 
   test("Falha ao consultar destinatários não deve impedir aceite", async () => {
+    const aviso = jest.spyOn(logger, "warn").mockImplementation(() => logger);
     interesseRepository.buscarPorIdDetalhado
       .mockResolvedValueOnce({
         _id: testIds.administracao,
@@ -314,6 +316,11 @@ describe("InteresseService", () => {
         createRegularUser({ id: testIds.doador })
       )
     ).resolves.toMatchObject({ status: "ACEITO" });
+    expect(aviso).toHaveBeenCalledWith(
+      "Falha ao listar interesses recusados para notificação.",
+      { erro: "consulta indisponível" },
+    );
+    aviso.mockRestore();
   });
 
   test("Deve notificar o interessado após recusa manual", async () => {
@@ -354,6 +361,7 @@ describe("InteresseService", () => {
   });
 
   test("Falha de notificação não deve invalidar interesse criado", async () => {
+    const aviso = jest.spyOn(logger, "warn").mockImplementation(() => logger);
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.interessado,
       situacao: "ATIVO",
@@ -381,6 +389,11 @@ describe("InteresseService", () => {
         createRegularUser({ id: testIds.interessado })
       )
     ).resolves.toMatchObject({ status: "PENDENTE" });
+    expect(aviso).toHaveBeenCalledWith(
+      "Falha ao enviar notificações.",
+      { erro: "notificação indisponível", quantidade: 1 },
+    );
+    aviso.mockRestore();
   });
 
   test("Deve cancelar interesse aceito e reabrir o item", async () => {

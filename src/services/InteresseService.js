@@ -1,5 +1,6 @@
 import { CustomError, messages, getEntityId, getActorId, isAdmin, ensureActorAtivo, createConflictError, findOrThrow, criarNotificacao, notificar } from "../utils/helpers/index.js";
 import { REFERENCIAS_NOTIFICACAO, TIPOS_NOTIFICACAO } from "../constants/notificacoes.js";
+import logger from "../utils/logger.js";
 
 class InteresseService {
     constructor({
@@ -449,7 +450,9 @@ class InteresseService {
     async listarRecusadosParaNotificacao(itemId, interesseId, dataResposta) {
         try {
             return await this.repository.listarRecusadosDoAceite(itemId, interesseId, dataResposta);
-        } catch {
+        } catch (erro) {
+            // O aceite já foi gravado; só os avisos aos recusados deixam de sair.
+            logger.warn("Falha ao listar interesses recusados para notificação.", { erro: erro.message });
             return [];
         }
     }

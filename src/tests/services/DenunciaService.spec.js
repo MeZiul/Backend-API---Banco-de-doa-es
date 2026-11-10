@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import DenunciaService from "../../services/DenunciaService.js";
+import logger from "../../utils/logger.js";
 import { createAdminUser, createRegularUser, testIds } from "../test.js";
 
 describe("DenunciaService", () => {
@@ -146,6 +147,7 @@ describe("DenunciaService", () => {
   });
 
   test("Falha ao localizar administradores não deve invalidar a denúncia criada", async () => {
+    const aviso = jest.spyOn(logger, "warn").mockImplementation(() => logger);
     usuarioRepository.buscarPorId.mockResolvedValue({
       _id: testIds.usuario,
       situacao: "ATIVO",
@@ -169,6 +171,11 @@ describe("DenunciaService", () => {
       },
       createRegularUser(),
     )).resolves.toMatchObject({ status: "EM_ANALISE" });
+    expect(aviso).toHaveBeenCalledWith(
+      "Falha ao notificar administradores sobre nova denúncia.",
+      { erro: "consulta de administradores indisponível" },
+    );
+    aviso.mockRestore();
   });
 
   test("Deve converter corrida de denúncia duplicada em conflito", async () => {
