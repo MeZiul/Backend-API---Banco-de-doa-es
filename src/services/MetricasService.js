@@ -1,6 +1,20 @@
 import { getPrisma } from "../config/prisma.js";
 import logger from "../utils/logger.js";
 
+// Mesma ordem dos enums do schema Prisma; o front mostra os gráficos nessa ordem.
+const SITUACOES_USUARIO = ["ATIVO", "SUSPENSO", "INATIVO"];
+const STATUS_ITEM = ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"];
+const STATUS_INTERESSE = ["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"];
+const STATUS_DENUNCIA = ["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"];
+
+function contarPorChave(grupos, campo, chaves) {
+    const contagem = Object.fromEntries(chaves.map((chave) => [chave, 0]));
+    for (const grupo of grupos) contagem[grupo[campo]] = grupo._count._all;
+    return contagem;
+}
+
+const somar = (contagem) => Object.values(contagem).reduce((total, quantidade) => total + quantidade, 0);
+
 /**
  * Contadores do dashboard administrativo e aviso de mudanças para o SSE.
  *
@@ -20,21 +34,36 @@ class MetricasService {
 
     async calcular() {
         const prisma = this.prisma();
-        const [usuarios, ativos, itensPorStatus, denuncias] = await prisma.$transaction([
-            prisma.usuario.count(),
-            prisma.usuario.count({ where: { situacao: "ATIVO" } }),
+        const [usuarios, itens, interesses, denuncias, meses] = await prisma.$transaction([
+            prisma.usuario.groupBy({ by: ["situacao"], _count: { _all: true } }),
             prisma.itemDoacao.groupBy({ by: ["status"], _count: { _all: true } }),
-            prisma.denuncia.count({ where: { status: "EM_ANALISE" } }),
+            prisma.interesse.groupBy({ by: ["status"], _count: { _all: true } }),
+            prisma.denuncia.groupBy({ by: ["status"], _count: { _all: true } }),
+            // Últimos 6 meses, incluindo o atual; generate_series garante uma linha (com 0) por mês.
+            prisma.$queryRaw`
+                SELECT to_char(m.mes, 'YYYY-MM') AS mes,
+                       (SELECT count(*)::int FROM "Usuario" u WHERE date_trunc('month', u.data_cadastro) = m.mes) AS usuarios,
+                       (SELECT count(*)::int FROM "ItemDoacao" i WHERE date_trunc('month', i.data_cadastro) = m.mes) AS itens
+                FROM generate_series(date_trunc('month', now()) - interval '5 months', date_trunc('month', now()), interval '1 month') AS m(mes)
+                ORDER BY m.mes`,
         ]);
-        const porStatus = Object.fromEntries(itensPorStatus.map((grupo) => [grupo.status, grupo._count._all]));
+        const usuariosPorSituacao = contarPorChave(usuarios, "situacao", SITUACOES_USUARIO);
+        const itensPorStatus = contarPorChave(itens, "status", STATUS_ITEM);
+        const denunciasPorStatus = contarPorChave(denuncias, "status", STATUS_DENUNCIA);
 
         return {
-            usuarios,
-            ativos,
-            itens: Object.values(porStatus).reduce((total, quantidade) => total + quantidade, 0),
-            disponiveis: porStatus.DISPONIVEL ?? 0,
-            doados: porStatus.DOADO ?? 0,
-            denuncias,
+            usuarios: somar(usuariosPorSituacao),
+            ativos: usuariosPorSituacao.ATIVO,
+            itens: somar(itensPorStatus),
+            disponiveis: itensPorStatus.DISPONIVEL,
+            doados: itensPorStatus.DOADO,
+            denuncias: denunciasPorStatus.EM_ANALISE,
+            // Divisões completas para os gráficos do dashboard (estados sem registros vêm com 0).
+            usuarios_por_situacao: usuariosPorSituacao,
+            itens_por_status: itensPorStatus,
+            interesses_por_status: contarPorChave(interesses, "status", STATUS_INTERESSE),
+            denuncias_por_status: denunciasPorStatus,
+            novos_por_mes: meses.map((linha) => ({ mes: linha.mes, usuarios: Number(linha.usuarios), itens: Number(linha.itens) })),
             atualizado_em: new Date().toISOString(),
         };
     }
