@@ -4,10 +4,15 @@ import logger from "../../utils/logger.js";
 
 // Banco simulado: os valores podem ser alterados durante o teste para simular mudanças.
 function criarPrisma(valores) {
+  // Imita o groupBy do Prisma: só devolve os grupos que têm registros.
+  const agrupar = (contagem, campo) => () =>
+    Object.entries(contagem).map(([chave, total]) => ({ [campo]: chave, _count: { _all: total } }));
   return {
-    usuario: { count: jest.fn(({ where } = {}) => (where ? valores.ativos : valores.usuarios)) },
-    itemDoacao: { groupBy: jest.fn(() => valores.grupos) },
-    denuncia: { count: jest.fn(() => valores.denuncias) },
+    usuario: { groupBy: jest.fn((...args) => agrupar(valores.usuarios, "situacao")(...args)) },
+    itemDoacao: { groupBy: jest.fn((...args) => agrupar(valores.itens, "status")(...args)) },
+    interesse: { groupBy: jest.fn((...args) => agrupar(valores.interesses, "status")(...args)) },
+    denuncia: { groupBy: jest.fn((...args) => agrupar(valores.denuncias, "status")(...args)) },
+    $queryRaw: jest.fn(() => valores.meses),
     $transaction: jest.fn((consultas) => Promise.all(consultas)),
   };
 }
@@ -24,14 +29,11 @@ describe("MetricasService", () => {
   beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ["nextTick", "queueMicrotask"] });
     valores = {
-      usuarios: 10,
-      ativos: 8,
-      grupos: [
-        { status: "DISPONIVEL", _count: { _all: 4 } },
-        { status: "DOADO", _count: { _all: 2 } },
-        { status: "CANCELADO", _count: { _all: 1 } },
-      ],
-      denuncias: 3,
+      usuarios: { ATIVO: 8, SUSPENSO: 2 },
+      itens: { DISPONIVEL: 4, DOADO: 2, CANCELADO: 1 },
+      interesses: { PENDENTE: 5, ACEITO: 1 },
+      denuncias: { EM_ANALISE: 3, PROCEDENTE: 1 },
+      meses: [{ mes: "2026-10", usuarios: 2, itens: 5 }, { mes: "2026-11", usuarios: 1, itens: 0 }],
     };
     prisma = criarPrisma(valores);
     service = new MetricasService({ prisma: () => prisma, atrasoMudancaMs: 1000, intervaloConferenciaMs: 60_000 });
@@ -47,15 +49,39 @@ describe("MetricasService", () => {
 
     expect(metricas).toMatchObject({ usuarios: 10, ativos: 8, itens: 7, disponiveis: 4, doados: 2, denuncias: 3 });
     expect(typeof metricas.atualizado_em).toBe("string");
-    expect(prisma.usuario.count).toHaveBeenCalledWith({ where: { situacao: "ATIVO" } });
-    expect(prisma.itemDoacao.groupBy).toHaveBeenCalledWith({ by: ["status"], _count: { _all: true } });
-    expect(prisma.denuncia.count).toHaveBeenCalledWith({ where: { status: "EM_ANALISE" } });
+    expect(prisma.usuario.groupBy).toHaveBeenCalledWith({ by: ["situacao"], _count: { _all: true } });
+    for (const modelo of [prisma.itemDoacao, prisma.interesse, prisma.denuncia]) {
+      expect(modelo.groupBy).toHaveBeenCalledWith({ by: ["status"], _count: { _all: true } });
+    }
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
-  test("status sem itens conta como zero", async () => {
-    valores.grupos = [];
-    await expect(service.calcular()).resolves.toMatchObject({ itens: 0, disponiveis: 0, doados: 0 });
+  test("devolve as divisões completas para os gráficos, na ordem dos enums e com zero nos estados vazios", async () => {
+    const metricas = await service.calcular();
+
+    expect(metricas.usuarios_por_situacao).toEqual({ ATIVO: 8, SUSPENSO: 2, INATIVO: 0 });
+    expect(metricas.itens_por_status).toEqual({ DISPONIVEL: 4, RESERVADO: 0, AGUARDANDO_CONFIRMACAO: 0, DOADO: 2, CANCELADO: 1 });
+    expect(metricas.interesses_por_status).toEqual({ PENDENTE: 5, ACEITO: 1, RECUSADO: 0, CANCELADO: 0, EXPIRADO: 0 });
+    expect(metricas.denuncias_por_status).toEqual({ EM_ANALISE: 3, PROCEDENTE: 1, IMPROCEDENTE: 0 });
+    expect(Object.keys(metricas.itens_por_status)).toEqual(["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"]);
+  });
+
+  test("série mensal sai da mesma transação e com contagens numéricas", async () => {
+    // O Postgres pode devolver count como BigInt; a série precisa chegar como número no JSON.
+    valores.meses = [{ mes: "2026-11", usuarios: 3n, itens: 4n }];
+    const metricas = await service.calcular();
+
+    expect(metricas.novos_por_mes).toEqual([{ mes: "2026-11", usuarios: 3, itens: 4 }]);
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  test("banco vazio conta tudo como zero", async () => {
+    valores.usuarios = {};
+    valores.itens = {};
+    valores.interesses = {};
+    valores.denuncias = {};
+    await expect(service.calcular()).resolves.toMatchObject({ usuarios: 0, ativos: 0, itens: 0, disponiveis: 0, doados: 0, denuncias: 0 });
   });
 
   test("não recalcula quando ninguém acompanha o dashboard", async () => {
@@ -89,7 +115,7 @@ describe("MetricasService", () => {
     await esvaziarFila();
     expect(aoMudar).toHaveBeenCalledTimes(1);
 
-    valores.denuncias = 4;
+    valores.denuncias.EM_ANALISE = 4;
     await service.publicar();
     await esvaziarFila();
     expect(aoMudar).toHaveBeenCalledTimes(2);

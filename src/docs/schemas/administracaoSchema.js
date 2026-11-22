@@ -237,9 +237,36 @@ const administracaoSchemas = {
             disponiveis: { type: "integer", example: 57, description: "Itens DISPONIVEL" },
             doados: { type: "integer", example: 31, description: "Itens DOADO" },
             denuncias: { type: "integer", example: 4, description: "Denúncias EM_ANALISE" },
+            usuarios_por_situacao: contagemPorEstado(["ATIVO", "SUSPENSO", "INATIVO"], "Usuários por situação"),
+            itens_por_status: contagemPorEstado(["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"], "Itens por status"),
+            interesses_por_status: contagemPorEstado(["PENDENTE", "ACEITO", "RECUSADO", "CANCELADO", "EXPIRADO"], "Interesses por status"),
+            denuncias_por_status: contagemPorEstado(["EM_ANALISE", "PROCEDENTE", "IMPROCEDENTE"], "Denúncias por status"),
+            novos_por_mes: {
+                type: "array",
+                description: "Cadastros dos últimos 6 meses, incluindo o atual, do mais antigo para o mais recente (0 nos meses sem cadastro)",
+                items: {
+                    type: "object",
+                    required: ["mes", "usuarios", "itens"],
+                    properties: {
+                        mes: { type: "string", example: "2026-11", description: "Ano e mês (AAAA-MM)" },
+                        usuarios: { type: "integer", minimum: 0, description: "Usuários cadastrados no mês" },
+                        itens: { type: "integer", minimum: 0, description: "Itens cadastrados no mês" },
+                    },
+                },
+            },
             atualizado_em: { type: "string", format: "date-time" },
         },
     },
 };
+
+// Todo estado do enum aparece, com 0 quando não há registros.
+function contagemPorEstado(estados, descricao) {
+    return {
+        type: "object",
+        description: `${descricao} (todos os estados, com 0 quando vazio)`,
+        required: estados,
+        properties: Object.fromEntries(estados.map((estado) => [estado, { type: "integer", minimum: 0 }])),
+    };
+}
 
 export default administracaoSchemas;
