@@ -64,6 +64,43 @@ describe("Rotas de Categoria", () => {
     });
   });
 
+  describe("GET /admin/categorias — listar com inativas (admin)", () => {
+    test("retorna 498 sem token", async () => {
+      const res = await request(app).get("/admin/categorias");
+
+      expect(res.statusCode).toBe(498);
+      expect(mockCategoriaService.listar).not.toHaveBeenCalled();
+    });
+
+    test("retorna 403 se nao for admin", async () => {
+      const res = await request(app)
+        .get("/admin/categorias")
+        .set("Authorization", usuarioAuth());
+
+      expect(res.statusCode).toBe(403);
+      expect(mockCategoriaService.listar).not.toHaveBeenCalled();
+    });
+
+    test("admin lista sem forcar apenas as ativas", async () => {
+      mockCategoriaService.listar.mockResolvedValue({ docs: [], totalDocs: 0 });
+
+      const res = await request(app)
+        .get("/admin/categorias")
+        .set("Authorization", adminAuth());
+
+      expect(res.statusCode).toBe(200);
+      expect(mockCategoriaService.listar.mock.calls[0][1]).toBeTruthy();
+    });
+
+    test("a rota publica continua sem usuario", async () => {
+      mockCategoriaService.listar.mockResolvedValue({ docs: [], totalDocs: 0 });
+
+      await request(app).get("/categorias");
+
+      expect(mockCategoriaService.listar.mock.calls[0][1]).toBeUndefined();
+    });
+  });
+
   describe("GET /categorias/:id — buscar por ID (publico)", () => {
     test("retorna 200 com categoria encontrada", async () => {
       mockCategoriaService.buscarPorId.mockResolvedValue({
