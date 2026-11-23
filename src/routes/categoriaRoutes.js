@@ -13,6 +13,9 @@ router
 
   .get("/categorias/:id",   asyncWrapper(ControCategoria.buscarPorId))
 
+  // Com req.user preenchido o service lista também as inativas (a rota pública só mostra as ativas).
+  .get("/admin/categorias", AuthMiddleware, authorize("ADMINISTRADOR"), asyncWrapper(ControCategoria.listar))
+
   .post("/categorias",      AuthMiddleware, authorize("ADMINISTRADOR"), asyncWrapper(ControCategoria.criar))
   
   .put("/categorias/:id",   AuthMiddleware, authorize("ADMINISTRADOR"), asyncWrapper(ControCategoria.atualizar))
