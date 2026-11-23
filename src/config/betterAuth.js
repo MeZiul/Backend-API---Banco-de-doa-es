@@ -1,7 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { createBetterAuthRequestGuard } from "./betterAuthRequestGuard.js";
 import { createSessionStatusGuard } from "./sessionStatusGuard.js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { bearer } from "better-auth/plugins";
@@ -49,6 +48,9 @@ export const auth = betterAuth({
   secret: getSecret(),
   trustedOrigins: getTrustedOrigins(),
   disabledPaths: [
+    "/sign-up/email",
+    "/request-password-reset",
+    "/reset-password",
     "/change-password",
     "/change-email",
     "/update-user",
@@ -64,9 +66,6 @@ export const auth = betterAuth({
         before: createSessionStatusGuard(),
       },
     },
-  },
-  hooks: {
-    before: createBetterAuthRequestGuard(),
   },
   user: {
     modelName: "usuario",
@@ -109,6 +108,13 @@ export const auth = betterAuth({
     database: { generateId: "uuid" },
   },
   plugins: [bearer()],
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      disableSignUp: true
+    }
+  }
 });
 
 export { SESSION_EXPIRES_IN_SECONDS };
