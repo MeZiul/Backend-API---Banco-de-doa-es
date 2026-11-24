@@ -652,6 +652,39 @@ describe("AdministracaoService", () => {
       .toBeGreaterThan(administracaoRepository.criar.mock.invocationCallOrder[0]);
   });
 
+  test("Cancelamento administrativo grava o motivo e avisa o doador", async () => {
+    itemDoacaoRepository.buscarPorId.mockResolvedValue({
+      _id: testIds.item,
+      titulo: "Cadeira",
+      status: "DISPONIVEL",
+      usuario_id: testIds.doador,
+    });
+    itemDoacaoRepository.atualizarSeStatus.mockResolvedValue({
+      _id: testIds.item,
+      status: "CANCELADO",
+    });
+    interesseRepository.listarAtivosPorItem.mockResolvedValue([]);
+    administracaoRepository.criar.mockResolvedValue({ _id: testIds.administracao });
+
+    await service.cancelarItem(testIds.item, { motivo: "Anúncio fora das regras." }, createAdminUser());
+
+    expect(itemDoacaoRepository.atualizarSeStatus).toHaveBeenCalledWith(
+      testIds.item,
+      "DISPONIVEL",
+      { status: "CANCELADO", motivo_cancelamento: "Anúncio fora das regras." },
+    );
+    expect(administracaoRepository.criar).toHaveBeenCalledWith(
+      expect.objectContaining({ tipo_acao: "CANCELAMENTO_ITEM", justificativa: "Anúncio fora das regras." }),
+    );
+    expect(notificacaoService.criarNotificacoesComSeguranca).toHaveBeenCalledWith([
+      expect.objectContaining({
+        usuario_id: testIds.doador,
+        tipo: "ITEM_CANCELADO",
+        mensagem: expect.stringContaining("Motivo: Anúncio fora das regras."),
+      }),
+    ]);
+  });
+
   test("Falha ao consultar destinatários não deve impedir cancelamento administrativo", async () => {
     const aviso = jest.spyOn(logger, "warn").mockImplementation(() => logger);
     itemDoacaoRepository.buscarPorId.mockResolvedValue({
