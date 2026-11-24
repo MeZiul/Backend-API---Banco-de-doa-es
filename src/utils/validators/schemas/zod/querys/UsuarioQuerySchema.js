@@ -20,7 +20,9 @@ export const UsuarioQuerySchema = z.object({
   nome: z.string().optional()
     .refine((val) => val === undefined || val.trim().length > 0, { message: "Nome não pode ser vazio" })
     .transform((val) => val?.trim()),
-  email: z.union([z.string().email("Formato de email inválido"), z.undefined()]).optional(),
+  // Busca parcial (o repositório usa "contém"), então aceita parte do endereço.
+  email: z.string().max(254, "Email deve ter no máximo 254 caracteres").optional()
+    .transform((v) => v?.trim() || undefined),
   cpf: z.string().optional()
     .refine((v) => !v || v.trim().length > 0, { message: "CPF não pode ser vazio" })
     .transform((v) => v?.trim()),
