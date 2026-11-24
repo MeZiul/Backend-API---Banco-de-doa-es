@@ -112,7 +112,7 @@ Regras de negócio:
             security: [{ bearerAuth: [] }],
             parameters: [
                 { name: "nome", in: "query", schema: { type: "string" } },
-                { name: "email", in: "query", schema: { type: "string", format: "email" } },
+                { name: "email", in: "query", schema: { type: "string", maxLength: 254 }, description: "Parte do e-mail (busca parcial, sem diferenciar maiúsculas)" },
                 { name: "cpf", in: "query", schema: { type: "string" } },
                 { name: "cidade", in: "query", schema: { type: "string" } },
                 { name: "uf", in: "query", schema: { type: "string", minLength: 2, maxLength: 2 } },
