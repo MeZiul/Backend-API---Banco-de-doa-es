@@ -263,7 +263,9 @@ Regras de negócio:
 
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
+- O motivo é obrigatório (mínimo 10 caracteres); fica gravado no item e na auditoria.
 - O item alvo passa para status CANCELADO.
+- O doador é notificado com o motivo.
 - A ação usa atualização condicional e deve ser registrada administrativamente.
 - Após o commit, os interesses ativos são consultados e seus usuários são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
@@ -271,14 +273,17 @@ Regras de negócio:
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
             ],
             requestBody: {
+                required: true,
                 content: {
                     "application/json": {
-                        schema: { $ref: "#/components/schemas/AdministracaoAcaoBody" },
+                        schema: { $ref: "#/components/schemas/ItemDoacaoCancelar" },
+                        example: { motivo: "Anúncio fora das regras da plataforma." },
                     },
                 },
             },
             responses: {
                 200: commonResponses[200]("#/components/schemas/AdministracaoItemResultado"),
+                400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
                 409: commonResponses[409](),
@@ -391,7 +396,9 @@ Regras de negócio:
 
 Regras de negócio:
 - A rota exige autenticação com perfil ADMINISTRADOR.
+- O motivo é obrigatório (mínimo 10 caracteres); fica gravado no item e na auditoria.
 - O item alvo passa para status CANCELADO.
+- O doador é notificado com o motivo.
 - A ação usa atualização condicional e deve ser registrada administrativamente.
 - Após o commit, os interesses ativos são consultados e seus usuários são notificados em modo best-effort.`,
             security: [{ bearerAuth: [] }],
@@ -399,14 +406,17 @@ Regras de negócio:
                 { name: "id", in: "path", required: true, schema: { type: "string" } },
             ],
             requestBody: {
+                required: true,
                 content: {
                     "application/json": {
-                        schema: { $ref: "#/components/schemas/AdministracaoAcaoBody" },
+                        schema: { $ref: "#/components/schemas/ItemDoacaoCancelar" },
+                        example: { motivo: "Anúncio fora das regras da plataforma." },
                     },
                 },
             },
             responses: {
                 200: commonResponses[200]("#/components/schemas/AdministracaoItemResultado"),
+                400: commonResponses[400](),
                 403: commonResponses[403](),
                 404: commonResponses[404](),
                 409: commonResponses[409](),

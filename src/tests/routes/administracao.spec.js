@@ -252,7 +252,7 @@ describe("Endpoints de Administracao", () => {
     const cancelamento = await request(app)
       .put(`/admin/itens/${testIds.item}/cancelar`)
       .set("Authorization", adminAuth())
-      .send({ acaoTomada: "Item irregular." });
+      .send({ motivo: "  Anúncio fora das regras.  ", acaoTomada: "Item irregular." });
 
     expect(lista.statusCode).toBe(200);
     expect(cancelamento.statusCode).toBe(200);
@@ -264,9 +264,23 @@ describe("Endpoints de Administracao", () => {
     }, expect.objectContaining({ id: testIds.admin }));
     expect(mockAdministracaoService.cancelarItem).toHaveBeenCalledWith(
       testIds.item,
-      expect.objectContaining({ acao_tomada: "Item irregular." }),
+      expect.objectContaining({ motivo: "Anúncio fora das regras.", acao_tomada: "Item irregular." }),
       expect.objectContaining({ id: testIds.admin })
     );
+  });
+
+  test.each([
+    ["sem motivo", {}],
+    ["motivo curto", { motivo: "curto" }],
+    ["motivo só com espaços", { motivo: "              " }],
+  ])("cancelar item exige motivo: %s", async (_caso, body) => {
+    const res = await request(app)
+      .put(`/admin/itens/${testIds.item}/cancelar`)
+      .set("Authorization", adminAuth())
+      .send(body);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockAdministracaoService.cancelarItem).not.toHaveBeenCalled();
   });
 
   test("deve listar e resolver denuncias", async () => {
@@ -328,7 +342,7 @@ describe("Endpoints de Administracao", () => {
     ["get", "/admin/denuncias", "listarDenuncias", null],
     ["put", `/admin/usuarios/${testIds.usuario}/desbloquear`, "desbloquearUsuario", {}],
     ["delete", `/admin/usuarios/${testIds.usuario}`, "inativarUsuario", {}],
-    ["put", `/admin/itens/${testIds.item}/cancelar`, "cancelarItem", {}],
+    ["put", `/admin/itens/${testIds.item}/cancelar`, "cancelarItem", { motivo: "Anúncio fora das regras." }],
   ])("deve propagar falha de %s %s", async (method, url, serviceMethod, body) => {
     mockAdministracaoService[serviceMethod].mockRejectedValue(new CustomError({
       statusCode: 409,
