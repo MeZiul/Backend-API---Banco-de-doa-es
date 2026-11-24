@@ -77,12 +77,32 @@ export const auth = betterAuth({
       updatedAt: "data_atualizacao",
     },
     additionalFields: {
-      cpf: { type: "string", required: true },
-      telefone: { type: "string", required: false },
-      cidade: { type: "string", required: true },
-      uf: { type: "string", required: true },
-      bio: { type: "string", required: false },
-    },
+      cpf: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      telefone: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      cidade: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      uf: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      bio: {
+        type: "string",
+        required: false,
+        input: false
+      }
+    }
   },
   emailAndPassword: {
     enabled: true,
@@ -112,7 +132,8 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      disableSignUp: true
+      disableSignUp: false,
+      disableImplicitSignUp: true
     }
   }
 });

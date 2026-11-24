@@ -90,10 +90,10 @@ model Usuario {
   id                       String          @id @default(uuid())
   nome                     String
   email                    String          @unique
-  cpf                      String          @unique
+  cpf                      String?          @unique
   telefone                 String?
-  cidade                   String
-  uf                       String          @db.VarChar(2)
+  cidade                   String?
+  uf                       String?          @db.VarChar(2)
   email_verificado         Boolean         @default(false)
   foto_perfil              String?
   bio                      String?         @db.VarChar(500)
