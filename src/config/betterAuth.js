@@ -101,6 +101,12 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         input: false
+      },
+      cadastro_completo: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false
       }
     }
   },

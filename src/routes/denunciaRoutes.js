@@ -3,9 +3,10 @@ import DenunciaController from "../controllers/DenunciaController.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import { asyncWrapper } from "../utils/helpers/index.js";
+import EnsureCompleteRegistrationMiddleware from "../middlewares/EnsureCompleteRegistrationMiddleware.js";
 
 const router = express.Router();
-const activeUserOnly = [AuthMiddleware, EnsureActiveUserMiddleware];
+const activeUserOnly = [AuthMiddleware, EnsureActiveUserMiddleware, EnsureCompleteRegistrationMiddleware];
 
 router
     .post("/denuncias", ...activeUserOnly, asyncWrapper(DenunciaController.criar))

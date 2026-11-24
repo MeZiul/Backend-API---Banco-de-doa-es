@@ -3,9 +3,10 @@ import InteresseController from "../controllers/InteresseController.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import EnsureActiveUserMiddleware from "../middlewares/EnsureActiveUserMiddleware.js";
 import { asyncWrapper } from "../utils/helpers/index.js";
+import EnsureCompleteRegistrationMiddleware from "../middlewares/EnsureCompleteRegistrationMiddleware.js";
 
 const router = express.Router();
-const activeUserOnly = [AuthMiddleware, EnsureActiveUserMiddleware];
+const activeUserOnly = [AuthMiddleware, EnsureActiveUserMiddleware, EnsureCompleteRegistrationMiddleware];
 
 router
     .post("/interesses", ...activeUserOnly, asyncWrapper(InteresseController.criar))

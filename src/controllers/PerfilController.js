@@ -1,7 +1,7 @@
-import { perfilService } from "../containers/services.index.js";
+import { perfilService, usuarioService } from "../containers/services.index.js";
 import CommonResponse from "../utils/helpers/CommonResponse.js";
 import { atualizarPerfilSchema, gerenciarPerfilSchema } from "../utils/validators/schemas/zod/GerenciarPerfilSchema.js";
-
+import { UsuarioCompletarCadastroSchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
 class PerfilController {
 
     buscar = async (req, res, next) => {
@@ -17,6 +17,20 @@ class PerfilController {
         try {
             const dados = atualizarPerfilSchema.parse(req.body);
             const usuario = await perfilService.atualizarPerfil(req.user.id, dados);
+            return CommonResponse.success(res, usuario);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    completarCadastro = async (req, res, next) => {
+        try {
+            // Valida os dados complementares recebidos
+            const dados = UsuarioCompletarCadastroSchema.parse(req.body);
+
+            // Utiliza exclusivamente o ID do usuário autenticado
+            const usuario = await usuarioService.completarCadastro(req.user.id, dados);
+
             return CommonResponse.success(res, usuario);
         } catch (error) {
             next(error);

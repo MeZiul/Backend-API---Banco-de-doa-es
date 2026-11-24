@@ -1,6 +1,7 @@
 import { CustomError } from "../utils/helpers/index.js";
 import { normalizarCPF, validarCPF } from "../utils/verificarCPF.js";
 
+const VERSAO_TERMOS = "1.0";
 class UsuarioService {
   constructor({
     usuarioRepository,
@@ -73,6 +74,65 @@ class UsuarioService {
     }
 
     return usuarioCriado;
+  }
+
+  async completarCadastro(id, dados) {
+    const usuario = await this.ensureExists(id);
+
+    // Somente contas ativas podem concluir o cadastro
+    if (usuario.situacao !== "ATIVO") {
+      throw new CustomError({ statusCode: 403, customMessage: "Esta conta não possui permissão para completar o cadastro" });
+    }
+
+    // Impede que a operação seja utilizada para alterar um cadastro concluído
+    if (usuario.cadastro_completo) {
+      throw new CustomError({ statusCode: 409, customMessage: "O cadastro deste usuário já está completo" });
+    }
+
+    // Confirma o aceite dos termos
+    if (dados.termos !== true) {
+      throw new CustomError({ statusCode: 400, field: "termos", customMessage: "É necessário aceitar os termos de uso" });
+    }
+
+    // Valida e normaliza o CPF
+    if (!validarCPF(dados.cpf)) {
+      throw new CustomError({ statusCode: 400, field: "cpf", customMessage: "CPF inválido" });
+    }
+
+    const cpf = normalizarCPF(dados.cpf);
+    const cpfExiste = await this.repository.buscarPorCpf(cpf);
+
+    // Permite um CPF que já pertença ao próprio usuário
+    if (cpfExiste && String(cpfExiste._id) !== String(id)) {
+      throw new CustomError({ statusCode: 409, errorType: "cpfAlreadyExists", field: "cpf", customMessage: "CPF já cadastrado" });
+    }
+
+    let usuarioAtualizado;
+
+    try {
+      usuarioAtualizado = await this.repository.completarCadastro(id, {
+        cpf,
+        telefone: dados.telefone,
+        cidade: dados.cidade,
+        uf: dados.uf,
+        termos_aceitos_em: new Date(),
+        versao_termos: VERSAO_TERMOS,
+      });
+    } catch (error) {
+      // Trata conflitos de unicidade durante requisições simultâneas
+      if (error?.code === 11000 || error?.code === "P2002") {
+        throw new CustomError({ statusCode: 409, errorType: "cpfAlreadyExists", field: "cpf", customMessage: "CPF já cadastrado" });
+      }
+
+      throw error;
+    }
+
+    // Protege contra alterações concorrentes no estado da conta
+    if (!usuarioAtualizado) {
+      throw new CustomError({ statusCode: 409, customMessage: "Não foi possível completar o cadastro. Verifique a situação atual da conta" });
+    }
+
+    return usuarioAtualizado;
   }
 
   async atualizar(id, dados, actor = null) {

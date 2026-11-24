@@ -12,6 +12,7 @@ const mapAuthenticatedUser = (usuario) => ({
   situacao: usuario.situacao,
   cidade: usuario.cidade,
   uf: usuario.uf,
+  cadastro_completo: usuario.cadastro_completo
 });
 
 const createAuthMiddleware = ({

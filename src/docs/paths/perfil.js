@@ -49,6 +49,49 @@ const perfilPaths = {
             },
         },
     },
+    "/perfil/completar-cadastro": {
+        patch: {
+            tags: ["Perfil"],
+            summary: "Completar o cadastro do usuário autenticado",
+            description: `
+Permite concluir o cadastro de um usuário autenticado
+que ainda não possui todos os dados obrigatórios.
+
+Regras de negócio:
+
+- Exige uma sessão válida.
+- O usuário deve estar ativo.
+- O cadastro ainda não pode estar completo.
+- O CPF deve ser válido e não pertencer a outro usuário.
+- O aceite dos termos de uso é obrigatório.
+- Não permite alterar nome, e-mail, senha ou perfil.
+- A data e a versão dos termos são definidas pelo servidor.
+- Após a conclusão, o usuário poderá acessar as
+  funcionalidades restritas da plataforma.
+        `,
+            security: [{ bearerAuth: [] }],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: {
+                            $ref: "#/components/schemas/PerfilCompletarCadastroRequisicao"
+                        }
+                    }
+                }
+            },
+            responses: {
+                200: commonResponses[200]("#/components/schemas/UsuarioCompleto"),
+                400: commonResponses[400](),
+                401: commonResponses[401](),
+                403: commonResponses[403](),
+                404: commonResponses[404](),
+                409: commonResponses[409](),
+                498: commonResponses[498](),
+                500: commonResponses[500]()
+            }
+        }
+    },
     "/admin/usuarios/{id}/perfil": {
         patch: {
             tags: ["Perfil"],

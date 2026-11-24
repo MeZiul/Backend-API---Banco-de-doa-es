@@ -10,17 +10,20 @@ enum PerfilUsuario {
   USUARIO
   ADMINISTRADOR
 }
+
 enum SituacaoUsuario {
   ATIVO
   SUSPENSO
   INATIVO
 }
+
 enum CondicaoItem {
   NOVO
   SEMINOVO
   USADO_BOM
   USADO_REGULAR
 }
+
 enum StatusItem {
   DISPONIVEL
   RESERVADO
@@ -28,6 +31,7 @@ enum StatusItem {
   DOADO
   CANCELADO
 }
+
 enum StatusInteresse {
   PENDENTE
   ACEITO
@@ -35,14 +39,17 @@ enum StatusInteresse {
   CANCELADO
   EXPIRADO
 }
+
 enum TipoAvaliacao {
   DOADOR_PARA_INTERESSADO
   INTERESSADO_PARA_DOADOR
 }
+
 enum TipoAlvoDenuncia {
   ITEM
   USUARIO
 }
+
 enum MotivoDenuncia {
   CONTEUDO_INAPROPRIADO
   ITEM_PROIBIDO
@@ -51,11 +58,13 @@ enum MotivoDenuncia {
   SPAM
   OUTRO
 }
+
 enum StatusDenuncia {
   EM_ANALISE
   PROCEDENTE
   IMPROCEDENTE
 }
+
 enum TipoAcaoAdministracao {
   BLOQUEIO_USUARIO
   DESBLOQUEIO_USUARIO
@@ -63,15 +72,18 @@ enum TipoAcaoAdministracao {
   CANCELAMENTO_ITEM
   RESOLUCAO_DENUNCIA
 }
+
 enum TipoAlvoAdministracao {
   USUARIO
   ITEM
   DENUNCIA
 }
+
 enum ResultadoDenuncia {
   PROCEDENTE
   IMPROCEDENTE
 }
+
 enum TipoNotificacao {
   INTERESSE_RECEBIDO
   INTERESSE_ACEITO
@@ -87,37 +99,40 @@ enum TipoNotificacao {
 }
 
 model Usuario {
-  id                       String          @id @default(uuid())
-  nome                     String
-  email                    String          @unique
-  cpf                      String?          @unique
-  telefone                 String?
-  cidade                   String?
-  uf                       String?          @db.VarChar(2)
-  email_verificado         Boolean         @default(false)
-  foto_perfil              String?
-  bio                      String?         @db.VarChar(500)
-  perfil                   PerfilUsuario   @default(USUARIO)
-  situacao                 SituacaoUsuario @default(ATIVO)
-  motivo_suspensao         String?
-  suspensao_ate            DateTime?
-  media_avaliacoes         Float           @default(0)
-  total_avaliacoes         Int             @default(0)
-  total_doacoes            Int             @default(0)
-  data_cadastro            DateTime        @default(now())
-  data_atualizacao         DateTime        @updatedAt
+  id                String          @id @default(uuid())
+  nome              String
+  email             String          @unique
+  cpf               String?         @unique
+  telefone          String?
+  cidade            String?
+  uf                String?         @db.VarChar(2)
+  email_verificado  Boolean         @default(false)
+  cadastro_completo Boolean         @default(false)
+  termos_aceitos_em DateTime?
+  versao_termos     String?
+  foto_perfil       String?
+  bio               String?         @db.VarChar(500)
+  perfil            PerfilUsuario   @default(USUARIO)
+  situacao          SituacaoUsuario @default(ATIVO)
+  motivo_suspensao  String?
+  suspensao_ate     DateTime?
+  media_avaliacoes  Float           @default(0)
+  total_avaliacoes  Int             @default(0)
+  total_doacoes     Int             @default(0)
+  data_cadastro     DateTime        @default(now())
+  data_atualizacao  DateTime        @updatedAt
 
-  itens_doacao              ItemDoacao[]     @relation("UsuarioItens")
-  interesses_manifestados   Interesse[]      @relation("UsuarioInteressado")
-  interesses_recebidos      Interesse[]      @relation("UsuarioDoador")
-  avaliacoes_feitas         Avaliacao[]      @relation("Avaliador")
-  avaliacoes_recebidas      Avaliacao[]      @relation("Avaliado")
-  denuncias_feitas          Denuncia[]       @relation("Denunciante")
-  denuncias_como_alvo       Denuncia[]       @relation("AlvoUsuario")
-  denuncias_analisadas      Denuncia[]       @relation("AdminDenuncia")
+  itens_doacao              ItemDoacao[]    @relation("UsuarioItens")
+  interesses_manifestados   Interesse[]     @relation("UsuarioInteressado")
+  interesses_recebidos      Interesse[]     @relation("UsuarioDoador")
+  avaliacoes_feitas         Avaliacao[]     @relation("Avaliador")
+  avaliacoes_recebidas      Avaliacao[]     @relation("Avaliado")
+  denuncias_feitas          Denuncia[]      @relation("Denunciante")
+  denuncias_como_alvo       Denuncia[]      @relation("AlvoUsuario")
+  denuncias_analisadas      Denuncia[]      @relation("AdminDenuncia")
   notificacoes              Notificacao[]
-  administracoes_realizadas Administracao[]  @relation("Administrador")
-  administracoes_como_alvo  Administracao[]  @relation("AdministracaoAlvoUsuario")
+  administracoes_realizadas Administracao[] @relation("Administrador")
+  administracoes_como_alvo  Administracao[] @relation("AdministracaoAlvoUsuario")
   accounts                  Account[]
   sessions                  Session[]
 
@@ -183,38 +198,39 @@ model Categoria {
   data_cadastro    DateTime     @default(now())
   data_atualizacao DateTime     @updatedAt
   itens            ItemDoacao[]
+
   @@index([ativo])
   @@index([ordem])
 }
 
 model ItemDoacao {
-  id                  String           @id @default(uuid())
+  id                  String       @id @default(uuid())
   usuario_id          String
   categoria_id        String
-  interesse_aceito_id String?          @unique
+  interesse_aceito_id String?      @unique
   titulo              String
   descricao           String
   condicao_item       CondicaoItem
   cidade              String
-  uf                  String           @db.VarChar(2)
+  uf                  String       @db.VarChar(2)
   bairro              String?
   condicoes_doacao    String?
   status              StatusItem
   motivo_cancelamento String?
   data_doacao         DateTime?
-  visualizacoes       Int              @default(0)
-  total_interesses    Int              @default(0)
-  data_cadastro       DateTime         @default(now())
-  data_atualizacao    DateTime         @updatedAt
+  visualizacoes       Int          @default(0)
+  total_interesses    Int          @default(0)
+  data_cadastro       DateTime     @default(now())
+  data_atualizacao    DateTime     @updatedAt
 
-  usuario             Usuario          @relation("UsuarioItens", fields: [usuario_id], references: [id], onDelete: Restrict)
-  categoria           Categoria        @relation(fields: [categoria_id], references: [id], onDelete: Restrict)
-  interesse_aceito    Interesse?       @relation("InteresseAceito", fields: [interesse_aceito_id], references: [id], onDelete: SetNull)
-  interesses          Interesse[]      @relation("InteressesItem")
-  fotos               FotoItemDoacao[]
-  avaliacoes          Avaliacao[]
-  denuncias           Denuncia[]       @relation("AlvoItem")
-  administracoes      Administracao[]  @relation("AdministracaoAlvoItem")
+  usuario          Usuario          @relation("UsuarioItens", fields: [usuario_id], references: [id], onDelete: Restrict)
+  categoria        Categoria        @relation(fields: [categoria_id], references: [id], onDelete: Restrict)
+  interesse_aceito Interesse?       @relation("InteresseAceito", fields: [interesse_aceito_id], references: [id], onDelete: SetNull)
+  interesses       Interesse[]      @relation("InteressesItem")
+  fotos            FotoItemDoacao[]
+  avaliacoes       Avaliacao[]
+  denuncias        Denuncia[]       @relation("AlvoItem")
+  administracoes   Administracao[]  @relation("AdministracaoAlvoItem")
 
   @@index([usuario_id])
   @@index([categoria_id])
@@ -235,6 +251,7 @@ model FotoItemDoacao {
   mime_type     String?
   data_upload   DateTime   @default(now())
   item          ItemDoacao @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
   @@index([item_id, ordem])
 }
 
@@ -252,10 +269,10 @@ model Interesse {
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
 
-  item                   ItemDoacao      @relation("InteressesItem", fields: [item_id], references: [id], onDelete: Cascade)
-  usuario_interessado    Usuario         @relation("UsuarioInteressado", fields: [usuario_interessado_id], references: [id], onDelete: Restrict)
-  usuario_doador         Usuario         @relation("UsuarioDoador", fields: [usuario_doador_id], references: [id], onDelete: Restrict)
-  item_como_aceito       ItemDoacao?     @relation("InteresseAceito")
+  item                ItemDoacao  @relation("InteressesItem", fields: [item_id], references: [id], onDelete: Cascade)
+  usuario_interessado Usuario     @relation("UsuarioInteressado", fields: [usuario_interessado_id], references: [id], onDelete: Restrict)
+  usuario_doador      Usuario     @relation("UsuarioDoador", fields: [usuario_doador_id], references: [id], onDelete: Restrict)
+  item_como_aceito    ItemDoacao? @relation("InteresseAceito")
 
   @@index([item_id])
   @@index([usuario_interessado_id])
@@ -273,9 +290,9 @@ model Avaliacao {
   tipo           TipoAvaliacao
   data_avaliacao DateTime      @default(now())
 
-  item           ItemDoacao @relation(fields: [item_id], references: [id], onDelete: Cascade)
-  avaliador      Usuario    @relation("Avaliador", fields: [avaliador_id], references: [id], onDelete: Restrict)
-  avaliado       Usuario    @relation("Avaliado", fields: [avaliado_id], references: [id], onDelete: Restrict)
+  item      ItemDoacao @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  avaliador Usuario    @relation("Avaliador", fields: [avaliador_id], references: [id], onDelete: Restrict)
+  avaliado  Usuario    @relation("Avaliado", fields: [avaliado_id], references: [id], onDelete: Restrict)
 
   @@unique([item_id, avaliador_id, tipo])
   @@index([avaliado_id])
@@ -299,11 +316,11 @@ model Denuncia {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  denunciante     Usuario          @relation("Denunciante", fields: [denunciante_id], references: [id], onDelete: Restrict)
-  alvo_item       ItemDoacao?      @relation("AlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
-  alvo_usuario    Usuario?         @relation("AlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
-  admin           Usuario?         @relation("AdminDenuncia", fields: [admin_id], references: [id], onDelete: SetNull)
-  administracoes  Administracao[]  @relation("AdministracaoAlvoDenuncia")
+  denunciante    Usuario         @relation("Denunciante", fields: [denunciante_id], references: [id], onDelete: Restrict)
+  alvo_item      ItemDoacao?     @relation("AlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
+  alvo_usuario   Usuario?        @relation("AlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
+  admin          Usuario?        @relation("AdminDenuncia", fields: [admin_id], references: [id], onDelete: SetNull)
+  administracoes Administracao[] @relation("AdministracaoAlvoDenuncia")
 
   @@index([status, data_denuncia(sort: Desc)])
   @@index([denunciante_id])
@@ -313,26 +330,26 @@ model Denuncia {
 }
 
 model Administracao {
-  id                      String                    @id @default(uuid())
+  id                      String                @id @default(uuid())
   administrador_id        String
   tipo_acao               TipoAcaoAdministracao
   tipo_alvo               TipoAlvoAdministracao
   alvo_usuario_id         String?
   alvo_item_id            String?
   alvo_denuncia_id        String?
-  justificativa           String?                   @db.VarChar(1000)
+  justificativa           String?               @db.VarChar(1000)
   suspensao_ate           DateTime?
   resultado_denuncia      ResultadoDenuncia?
-  resposta_administrativa String?                   @db.VarChar(1000)
-  acao_tomada             String?                   @db.VarChar(500)
-  data_acao               DateTime                  @default(now())
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  resposta_administrativa String?               @db.VarChar(1000)
+  acao_tomada             String?               @db.VarChar(500)
+  data_acao               DateTime              @default(now())
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
 
-  administrador           Usuario      @relation("Administrador", fields: [administrador_id], references: [id], onDelete: Restrict)
-  alvo_usuario            Usuario?     @relation("AdministracaoAlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
-  alvo_item               ItemDoacao?  @relation("AdministracaoAlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
-  alvo_denuncia           Denuncia?    @relation("AdministracaoAlvoDenuncia", fields: [alvo_denuncia_id], references: [id], onDelete: Restrict)
+  administrador Usuario     @relation("Administrador", fields: [administrador_id], references: [id], onDelete: Restrict)
+  alvo_usuario  Usuario?    @relation("AdministracaoAlvoUsuario", fields: [alvo_usuario_id], references: [id], onDelete: Restrict)
+  alvo_item     ItemDoacao? @relation("AdministracaoAlvoItem", fields: [alvo_item_id], references: [id], onDelete: Restrict)
+  alvo_denuncia Denuncia?   @relation("AdministracaoAlvoDenuncia", fields: [alvo_denuncia_id], references: [id], onDelete: Restrict)
 
   @@index([administrador_id, data_acao(sort: Desc)])
   @@index([alvo_usuario_id, data_acao(sort: Desc)])

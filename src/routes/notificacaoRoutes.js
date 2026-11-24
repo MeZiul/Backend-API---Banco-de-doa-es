@@ -4,10 +4,11 @@ import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";
 import { validate } from "../middlewares/validateMiddleware.js";
 import { notificacaoQuerySchema } from "../utils/validators/schemas/zod/querys/NotificacaoQuerySchema.js"
+import EnsureCompleteRegistrationMiddleware from "../middlewares/EnsureCompleteRegistrationMiddleware.js";
 
 const router = express.Router();
 
-router.use("/notificacoes", AuthMiddleware);
+router.use("/notificacoes", AuthMiddleware, EnsureCompleteRegistrationMiddleware);
 
 router.get("/notificacoes",
     validate(notificacaoQuerySchema, 'query'),

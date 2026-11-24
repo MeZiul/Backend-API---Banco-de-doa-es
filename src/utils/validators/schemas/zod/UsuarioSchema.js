@@ -46,6 +46,35 @@ const UsuarioUpdateSchema = UsuarioSchema.omit({ senha: true, cpf: true })
   })
   .strict();
 
+const UsuarioCompletarCadastroSchema = UsuarioSchema.pick({
+  cpf: true,
+  telefone: true,
+  cidade: true,
+  uf: true
+})
+  .extend({
+    cpf: z
+      .string()
+      .transform((cpf) => cpf.replace(/\D/g, ""))
+      .refine((cpf) => cpf.length === 11, {
+        message: "CPF inválido"
+      }),
+
+    telefone: z
+      .string()
+      .transform((telefone) => telefone.replace(/\D/g, ""))
+      .refine((telefone) => /^\d{10,11}$/.test(telefone), {
+        message: "Telefone inválido"
+      }),
+
+    termos: z.literal(true, {
+      errorMap: () => ({
+        message: "É necessário aceitar os termos de uso"
+      })
+    })
+  })
+  .strict();
+
 const UsuarioLoginSchema = z.object({
   email: z.string().email("Formato de email inválido.").min(1),
   senha: z.string().min(1, "Senha é obrigatória."),
@@ -80,9 +109,12 @@ const UsuarioResponseSchema = z
     _id: objectIdSchema,
     nome: z.string(),
     email: z.string().email(),
-    cpf: z.string(),
-    cidade: z.string(),
-    uf: z.string(),
+    cpf: z.string().nullable(),
+    cidade: z.string().nullable(),
+    uf: z.string().nullable(),
+    cadastro_completo: z.boolean(),
+    termos_aceitos_em: z.string().datetime().nullable().optional(),
+    versao_termos: z.string().nullable().optional(),
     email_verificado: z.boolean(),
     telefone: z.string().nullable().optional(),
     foto_perfil: z.string().nullable().optional(),
@@ -108,6 +140,7 @@ export {
   UsuarioExcluirSchema,
   UsuarioSuspenderSchema,
   UsuarioResponseSchema,
+  UsuarioCompletarCadastroSchema
 };
 
 const UsuarioSeedSchema = z
