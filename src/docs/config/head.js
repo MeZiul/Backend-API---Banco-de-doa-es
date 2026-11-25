@@ -49,15 +49,81 @@ const getOpenApiOptions = () => ({
       version: "1.0-alpha",
       description: `API de doações com persistência PostgreSQL/Prisma e sessões opacas Better Auth.
 
-O frontend usa os endpoints nativos Better Auth documentados em /api/auth/sign-up/email, /api/auth/sign-in/email, /api/auth/get-session, /api/auth/sign-out, /api/auth/request-password-reset e /api/auth/reset-password. O cadastro exige name, email, password, CPF válido, cidade e UF; seu retorno tem token=null porque autoSignIn=false. Em produção, POSTs nativos exigem Origin da aplicação cadastrada em trustedOrigins. Erros nativos usam {code,message} diretamente, sem o envelope legado.
+## Autenticação
 
-As rotas /usuario e /auth/* continuam disponíveis para compatibilidade com a collection Postman. O login nativo devolve token opaco em token e set-auth-token; informe-o no campo HTTP Bearer do Scalar para usar rotas protegidas. O token não é JWT. Logout e redefinição de senha revogam sessões persistidas. Exemplos usam apenas valores sintéticos, sem credenciais reais.
+A plataforma oferece dois métodos de autenticação:
 
-Fluxo: criar item → manifestar interesse → doador aceitar → RESERVADO → doador confirmar entrega → AGUARDANDO_CONFIRMACAO → interessado confirmar recebimento → DOADO. A conclusão incrementa total_doacoes uma vez na mesma transação. Cancelamento e disputa de estado obedecem às regras de cada rota.
+- Cadastro e login tradicionais, utilizando e-mail e senha.
+- Cadastro e login social, utilizando uma conta Google via OAuth 2.0.
 
-ADMINISTRADOR modera pelas rotas administrativas. Esse perfil não substitui a autorização de autoria/propriedade das rotas comuns. Avaliações e COUNT/AVG da reputação são atualizados atomicamente.
+As sessões utilizam tokens opacos e revogáveis, não JWT.
 
-Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. ObjectId legado é aceito por alguns validators, mas não implica uma persistência MongoDB.
+## Cadastro tradicional
+
+O cadastro tradicional exige nome, e-mail, senha, CPF válido, cidade e UF.
+
+Após a criação da conta, o usuário possui cadastro_completo=true.
+
+## Cadastro com Google
+
+A autenticação pelo Google é realizada pelos endpoints nativos do Better Auth.
+
+O fluxo de cadastro social ocorre nas seguintes etapas:
+
+1. Autenticação utilizando uma conta Google.
+2. Criação inicial do usuário com cadastro_completo=false.
+3. Redirecionamento para o formulário de cadastro complementar.
+4. Envio de CPF, telefone, cidade, UF e aceite dos termos.
+5. Conclusão pela rota PATCH /perfil/completar-cadastro.
+6. Atualização do cadastro_completo para true.
+
+A conclusão atualiza o usuário existente, sem criar uma nova conta.
+
+## Controle de acesso
+
+Usuários com cadastro incompleto podem consultar o próprio perfil,
+completar o cadastro, encerrar a sessão e acessar conteúdos públicos.
+
+Operações protegidas exigem autenticação válida, conta ativa e
+cadastro completo.
+
+Tentativas de acessar funcionalidades restritas com cadastro incompleto
+retornam HTTP 403, com o tipo de erro registrationIncomplete.
+
+O estado cadastral é independente da situação da conta:
+ATIVO, SUSPENSO ou INATIVO.
+
+## Segurança
+
+O backend determina a identidade do usuário pela sessão autenticada.
+
+Os campos cadastro_completo, termos_aceitos_em e versao_termos
+são controlados exclusivamente pelo servidor.
+
+O perfil ADMINISTRADOR não substitui as verificações de autoria
+e propriedade das rotas comuns.
+
+## Fluxo de doações
+
+Criar item → manifestar interesse → doador aceitar → RESERVADO →
+doador confirmar entrega → AGUARDANDO_CONFIRMACAO →
+interessado confirmar recebimento → DOADO.
+
+A conclusão incrementa total_doacoes uma vez na mesma transação.
+
+Cancelamento e disputa de estado obedecem às regras de cada rota.
+
+Avaliações e métricas de reputação são atualizadas atomicamente.
+
+## Compatibilidade
+
+Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade.
+
+ObjectId legado é aceito por alguns validators, mas não implica
+persistência MongoDB.
+
+As rotas /usuario e /auth/* permanecem disponíveis para compatibilidade
+com integrações existentes.
 
 [Baixar OpenAPI](/docs.json) · [Coleções Postman](/docs/postman)`,
       contact: {
@@ -70,12 +136,12 @@ Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. Obje
       {
         name: "Autenticação",
         description:
-          "Rotas Better Auth nativas do SDK e rotas /auth legadas mantidas para compatibilidade; sessões usam token opaco, não JWT.",
+          "Cadastro e login tradicionais, autenticação social com Google, gerenciamento de sessões e recuperação de senha.",
       },
       {
         name: "Administração",
         description:
-          "Rotas administrativas de moderação, bloqueio, inativação, cancelamento e resolução.",
+          "Consulta e atualização do próprio perfil, conclusão do cadastro complementar, desativação de conta e gerenciamento administrativo de acesso.",
       },
       {
         name: "Perfil",
@@ -84,7 +150,7 @@ Os IDs novos são UUID; _id permanece no contrato HTTP por compatibilidade. Obje
       {
         name: "Usuários",
         description:
-          "Rotas de cadastro, listagem, atualização, exclusão e moderação de usuários.",
+          "Cadastro tradicional, listagem, atualização, exclusão e moderação de usuários.",
       },
       {
         name: "Categorias",

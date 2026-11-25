@@ -94,7 +94,22 @@ class UsuarioRepository extends BaseRepository {
       throw mapPrismaErrorToLegacy(error);
     }
   }
-
+  async completarCadastro(id, dados) {
+    return this.atualizarSeSituacao(id,"ATIVO",
+      {
+        cpf: normalizarCPF(dados.cpf),
+        telefone: dados.telefone,
+        cidade: dados.cidade.trim(),
+        uf: dados.uf,
+        cadastro_completo: true,
+        termos_aceitos_em: dados.termos_aceitos_em,
+        versao_termos: dados.versao_termos
+      },
+      {
+        cadastro_completo: false
+      }
+    );
+  }
   listar({ filtros = {}, page = 1, limit = 15 }) {
     const builder = new UsuarioFilterBuilder()
       .comNome(filtros.nome)

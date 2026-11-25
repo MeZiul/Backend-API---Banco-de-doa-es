@@ -37,7 +37,7 @@ describe("AutenticacaoService", () => {
       signOut: jest.fn(),
     };
     auth = { api };
-    usuarioRepository = { buscarPorId: jest.fn() };
+    usuarioRepository = { buscarPorId: jest.fn(), atualizar: jest.fn() };
     prisma = {
       session: {
         deleteMany: jest.fn(),
@@ -67,7 +67,10 @@ describe("AutenticacaoService", () => {
   });
 
   test("cadastra Usuario e Account pelo Better Auth", async () => {
-    api.signUpEmail.mockResolvedValue({ user: { id: "usuario-1" } });
+    api.signUpEmail.mockResolvedValue({
+      user: { id: "usuario-1" }
+    });
+
     const dados = {
       nome: "Maria",
       email: "maria@doai.local",
@@ -79,19 +82,38 @@ describe("AutenticacaoService", () => {
       bio: "Doadora",
     };
 
-    await expect(service.cadastrar(dados)).resolves.toEqual({ id: "usuario-1" });
-    expect(api.signUpEmail).toHaveBeenCalledWith({
-      body: {
-        name: dados.nome,
-        email: dados.email,
-        password: dados.senha,
-        cpf: dados.cpf,
-        telefone: dados.telefone,
-        cidade: dados.cidade,
-        uf: dados.uf,
-        bio: dados.bio,
-      },
+    usuarioRepository.atualizar.mockResolvedValue({
+      _id: "usuario-1",
+      cadastro_completo: true
     });
+
+    await expect(service.cadastrar(dados))
+      .resolves.toEqual({ id: "usuario-1" });
+
+    // Verifica a criação da identidade pelo Better Auth
+    expect(api.signUpEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          name: dados.nome,
+          email: dados.email,
+          password: dados.senha
+        })
+      })
+    );
+
+    // Verifica a atualização dos dados cadastrais
+    expect(usuarioRepository.atualizar).toHaveBeenCalledWith("usuario-1", expect.objectContaining({
+      cpf: dados.cpf,
+      telefone: dados.telefone,
+      cidade: dados.cidade,
+      uf: dados.uf,
+      bio: dados.bio,
+      cadastro_completo: true
+    })
+    );
+
+    expect(api.signUpEmail).toHaveBeenCalledTimes(1);
+    expect(usuarioRepository.atualizar).toHaveBeenCalledTimes(1);
   });
 
   test("converte conflito de cadastro do Better Auth para resposta 409", async () => {
@@ -103,6 +125,7 @@ describe("AutenticacaoService", () => {
       statusCode: 409,
       customMessage: "E-mail já cadastrado. Faça login ou recupere sua senha.",
     });
+    expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
   });
 
   test("faz login e retorna token de sessao para usuario ativo", async () => {

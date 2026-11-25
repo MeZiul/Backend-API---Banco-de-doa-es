@@ -14,12 +14,14 @@ const testIds = Object.freeze({
 const createAdminUser = (overrides = {}) => ({
   id: testIds.admin,
   perfil: "ADMINISTRADOR",
+  cadastro_completo: true,
   ...overrides,
 });
 
 const createRegularUser = (overrides = {}) => ({
   id: testIds.usuario,
   perfil: "USUARIO",
+  cadastro_completo: true,
   ...overrides,
 });
 

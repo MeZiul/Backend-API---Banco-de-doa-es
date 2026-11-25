@@ -76,6 +76,16 @@ class AutenticacaoService {
         },
       });
 
+      // Completa o cadastro tradicional com os dados previamente validados pelo UsuarioService
+      await this.usuarioRepository.atualizar(result.user.id, {
+        cpf: dados.cpf,
+        telefone: dados.telefone,
+        cidade: dados.cidade,
+        uf: dados.uf,
+        bio: dados.bio,
+        cadastro_completo: true
+      });
+
       return result.user;
     } catch (error) {
       throw mapBetterAuthError(error, "Não foi possível cadastrar o usuário.");

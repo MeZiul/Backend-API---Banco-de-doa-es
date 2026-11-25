@@ -51,3 +51,158 @@ describe("UsuarioRepository", () => {
     expect(administradores[0]._id).toBe("fb55a3c6-dc66-4d46-aeb0-7fca9b3beab7");
   });
 });
+describe("UsuarioRepository - completarCadastro", () => {
+  const usuarioId = "fb55a3c6-dc66-4d46-aeb0-7fca9b3beab7";
+
+  const dataAceite = new Date("2026-11-25T12:00:00.000Z");
+
+  const dados = {
+    cpf: "529.982.247-25",
+    telefone: "69999999999",
+    cidade: " Vilhena ",
+    uf: "ro",
+    termos_aceitos_em: dataAceite,
+    versao_termos: "1.0"
+  };
+
+  // Simula a transação do Prisma sem acessar o banco real
+  const criarRepository = () => {
+    const updateMany = jest.fn();
+    const findUnique = jest.fn();
+
+    const repository = new UsuarioRepository();
+
+    repository.withTransaction = jest.fn(async (operation) =>
+      operation({
+        usuario: {
+          updateMany,
+          findUnique
+        }
+      }));
+
+    return { repository, updateMany, findUnique };
+  };
+
+  test("deve completar o cadastro de um usuário ativo", async () => {
+    const { repository, updateMany, findUnique } = criarRepository();
+
+    updateMany.mockResolvedValue({ count: 1 });
+
+    findUnique.mockResolvedValue({
+      id: usuarioId,
+      cpf: "52998224725",
+      telefone: "69999999999",
+      cidade: "Vilhena",
+      uf: "RO",
+      situacao: "ATIVO",
+      cadastro_completo: true,
+      termos_aceitos_em: dataAceite,
+      versao_termos: "1.0"
+    });
+
+    const resultado = await repository.completarCadastro(usuarioId, dados);
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: usuarioId,
+        situacao: "ATIVO",
+        cadastro_completo: false
+      },
+      data: {
+        cpf: "52998224725",
+        telefone: "69999999999",
+        cidade: "Vilhena",
+        uf: "RO",
+        cadastro_completo: true,
+        termos_aceitos_em: dataAceite,
+        versao_termos: "1.0"
+      }
+    });
+
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: usuarioId } });
+
+    expect(resultado).toMatchObject({
+      _id: usuarioId,
+      cadastro_completo: true,
+      termos_aceitos_em: dataAceite,
+      versao_termos: "1.0"
+    });
+
+    expect(repository.withTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  test("deve retornar null quando nenhuma conta atende aos filtros", async () => {
+    const { repository, updateMany, findUnique } = criarRepository();
+
+    updateMany.mockResolvedValue({ count: 0 });
+
+    const resultado = await repository.completarCadastro(usuarioId, dados);
+
+    expect(resultado).toBeNull();
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  test("deve ignorar campos não permitidos na atualização", async () => {
+    const { repository, updateMany, findUnique } = criarRepository();
+
+    updateMany.mockResolvedValue({ count: 1 });
+
+    findUnique.mockResolvedValue({ id: usuarioId, cadastro_completo: true });
+
+    await repository.completarCadastro(usuarioId, {
+      ...dados,
+      perfil: "ADMINISTRADOR",
+      situacao: "INATIVO",
+      email: "alterado@example.invalid",
+      nome: "Nome alterado",
+      cadastro_completo: false
+    });
+
+    const dadosPersistidos = updateMany.mock.calls[0][0].data;
+
+    expect(dadosPersistidos).not.toHaveProperty("perfil");
+    expect(dadosPersistidos).not.toHaveProperty("situacao");
+    expect(dadosPersistidos).not.toHaveProperty("email");
+    expect(dadosPersistidos).not.toHaveProperty("nome");
+
+    expect(dadosPersistidos.cadastro_completo).toBe(true);
+  });
+
+  test("deve tratar erro de CPF duplicado do Prisma", async () => {
+    const { repository, updateMany, findUnique } = criarRepository();
+
+    const erroPrisma = Object.assign(new Error("Restrição de unicidade"),
+      {
+        code: "P2002",
+        meta: {
+          target: ["cpf"]
+        }
+      }
+    );
+
+    updateMany.mockRejectedValue(erroPrisma);
+
+    await expect(repository.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({
+      code: 11000,
+      keyValue: {
+        cpf: "duplicado"
+      }
+    });
+
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+
+  test("deve propagar erros inesperados do banco", async () => {
+    const { repository, updateMany, findUnique, } = criarRepository();
+
+    const erro = new Error("Falha de conexão com o banco");
+
+    updateMany.mockRejectedValue(erro);
+
+    await expect(repository.completarCadastro(usuarioId, dados)
+    ).rejects.toBe(erro);
+
+    expect(findUnique).not.toHaveBeenCalled();
+  });
+});

@@ -1,7 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { createBetterAuthRequestGuard } from "./betterAuthRequestGuard.js";
 import { createSessionStatusGuard } from "./sessionStatusGuard.js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { bearer } from "better-auth/plugins";
@@ -49,6 +48,9 @@ export const auth = betterAuth({
   secret: getSecret(),
   trustedOrigins: getTrustedOrigins(),
   disabledPaths: [
+    "/sign-up/email",
+    "/request-password-reset",
+    "/reset-password",
     "/change-password",
     "/change-email",
     "/update-user",
@@ -65,9 +67,6 @@ export const auth = betterAuth({
       },
     },
   },
-  hooks: {
-    before: createBetterAuthRequestGuard(),
-  },
   user: {
     modelName: "usuario",
     fields: {
@@ -78,12 +77,38 @@ export const auth = betterAuth({
       updatedAt: "data_atualizacao",
     },
     additionalFields: {
-      cpf: { type: "string", required: true },
-      telefone: { type: "string", required: false },
-      cidade: { type: "string", required: true },
-      uf: { type: "string", required: true },
-      bio: { type: "string", required: false },
-    },
+      cpf: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      telefone: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      cidade: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      uf: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      bio: {
+        type: "string",
+        required: false,
+        input: false
+      },
+      cadastro_completo: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+        input: false
+      }
+    }
   },
   emailAndPassword: {
     enabled: true,
@@ -109,6 +134,14 @@ export const auth = betterAuth({
     database: { generateId: "uuid" },
   },
   plugins: [bearer()],
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      disableSignUp: false,
+      disableImplicitSignUp: true
+    }
+  }
 });
 
 export { SESSION_EXPIRES_IN_SECONDS };

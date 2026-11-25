@@ -127,6 +127,9 @@ function usuarioBase(overrides = {}) {
     media_avaliacoes:         0,
     total_avaliacoes:         0,
     total_doacoes:            0,
+    cadastro_completo:        true,
+    termos_aceitos_em:        null,
+    versao_termos:            null,
     ...overrides,
   };
 }
