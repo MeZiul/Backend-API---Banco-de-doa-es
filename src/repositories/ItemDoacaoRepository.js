@@ -30,6 +30,7 @@ const ADMIN_ITEM_SELECT = [
   "bairro",
   "condicoes_doacao",
   "status",
+  "motivo_cancelamento",
   "fotos",
   "data_doacao",
   "visualizacoes",

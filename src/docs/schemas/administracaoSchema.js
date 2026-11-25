@@ -211,6 +211,7 @@ const administracaoSchemas = {
                 enum: ["DISPONIVEL", "RESERVADO", "AGUARDANDO_CONFIRMACAO", "DOADO", "CANCELADO"],
                 example: "CANCELADO",
             },
+            motivo_cancelamento: { type: "string", nullable: true, example: "Anúncio fora das regras da plataforma." },
         },
     },
     AdministracaoDenunciaResultado: {

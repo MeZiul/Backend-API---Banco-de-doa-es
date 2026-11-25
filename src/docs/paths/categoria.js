@@ -63,6 +63,30 @@ Regras de negócio:
       },
     },
   },
+  "/admin/categorias": {
+    get: {
+      tags: ["Categorias"],
+      summary: "Listar categorias, inclusive inativas (admin)",
+      description: `Lista as categorias para a tela de administração.
+
+Regras de negócio:
+- A rota exige autenticação e perfil ADMINISTRADOR.
+- Diferente de GET /categorias, também devolve as categorias inativas.`,
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "nome", in: "query", schema: { type: "string" }, description: "Filtrar por nome" },
+        { name: "ativo", in: "query", schema: { type: "boolean" }, description: "Filtrar por categorias ativas/inativas" },
+        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+        { name: "limite", in: "query", schema: { type: "integer", default: 20 } },
+      ],
+      responses: {
+        200: commonResponses[200]("#/components/schemas/CategoriaPaginado"),
+        403: commonResponses[403](),
+        498: commonResponses[498](),
+        500: commonResponses[500](),
+      },
+    },
+  },
   "/categorias/{id}": {
     get: {
       security: [],

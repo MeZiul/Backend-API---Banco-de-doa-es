@@ -264,8 +264,30 @@ describe("PATCH /admin/usuarios/:id/perfil", () => {
         expectNenhumaAlteracaoDeAcesso();
     });
 
-    test("recusa concessão de nível igual ao do administrador", async () => {
+    test("permite promover usuário comum a administrador e revoga suas sessões", async () => {
         const response = await patchPerfil(testIds.doador, adminClaims(), {
+            perfil: "ADMINISTRADOR",
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body.data).toMatchObject({ _id: testIds.doador, perfil: "ADMINISTRADOR" });
+        expect(PerfilRepository.atualizar).toHaveBeenCalledWith(testIds.doador, { perfil: "ADMINISTRADOR" });
+        expect(mockRevogarSessoesUsuario).toHaveBeenCalledWith(testIds.doador);
+    });
+
+    test("permite rebaixar outro administrador a usuário comum", async () => {
+        usuariosAtuais.set(testIds.usuario, usuarioAtual(testIds.usuario, "ADMINISTRADOR"));
+        const response = await patchPerfil(testIds.usuario, adminClaims(), {
+            perfil: "USUARIO",
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(PerfilRepository.atualizar).toHaveBeenCalledWith(testIds.usuario, { perfil: "USUARIO" });
+        expect(mockRevogarSessoesUsuario).toHaveBeenCalledWith(testIds.usuario);
+    });
+
+    test("usuário comum não consegue se promover a administrador", async () => {
+        const response = await patchPerfil(testIds.doador, usuarioClaims(), {
             perfil: "ADMINISTRADOR",
         });
 

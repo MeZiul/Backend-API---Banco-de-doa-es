@@ -153,10 +153,10 @@ describe("Endpoints de Administracao", () => {
       historico: { itens: [], interesses: [], avaliacoes: [], denuncias: [] },
     });
 
-    const lista = await request(app)
+      const lista = await request(app)
       .get("/admin/usuarios")
       .set("Authorization", adminAuth())
-      .query({ nome: "Carlos", situacao: "ATIVO", page: 2, limit: 5 });
+      .query({ nome: "Carlos", email: " carlos@ ", situacao: "ATIVO", perfil: "USUARIO", page: 2, limit: 5 });
     const detalhe = await request(app)
       .get(`/admin/usuarios/${testIds.usuario}`)
       .set("Authorization", adminAuth());
@@ -169,8 +169,9 @@ describe("Endpoints de Administracao", () => {
       avaliacoes: [],
       denuncias: [],
     });
-    expect(mockAdministracaoService.listarUsuarios).toHaveBeenCalledWith({
-      filtros: { nome: "Carlos", situacao: "ATIVO" },
+     expect(mockAdministracaoService.listarUsuarios).toHaveBeenCalledWith({
+      // E-mail parcial é aceito (busca "contém") e chega aparado.
+      filtros: { nome: "Carlos", email: "carlos@", situacao: "ATIVO", perfil: "USUARIO" },
       page: 2,
       limit: 5,
     }, expect.objectContaining({ id: testIds.admin }));
@@ -252,7 +253,7 @@ describe("Endpoints de Administracao", () => {
     const cancelamento = await request(app)
       .put(`/admin/itens/${testIds.item}/cancelar`)
       .set("Authorization", adminAuth())
-      .send({ acaoTomada: "Item irregular." });
+      .send({ motivo: "  Anúncio fora das regras.  ", acaoTomada: "Item irregular." });
 
     expect(lista.statusCode).toBe(200);
     expect(cancelamento.statusCode).toBe(200);
@@ -264,9 +265,23 @@ describe("Endpoints de Administracao", () => {
     }, expect.objectContaining({ id: testIds.admin }));
     expect(mockAdministracaoService.cancelarItem).toHaveBeenCalledWith(
       testIds.item,
-      expect.objectContaining({ acao_tomada: "Item irregular." }),
+      expect.objectContaining({ motivo: "Anúncio fora das regras.", acao_tomada: "Item irregular." }),
       expect.objectContaining({ id: testIds.admin })
     );
+  });
+
+  test.each([
+    ["sem motivo", {}],
+    ["motivo curto", { motivo: "curto" }],
+    ["motivo só com espaços", { motivo: "              " }],
+  ])("cancelar item exige motivo: %s", async (_caso, body) => {
+    const res = await request(app)
+      .put(`/admin/itens/${testIds.item}/cancelar`)
+      .set("Authorization", adminAuth())
+      .send(body);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockAdministracaoService.cancelarItem).not.toHaveBeenCalled();
   });
 
   test("deve listar e resolver denuncias", async () => {
@@ -328,7 +343,7 @@ describe("Endpoints de Administracao", () => {
     ["get", "/admin/denuncias", "listarDenuncias", null],
     ["put", `/admin/usuarios/${testIds.usuario}/desbloquear`, "desbloquearUsuario", {}],
     ["delete", `/admin/usuarios/${testIds.usuario}`, "inativarUsuario", {}],
-    ["put", `/admin/itens/${testIds.item}/cancelar`, "cancelarItem", {}],
+    ["put", `/admin/itens/${testIds.item}/cancelar`, "cancelarItem", { motivo: "Anúncio fora das regras." }],
   ])("deve propagar falha de %s %s", async (method, url, serviceMethod, body) => {
     mockAdministracaoService[serviceMethod].mockRejectedValue(new CustomError({
       statusCode: 409,

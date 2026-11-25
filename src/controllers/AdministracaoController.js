@@ -6,6 +6,7 @@ import {
     AdministracaoQuerySchema,
     AdministracaoResolverDenunciaSchema,
 } from "../utils/validators/schemas/zod/AdministracaoSchema.js";
+import { cancelarItemSchema } from "../utils/validators/schemas/zod/CancelarItemSchema.js";
 import { DenunciaQuerySchema } from "../utils/validators/schemas/zod/DenunciaSchema.js";
 import { administracaoItemDoacaoQuerySchema } from "../utils/validators/schemas/zod/querys/ItemDoacaoQuerySchema.js";
 import { AdministracaoUsuarioQuerySchema } from "../utils/validators/schemas/zod/UsuarioSchema.js";
@@ -196,7 +197,12 @@ class AdministracaoController {
     cancelarItem = async (req, res, next) => {
         try {
             AdministracaoIdSchema.parse(req.params.id);
-            const dados = AdministracaoAcaoSchema.parse(req.body ?? {});
+            // Moderação exige motivo, com a mesma regra do cancelamento pelo doador.
+            const motivoEnviado = req.body?.motivo;
+            const { motivo } = cancelarItemSchema.parse({
+                motivo: typeof motivoEnviado === "string" ? motivoEnviado.trim() : motivoEnviado,
+            });
+            const dados = { ...AdministracaoAcaoSchema.parse(req.body ?? {}), motivo };
             const resultado = await administracaoService.cancelarItem(
                 req.params.id,
                 dados,

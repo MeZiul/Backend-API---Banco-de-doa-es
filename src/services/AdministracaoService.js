@@ -317,12 +317,14 @@ class AdministracaoService {
         const itemAtualizado = await this.executarAcaoAuditavel({
             executar: () => this.itemDoacaoRepository.atualizarSeStatus(itemId, item.status, {
                 status: "CANCELADO",
+                motivo_cancelamento: dados.motivo ?? null,
             }),
             auditoria: {
                 administrador_id: this.getActorId(usuarioAdmin),
                 tipo_acao: "CANCELAMENTO_ITEM",
                 tipo_alvo: "ITEM",
                 alvo_id: this.getEntityId(item),
+                justificativa: dados.motivo ?? null,
                 resposta_administrativa: dados.resposta_administrativa ?? dados.respostaAdministrativa ?? null,
                 acao_tomada: dados.acao_tomada ?? dados.acaoTomada ?? "Item cancelado administrativamente.",
             },
@@ -331,6 +333,7 @@ class AdministracaoService {
 
         const interessesAtivos = await this.listarInteressesAtivosDoItem(itemId);
         await this.notificarCancelamentoItem(item, interessesAtivos);
+        await this.notificarDoadorCancelamento(item, dados.motivo);
 
         return itemAtualizado;
     }
@@ -609,6 +612,24 @@ class AdministracaoService {
                 referenciaId: itemId,
             }))
         );
+    }
+
+    // O doador precisa saber por que o anúncio saiu do ar.
+    async notificarDoadorCancelamento(item, motivo) {
+        const doadorId = this.getEntityId(item?.usuario_id);
+        if (!doadorId) return;
+
+        const tituloItem = item?.titulo ? ` "${item.titulo}"` : "";
+        await this.notificar([
+            this.criarNotificacao({
+                usuarioId: doadorId,
+                tipo: TIPOS_NOTIFICACAO.ITEM_CANCELADO,
+                titulo: "Anúncio cancelado pela moderação",
+                mensagem: `Seu anúncio${tituloItem} foi cancelado pela administração.${motivo ? ` Motivo: ${motivo}` : ""}`,
+                referenciaTipo: REFERENCIAS_NOTIFICACAO.ITEM,
+                referenciaId: this.getEntityId(item),
+            }),
+        ]);
     }
 
     async notificarResultadoDenuncia(denuncia, resultado) {
