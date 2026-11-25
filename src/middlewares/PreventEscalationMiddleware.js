@@ -36,10 +36,11 @@ const PreventEscalationMiddleware = (req, _res, next) => {
             }));
         }
 
-        if (nivelSolicitado >= nivelRequisitante) {
+        // Administrador pode promover outro a administrador (F6), mas nunca acima do próprio nível.
+        if (nivelSolicitado > nivelRequisitante) {
             return next(new CustomError({
                 statusCode: 403,
-                customMessage: 'Você não pode atribuir um nível de acesso igual ou superior ao seu.',
+                customMessage: 'Você não pode atribuir um nível de acesso superior ao seu.',
             }));
         }
     }

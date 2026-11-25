@@ -47,7 +47,7 @@ export default {
   AdministracaoBloqueioBody: input(AdministracaoBloquearUsuarioSchema, "justificativa não vazia obrigatória para bloqueio; até 1000 caracteres; suspensao_ate ISO 8601 com timezone.", false, { required: ["justificativa"] }),
   AdministracaoAcaoBody: input(AdministracaoAcaoSchema, "Aliases de campos administrativos são normalizados; textos informados não podem ser vazios."),
   AdministracaoResolverDenunciaBody: input(AdministracaoResolverDenunciaSchema, "Resultado PROCEDENTE ou IMPROCEDENTE obrigatório; aliases resultado_denuncia, resultadoDenuncia, resultado e status aceitos."),
-  PerfilAtualizarRequisicao: input(atualizarPerfilSchema, "Somente próprio perfil; envie ao menos um campo. CPF, senha, perfil, situação e contadores não são editáveis.", true, { minProperties: 1 }),
-  PerfilGerenciarRequisicao: input(gerenciarPerfilSchema, "Somente administrador ativo; envie perfil ou situação. Middleware impede autoescalada/alteração de outros administradores."),
+  PerfilAtualizarRequisicao: input(atualizarPerfilSchema, "Somente próprio perfil; envie ao menos um campo. CPF, perfil, situação e contadores não são editáveis.", true, { minProperties: 1 }),
+  PerfilGerenciarRequisicao: input(gerenciarPerfilSchema, "Somente administrador ativo; envie perfil ou situação. Middleware impede alterar o próprio perfil; administrador pode promover ou rebaixar outros."),
   NotificacaoDetalhes: response(NotificacaoResponseSchema),
 };
