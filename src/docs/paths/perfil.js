@@ -60,7 +60,8 @@ Regras de negócio:
 - É estritamente restrita a usuários que possuam o perfil 'ADMINISTRADOR' (validação hierárquica no middleware de rota).
 - É obrigatório informar o novo 'perfil' (USUARIO, ADMINISTRADOR) ou a nova 'situacao' (ATIVO, INATIVO, SUSPENSO) no corpo da requisição. Se ambos estiverem ausentes, o sistema retorna erro 400.
 - Caso o usuário alvo (ID da URL) não exista na base de dados, a operação é abortada retornando erro 404 (Not Found).
-- A alteração reflete imediatamente nos privilégios de acesso do usuário alvo.`,
+- Um administrador pode promover um usuário a ADMINISTRADOR ou rebaixar outro administrador a USUARIO; não pode alterar o próprio perfil por esta rota (403).
+- A alteração reflete imediatamente nos privilégios de acesso do usuário alvo: as sessões dele são revogadas e ele precisa entrar de novo.`,
             security: [{ bearerAuth: [] }],
             parameters: [
                 {
