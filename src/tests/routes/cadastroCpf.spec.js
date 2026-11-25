@@ -30,26 +30,105 @@ beforeAll(async () => {
 
 beforeEach(() => {
   records = [];
-  const findUnique = jest.fn(async ({ where }) => records.find((record) =>
-    Object.entries(where).every(([key, value]) => record[key] === value)) || null);
-  queryRaw = jest.fn(async (_sql, cpf) => records
-    .filter((record) => !record.cpf.startsWith("removido_") && record.cpf.replace(/\D/g, "") === cpf)
-    .slice(0, 1).map(({ id }) => ({ id })));
-  const repository = new UsuarioRepository();
-  Object.defineProperty(repository, "client", { value: {
-    usuario: { findUnique }, $queryRaw: queryRaw,
-  } });
-  signUpEmail = jest.fn(async ({ body }) => {
-    // Somente a persistência/adapter é simulado; a restrição compara o valor gravado.
-    if (records.some((record) => record.cpf === body.cpf)) {
-      throw Object.assign(new Error("unique"), { code: "P2002", meta: { target: ["cpf"] } });
+  const findUnique = jest.fn(async ({ where }) =>
+    records.find((record) =>
+      Object.entries(where).every(
+        ([key, value]) => record[key] === value
+      )
+    ) || null
+  );
+
+  // Simula a atualização do usuário pelo Prisma
+  const update = jest.fn(async ({ where, data }) => {
+    const record = records.find(
+      (record) => record.id === where.id
+    );
+
+    if (!record) {
+      throw Object.assign(
+        new Error("Usuário não encontrado"),
+        { code: "P2025" }
+      );
     }
-    const user = { id: `usuario-${records.length + 1}`, ...body, nome: body.name };
+
+    // Preserva a restrição de unicidade do CPF, desconsiderando o próprio usuário
+    if (
+      data.cpf != null &&
+      records.some(
+        (outro) =>
+          outro.id !== record.id &&
+          outro.cpf === data.cpf
+      )
+    ) {
+      throw Object.assign(new Error("unique"), {
+        code: "P2002",
+        meta: { target: ["cpf"] },
+      });
+    }
+
+    Object.assign(record, data);
+
+    return { ...record };
+  });
+
+  // Consulta CPFs históricos, considerando registros de usuários Google que ainda não possuem CPF
+  queryRaw = jest.fn(async (_sql, cpf) =>
+    records
+      .filter(
+        (record) =>
+          typeof record.cpf === "string" &&
+          !record.cpf.startsWith("removido_") &&
+          record.cpf.replace(/\D/g, "") === cpf
+      )
+      .slice(0, 1)
+      .map(({ id }) => ({ id }))
+  );
+
+  const repository = new UsuarioRepository();
+
+  Object.defineProperty(repository, "client", {
+    value: {
+      usuario: {
+        findUnique,
+        update,
+      },
+      $queryRaw: queryRaw,
+    },
+  });
+
+  signUpEmail = jest.fn(async ({ body }) => {
+    if (
+      records.some((record) => record.cpf === body.cpf)
+    ) {
+      throw Object.assign(new Error("unique"), {
+        code: "P2002",
+        meta: { target: ["cpf"] },
+      });
+    }
+
+    const user = {
+      id: `usuario-${records.length + 1}`,
+      ...body,
+      nome: body.name,
+      cadastro_completo: false,
+    };
+
     records.push(user);
     return { user };
   });
-  const authService = new AutenticacaoService({ auth: { api: { signUpEmail } } });
-  mockService = new UsuarioService({ usuarioRepository: repository, autenticacaoService: authService });
+
+  // Injeta o mesmo repositório utilizado pelo UsuarioService
+  const authService = new AutenticacaoService({
+    auth: {
+      api: { signUpEmail },
+    },
+    usuarioRepository: repository,
+  });
+
+  mockService = new UsuarioService({
+    usuarioRepository: repository,
+    autenticacaoService: authService,
+  });
 });
 
 describe("Cadastro com CPF canônico e registros históricos", () => {
@@ -72,9 +151,11 @@ describe("Cadastro com CPF canônico e registros históricos", () => {
 
     expect(res.statusCode).toBe(201);
     expect(records[0].cpf).toBe("12345678909");
-    expect(signUpEmail).toHaveBeenCalledWith({ body: expect.objectContaining({
-      cpf: "12345678909", email: "novo@doai.local", name: "Maria Silva", cidade: "Vilhena", uf: "RO",
-    }) });
+    expect(signUpEmail).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        cpf: "12345678909", email: "novo@doai.local", name: "Maria Silva", cidade: "Vilhena", uf: "RO",
+      })
+    });
     expect(queryRaw.mock.calls[0][1]).toBe("12345678909");
     expect(queryRaw.mock.calls[0][0].join("?")).toContain('regexp_replace("cpf", \'[^0-9]\', \'\', \'g\') = ?');
   });
@@ -91,6 +172,7 @@ describe("Cadastro com CPF canônico e registros históricos", () => {
     });
     expect(records).toHaveLength(1);
     expect(records[0].cpf).toBe("12345678909");
+    expect(records[0].cadastro_completo).toBe(true);
   });
 
   test("preserva falha de autenticação quando não há conflito de CPF", async () => {

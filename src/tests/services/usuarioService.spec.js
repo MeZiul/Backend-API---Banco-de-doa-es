@@ -7,6 +7,7 @@ const mockUsuarioRepository = {
   buscarPorId: jest.fn(),
   atualizar: jest.fn(),
   listar: jest.fn(),
+  completarCadastro: jest.fn()
 };
 
 const mockItemDoacaoRepository = {
@@ -506,5 +507,193 @@ describe("UsuarioService.listarItens / listarAvaliacoes", () => {
       page: 1,
       limit: 20,
     });
+  });
+});
+describe("UsuarioService.completarCadastro", () => {
+  const usuarioId = "507f1f77bcf86cd799439012";
+
+  const usuarioIncompleto = {
+    _id: usuarioId,
+    nome: "Usuario Google",
+    email: "google@example.invalid",
+    perfil: "USUARIO",
+    situacao: "ATIVO",
+    cadastro_completo: false
+  };
+
+  const dados = {
+    cpf: "123.456.789-09",
+    telefone: "69999999999",
+    cidade: "Vilhena",
+    uf: "RO",
+    termos: true
+  };
+
+  const usuarioCompleto = {
+    ...usuarioIncompleto,
+    cpf: "12345678909",
+    telefone: dados.telefone,
+    cidade: dados.cidade,
+    uf: dados.uf,
+    cadastro_completo: true,
+    versao_termos: "1.0"
+  };
+
+  beforeEach(() => {
+    mockUsuarioRepository.buscarPorId.mockResolvedValue(usuarioIncompleto);
+
+    mockUsuarioRepository.buscarPorCpf.mockResolvedValue(null);
+
+    mockUsuarioRepository.completarCadastro.mockResolvedValue(usuarioCompleto);
+  });
+
+  test("deve completar o cadastro com sucesso", async () => {
+    const resultado = await service.completarCadastro(usuarioId, dados);
+
+    expect(resultado).toEqual(usuarioCompleto);
+
+    expect(mockUsuarioRepository.buscarPorId).toHaveBeenCalledWith(usuarioId);
+
+    expect(mockUsuarioRepository.buscarPorCpf).toHaveBeenCalledWith("12345678909");
+
+    expect(mockUsuarioRepository.completarCadastro).toHaveBeenCalledWith(usuarioId, {
+      cpf: "12345678909",
+      telefone: dados.telefone,
+      cidade: dados.cidade,
+      uf: dados.uf,
+      termos_aceitos_em: expect.any(Date),
+      versao_termos: "1.0"
+    });
+
+    // A conclusão não deve criar uma nova conta.
+    expect(mockAutenticacaoService.cadastrar).not.toHaveBeenCalled();
+  });
+
+  test("deve retornar 404 quando o usuário não existe", async () => {
+    mockUsuarioRepository.buscarPorId.mockResolvedValue(null);
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test.each(["SUSPENSO", "INATIVO",])("deve bloquear usuário com situação %s", async (situacao) => {
+    mockUsuarioRepository.buscarPorId.mockResolvedValue({
+      ...usuarioIncompleto,
+      situacao
+    });
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test("deve impedir a conclusão de um cadastro já completo", async () => {
+    mockUsuarioRepository.buscarPorId.mockResolvedValue(usuarioCompleto);
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(mockUsuarioRepository.buscarPorCpf).not.toHaveBeenCalled();
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    false,
+    undefined,
+    null,
+    "true"
+  ])("deve rejeitar aceite inválido dos termos: %s", async (termos) => {
+    await expect(
+      service.completarCadastro(usuarioId, {
+        ...dados,
+        termos
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400
+    });
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    "123",
+    "11111111111",
+    "00000000000",
+    "12345678900"
+  ])("deve rejeitar CPF inválido: %s", async (cpf) => {
+    await expect(service.completarCadastro(usuarioId, {
+      ...dados,
+      cpf
+    })
+    ).rejects.toMatchObject({
+      statusCode: 400
+    });
+
+    expect(mockUsuarioRepository.buscarPorCpf).not.toHaveBeenCalled();
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test("deve rejeitar CPF pertencente a outro usuário", async () => {
+    mockUsuarioRepository.buscarPorCpf.mockResolvedValue({
+      _id: "outro-usuario"
+    });
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      errorType: "cpfAlreadyExists"
+    });
+
+    expect(mockUsuarioRepository.completarCadastro).not.toHaveBeenCalled();
+  });
+
+  test("deve permitir CPF pertencente ao próprio usuário", async () => {
+    mockUsuarioRepository.buscarPorCpf.mockResolvedValue({
+      _id: usuarioId
+    });
+
+    const resultado = await service.completarCadastro(usuarioId, dados);
+
+    expect(resultado.cadastro_completo).toBe(true);
+
+    expect(mockUsuarioRepository.completarCadastro).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    11000,
+    "P2002"
+  ])("deve tratar conflito de unicidade: %s", async (code) => {
+    const erro = Object.assign(new Error("CPF duplicado"), { code });
+
+    mockUsuarioRepository.completarCadastro.mockRejectedValue(erro);
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      errorType: "cpfAlreadyExists"
+    });
+  });
+
+  test("deve tratar conflito durante atualização concorrente", async () => {
+    mockUsuarioRepository.completarCadastro.mockResolvedValue(null);
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toMatchObject({
+      statusCode: 409
+    });
+  });
+
+  test("deve propagar erros inesperados do Repository", async () => {
+    const erro = new Error("Falha de conexão");
+
+    mockUsuarioRepository.completarCadastro.mockRejectedValue(erro);
+
+    await expect(service.completarCadastro(usuarioId, dados)
+    ).rejects.toBe(erro);
   });
 });

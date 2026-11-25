@@ -46,11 +46,19 @@ const UsuarioUpdateSchema = UsuarioSchema.omit({ senha: true, cpf: true })
   })
   .strict();
 
+const UFS_VALIDAS = [
+  "AC", "AL", "AP", "AM", "BA", "CE",
+  "DF", "ES", "GO", "MA", "MT", "MS",
+  "MG", "PA", "PB", "PR", "PE", "PI",
+  "RJ", "RN", "RS", "RO", "RR", "SC",
+  "SP", "SE", "TO",
+];
 const UsuarioCompletarCadastroSchema = UsuarioSchema.pick({
   cpf: true,
   telefone: true,
   cidade: true,
   uf: true
+
 })
   .extend({
     cpf: z
@@ -71,7 +79,13 @@ const UsuarioCompletarCadastroSchema = UsuarioSchema.pick({
       errorMap: () => ({
         message: "É necessário aceitar os termos de uso"
       })
-    })
+    }),
+    uf: z.string()
+      .trim()
+      .toUpperCase()
+      .refine((uf) => UFS_VALIDAS.includes(uf), {
+        message: "UF inválida"
+      })
   })
   .strict();
 
@@ -112,8 +126,8 @@ const UsuarioResponseSchema = z
     cpf: z.string().nullable(),
     cidade: z.string().nullable(),
     uf: z.string().nullable(),
-    cadastro_completo: z.boolean(),
-    termos_aceitos_em: z.string().datetime().nullable().optional(),
+    cadastro_completo: z.boolean().default(true),
+    termos_aceitos_em: z.date().nullable().optional(),
     versao_termos: z.string().nullable().optional(),
     email_verificado: z.boolean(),
     telefone: z.string().nullable().optional(),

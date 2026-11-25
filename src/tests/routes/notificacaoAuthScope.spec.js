@@ -20,6 +20,8 @@ jest.mock("../../repositories/NotificacaoRepository.js", () => ({
 
 let app;
 let getSession;
+let buscarPorId;
+
 const session = { session: { token: "session-token" }, user: { id: "usuario-1" } };
 const endpoints = [
   ["get", "/notificacoes"],
@@ -42,9 +44,14 @@ beforeAll(async () => {
 
 beforeEach(() => {
   getSession = jest.fn(async ({ headers }) => headers.get("authorization") === "Bearer session-token" ? session : null);
+  buscarPorId = jest.fn().mockResolvedValue({
+    _id: "usuario-1",
+    situacao: "ATIVO",
+    cadastro_completo: true
+  });
   mockAuthMiddleware = createAuthMiddleware({
     authClient: { api: { getSession } },
-    usuarioRepository: { buscarPorId: jest.fn().mockResolvedValue({ _id: "usuario-1", situacao: "ATIVO" }) },
+    usuarioRepository: { buscarPorId }
   });
   Object.values(NotificacaoRepository).forEach((fn) => fn.mockReset());
   NotificacaoRepository.listarDoUsuario.mockResolvedValue({ docs: [] });
@@ -77,6 +84,31 @@ describe("Autenticação restrita ao prefixo de notificações", () => {
     const res = await request(app)[method](path).set("Authorization", "Bearer session-token");
     expect(res.statusCode).toBe(200);
   });
+
+  test.each(endpoints)("%s %s rejeita usuário com cadastro incompleto", async (method, path) => {
+    // Simula um usuário autenticado que ainda não concluiu o preenchimento dos dados obrigatórios
+    buscarPorId.mockResolvedValue({
+      _id: "usuario-1",
+      situacao: "ATIVO",
+      cadastro_completo: false
+    });
+
+    const res = await request(app)
+    [method](path).set("Authorization", "Bearer session-token");
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({
+      message: "Complete seu cadastro antes de realizar esta operação",
+      data: null,
+      errors: []
+    });
+    // Garante que nenhuma operação de notificação seja executada antes da conclusão do cadastro
+    expect(NotificacaoRepository.listarDoUsuario).not.toHaveBeenCalled();
+    expect(NotificacaoRepository.contarNaoLidas).not.toHaveBeenCalled();
+    expect(NotificacaoRepository.marcarComoLida).not.toHaveBeenCalled();
+    expect(NotificacaoRepository.marcarTodasComoLidas).not.toHaveBeenCalled();
+  }
+  );
 
   test("rota desconhecida sob /notificacoes mantém autenticação e depois alcança 404", async () => {
     expect((await request(app).get("/notificacoes/ausente")).statusCode).toBe(498);

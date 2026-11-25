@@ -12,6 +12,8 @@ import errorHandler from "../../utils/helpers/errorHandler.js";
 
 const mockRevogarSessoesUsuario = jest.fn();
 const mockBuscarUsuarioAtual = jest.fn();
+const mockBuscarPorCpf = jest.fn();
+const mockCompletarCadastro = jest.fn();
 
 jest.mock("../../repositories/PerfilRepository.js", () => ({
     __esModule: true,
@@ -27,6 +29,12 @@ jest.mock("../../repositories/UsuarioRepository.js", () => ({
     default: class MockUsuarioRepository {
         buscarPorId(...args) {
             return mockBuscarUsuarioAtual(...args);
+        }
+        buscarPorCpf(...args) {
+            return mockBuscarPorCpf(...args);
+        }
+        completarCadastro(...args) {
+            return mockCompletarCadastro(...args);
         }
     },
 }));
@@ -51,6 +59,7 @@ const usuarioAtual = (id, perfil, situacao = "ATIVO") => ({
     email: "pessoa@example.invalid",
     perfil,
     situacao,
+    cadastro_completo: true
 });
 
 const adminClaims = () => createAdminUser({ papeis: ["ADMINISTRADOR"] });
@@ -101,6 +110,18 @@ beforeEach(() => {
         _id: id,
         ...dados,
     }));
+    mockBuscarPorCpf
+        .mockReset()
+        .mockResolvedValue(null);
+
+    mockCompletarCadastro
+        .mockReset()
+        .mockImplementation(async (id, dados) => ({
+            ...usuariosAtuais.get(String(id)),
+            ...dados,
+            _id: id,
+            cadastro_completo: true
+        }));
 });
 
 describe("Rotas de perfil pessoal", () => {
@@ -300,5 +321,224 @@ describe("PATCH /admin/usuarios/:id/perfil", () => {
         );
         expect(mockRevogarSessoesUsuario).toHaveBeenCalledTimes(1);
         expect(mockRevogarSessoesUsuario).toHaveBeenCalledWith(testIds.doador);
+    });
+});
+describe("PATCH /perfil/completar-cadastro", () => {
+    const rota = "/perfil/completar-cadastro";
+
+    const dadosValidos = {
+        cpf: "123.456.789-09",
+        telefone: "69999999999",
+        cidade: "Vilhena",
+        uf: "RO",
+        termos: true
+    };
+
+    const usuarioIncompleto = () =>
+        createRegularUser({
+            cadastro_completo: false
+        });
+
+    const completarCadastro = (body = dadosValidos, usuario = usuarioIncompleto()) =>
+        request(app)
+            .patch(rota)
+            .set("Authorization", createTestBearer(usuario))
+            .send(body);
+
+    beforeEach(() => {
+        usuariosAtuais.set(testIds.usuario, {
+            ...usuarioAtual(testIds.usuario, "USUARIO"),
+            cadastro_completo: false,
+            cpf: null,
+            telefone: null,
+            cidade: null,
+            uf: null
+        });
+    });
+
+    test("deve completar o cadastro do usuário autenticado", async () => {
+        const response = await completarCadastro();
+
+        expect(response.statusCode).toBe(200);
+
+        expect(response.body.data).toMatchObject({
+            _id: testIds.usuario,
+            cpf: "12345678909",
+            telefone: "69999999999",
+            cidade: "Vilhena",
+            uf: "RO",
+            cadastro_completo: true,
+            versao_termos: "1.0"
+        });
+
+        expect(mockCompletarCadastro).toHaveBeenCalledWith(testIds.usuario, expect.objectContaining({
+            cpf: "12345678909",
+            telefone: dadosValidos.telefone,
+            cidade: dadosValidos.cidade,
+            uf: dadosValidos.uf,
+            termos_aceitos_em: expect.any(Date),
+            versao_termos: "1.0"
+        })
+        );
+
+        expect(mockCompletarCadastro).toHaveBeenCalledTimes(1);
+    });
+
+    test("deve exigir autenticação", async () => {
+        const response = await request(app).patch(rota).send(dadosValidos);
+
+        expect(response.statusCode).toBe(498);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        "cpf",
+        "telefone",
+        "cidade",
+        "uf",
+        "termos"
+    ])("deve rejeitar ausência do campo %s", async (campo) => {
+        const dados = { ...dadosValidos };
+
+        delete dados[campo];
+
+        const response = await completarCadastro(dados);
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve rejeitar CPF inválido", async () => {
+        const response = await completarCadastro({
+            ...dadosValidos,
+            cpf: "111.111.111-11"
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve rejeitar telefone inválido", async () => {
+        const response = await completarCadastro({
+            ...dadosValidos,
+            telefone: "123"
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve rejeitar UF inexistente", async () => {
+        const response = await completarCadastro({
+            ...dadosValidos,
+            uf: "XX"
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve exigir aceite dos termos", async () => {
+        const response = await completarCadastro({
+            ...dadosValidos,
+            termos: false
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve rejeitar CPF pertencente a outro usuário", async () => {
+        mockBuscarPorCpf.mockResolvedValue({
+            _id: testIds.doador
+        });
+
+        const response = await completarCadastro();
+
+        expect(response.statusCode).toBe(409);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve rejeitar cadastro já concluído", async () => {
+        usuariosAtuais.set(testIds.usuario, {
+            ...usuariosAtuais.get(testIds.usuario),
+            cadastro_completo: true
+        });
+
+        const response = await completarCadastro();
+
+        expect(response.statusCode).toBe(409);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        "SUSPENSO",
+        "INATIVO"
+    ])("deve rejeitar usuário com situação %s", async (situacao) => {
+        usuariosAtuais.set(testIds.usuario, {
+            ...usuariosAtuais.get(testIds.usuario),
+            situacao
+        });
+
+        const response = await completarCadastro();
+
+        expect(response.statusCode).toBe(403);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        ["id", testIds.doador],
+        ["perfil", "ADMINISTRADOR"],
+        ["situacao", "ATIVO"],
+        ["cadastro_completo", true],
+        ["email", "alterado@example.invalid"],
+        ["nome", "Nome alterado"],
+        ["versao_termos", "9.9"],
+        ["termos_aceitos_em", "2020-01-01"]
+    ])("deve rejeitar mass assignment do campo %s", async (campo, valor) => {
+        const response = await completarCadastro({
+            ...dadosValidos,
+            [campo]: valor
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(mockCompletarCadastro).not.toHaveBeenCalled();
+    });
+
+    test("deve retornar conflito quando atualização não é realizada", async () => {
+        mockCompletarCadastro.mockResolvedValue(null);
+
+        const response = await completarCadastro();
+
+        expect(response.statusCode).toBe(409);
+    });
+
+    test("deve permitir consultar o próprio perfil incompleto", async () => {
+        PerfilRepository.buscarPorId.mockResolvedValue({
+            _id: testIds.usuario,
+            cadastro_completo: false
+        });
+
+        const response = await request(app)
+            .get("/perfil")
+            .set("Authorization", createTestBearer(usuarioIncompleto()));
+
+        expect(response.statusCode).toBe(200);
+
+        expect(response.body.data).toMatchObject({
+            cadastro_completo: false
+        });
+    });
+
+    test("deve bloquear atualização comum de perfil incompleto", async () => {
+        const response = await request(app)
+            .put("/perfil")
+            .set("Authorization", createTestBearer(usuarioIncompleto()))
+            .send({
+                cidade: "Cuiabá"
+            });
+
+        expect(response.statusCode).toBe(403);
+        expect(PerfilRepository.atualizar).not.toHaveBeenCalled();
     });
 });
