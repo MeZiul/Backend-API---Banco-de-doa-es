@@ -64,9 +64,10 @@ describe("Scalar local e contrato OpenAPI", () => {
     expect(res.headers["content-security-policy"]).not.toContain("nonce-");
     const spec = res.body;
     expect(spec.openapi).toBe("3.0.0");
-    expect(Object.keys(spec.paths)).toHaveLength(59);
+    expect(Object.keys(spec.paths)).toHaveLength(60);
     const documented = Object.entries(spec.paths).flatMap(([path, methods]) => Object.keys(methods).map(method => `${method} ${path}`));
-    expect(documented).toHaveLength(80);
+    expect(documented).toHaveLength(81);
+    expect(documented).toContain("patch /perfil/completar-cadastro");
     const registered = walkRoutes(app.router.stack).filter(domainOperation);
     expect(documented.filter(domainOperation).sort()).toEqual([...new Set(registered)].sort());
     expect(documented.filter(operation => operation.includes(" /api/auth/")).sort()).toEqual([
@@ -151,5 +152,29 @@ describe("Scalar local e contrato OpenAPI", () => {
     const res = await request(app).get("/notificacoes");
     expect(res.status).toBe(498);
     expect(res.headers["content-security-policy"]).not.toContain("nonce-");
+  });
+
+  test("documenta o contrato de complementação do cadastro", async () => {
+    const { body: spec } = await request(app).get("/docs.json");
+
+    const operation = spec.paths["/perfil/completar-cadastro"]?.patch;
+
+    expect(operation).toBeDefined();
+
+    expect(operation.security).toEqual([{ bearerAuth: [] }]);
+
+    expect(operation.requestBody.required).toBe(true);
+
+    expect(operation.requestBody.content["application/json"].schema
+    ).toEqual({
+      $ref: "#/components/schemas/PerfilCompletarCadastroRequisicao"
+    });
+
+    expect(spec.components.schemas.PerfilCompletarCadastroRequisicao
+    ).toBeDefined();
+
+    for (const status of [200, 400, 401, 403, 404, 409, 498, 500]) {
+      expect(operation.responses[status]).toBeDefined();
+    }
   });
 });

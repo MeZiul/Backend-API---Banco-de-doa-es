@@ -13,6 +13,8 @@ const adminOnly = [AuthMiddleware, EnsureCompleteRegistrationMiddleware, authori
 router
   .get("/categorias", asyncWrapper(ControCategoria.listar))
 
+  .get("/admin/categorias", ...adminOnly, asyncWrapper(ControCategoria.listar))
+
   .get("/categorias/:id", asyncWrapper(ControCategoria.buscarPorId))
 
   .post("/categorias", ...adminOnly, asyncWrapper(ControCategoria.criar))

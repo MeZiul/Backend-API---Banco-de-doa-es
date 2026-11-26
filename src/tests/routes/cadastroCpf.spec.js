@@ -71,6 +71,27 @@ beforeEach(() => {
     return { ...record };
   });
 
+  const deleteMany = jest.fn(async ({ where }) => {
+    const indice = records.findIndex((record) =>
+      record.id === where.id &&
+      record.cadastro_completo === false &&
+      record.cpf === null &&
+      record.perfil === "USUARIO" &&
+      record.situacao === "ATIVO" &&
+      record.sessions.length === 0 &&
+      record.accounts.some((account) => account.providerId === "credential") &&
+      record.accounts.every((account) => account.providerId === "credential")
+    );
+
+    if (indice === -1) {
+      return { count: 0 };
+    }
+
+    records.splice(indice, 1);
+
+    return { count: 1 };
+  });
+
   // Consulta CPFs históricos, considerando registros de usuários Google que ainda não possuem CPF
   queryRaw = jest.fn(async (_sql, cpf) =>
     records
@@ -91,26 +112,30 @@ beforeEach(() => {
       usuario: {
         findUnique,
         update,
+        deleteMany
       },
       $queryRaw: queryRaw,
     },
   });
 
   signUpEmail = jest.fn(async ({ body }) => {
-    if (
-      records.some((record) => record.cpf === body.cpf)
-    ) {
-      throw Object.assign(new Error("unique"), {
-        code: "P2002",
-        meta: { target: ["cpf"] },
-      });
-    }
+    // O Better Auth recebe somente os dados de autenticação
+    expect(Object.keys(body).sort()).toEqual(["email", "name", "password"]);
 
     const user = {
       id: `usuario-${records.length + 1}`,
-      ...body,
       nome: body.name,
+      email: body.email,
+      cpf: null,
+      telefone: null,
+      cidade: null,
+      uf: null,
+      bio: null,
       cadastro_completo: false,
+      perfil: "USUARIO",
+      situacao: "ATIVO",
+      accounts: [{ providerId: "credential" }],
+      sessions: []
     };
 
     records.push(user);
@@ -147,18 +172,43 @@ describe("Cadastro com CPF canônico e registros históricos", () => {
   );
 
   test.each(formas)("persiste apenas dígitos para entrada %s", async (cpf) => {
-    const res = await request(app).post("/usuario").send(dados(cpf));
+    const res = await request(app)
+      .post("/usuario")
+      .send(dados(cpf));
 
     expect(res.statusCode).toBe(201);
-    expect(records[0].cpf).toBe("12345678909");
-    expect(signUpEmail).toHaveBeenCalledWith({
-      body: expect.objectContaining({
-        cpf: "12345678909", email: "novo@doai.local", name: "Maria Silva", cidade: "Vilhena", uf: "RO",
-      })
+
+    // Verifica os dados efetivamente persistidos
+    expect(records).toHaveLength(1);
+
+    expect(records[0]).toMatchObject({
+      cpf: "12345678909",
+      nome: "Maria Silva",
+      email: "novo@doai.local",
+      cidade: "Vilhena",
+      uf: "RO",
+      cadastro_completo: true
     });
-    expect(queryRaw.mock.calls[0][1]).toBe("12345678909");
-    expect(queryRaw.mock.calls[0][0].join("?")).toContain('regexp_replace("cpf", \'[^0-9]\', \'\', \'g\') = ?');
-  });
+
+    // O Better Auth recebe exclusivamente os dados necessários para autenticação
+    expect(signUpEmail).toHaveBeenCalledTimes(1);
+
+    expect(signUpEmail).toHaveBeenCalledWith({
+      body: {
+        name: "Maria Silva",
+        email: "novo@doai.local",
+        password: "Teste@123"
+      },
+    });
+
+    // Preserva a validação de CPF canônico
+    expect(queryRaw.mock.calls[0][1])
+      .toBe("12345678909");
+
+    expect(queryRaw.mock.calls[0][0].join("?"))
+      .toContain('regexp_replace("cpf", \'[^0-9]\', \'\', \'g\') = ?');
+  }
+  );
 
   test("cadastros simultâneos com máscaras diferentes resultam em um sucesso e um conflito", async () => {
     const results = await Promise.allSettled([
