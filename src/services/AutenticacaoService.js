@@ -62,22 +62,20 @@ class AutenticacaoService {
   }
 
   async cadastrar(dados) {
+    let usuarioCriadoId = null;
     try {
       const result = await this.auth.api.signUpEmail({
         body: {
           name: dados.nome,
           email: dados.email,
           password: dados.senha,
-          cpf: dados.cpf,
-          telefone: dados.telefone,
-          cidade: dados.cidade,
-          uf: dados.uf,
-          bio: dados.bio,
-        },
+        }
       });
 
+      usuarioCriadoId = result.user.id;
+
       // Completa o cadastro tradicional com os dados previamente validados pelo UsuarioService
-      await this.usuarioRepository.atualizar(result.user.id, {
+      const usuarioAtualizado = await this.usuarioRepository.atualizar(usuarioCriadoId, {
         cpf: dados.cpf,
         telefone: dados.telefone,
         cidade: dados.cidade,
@@ -86,8 +84,30 @@ class AutenticacaoService {
         cadastro_completo: true
       });
 
+      if (!usuarioAtualizado) {
+        throw createOperationalError(500, "Não foi possível concluir o cadastro do usuário.");
+      }
+
       return result.user;
     } catch (error) {
+      // Executa a compensação somente se o Better Auth tiver retornado o identificador da conta criada
+      if (usuarioCriadoId) {
+        try {
+          const removido = await this.usuarioRepository.removerCadastroIncompleto(usuarioCriadoId);
+
+          if (!removido) {
+            console.error("[AutenticacaoService] Não foi possível compensar o cadastro incompleto.", { usuarioId: usuarioCriadoId });
+          }
+        } catch (erroCompensacao) {
+          console.error("[AutenticacaoService] Falha na compensação do cadastro.", {
+            usuarioId: usuarioCriadoId,
+            codigo: erroCompensacao?.code
+          }
+          );
+        }
+      }
+
+      // Preserva a falha original, inclusive conflitos de CPF
       throw mapBetterAuthError(error, "Não foi possível cadastrar o usuário.");
     }
   }

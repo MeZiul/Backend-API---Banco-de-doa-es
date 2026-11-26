@@ -37,7 +37,7 @@ describe("AutenticacaoService", () => {
       signOut: jest.fn(),
     };
     auth = { api };
-    usuarioRepository = { buscarPorId: jest.fn(), atualizar: jest.fn() };
+    usuarioRepository = { buscarPorId: jest.fn(), atualizar: jest.fn(), removerCadastroIncompleto: jest.fn() };
     prisma = {
       session: {
         deleteMany: jest.fn(),
@@ -91,15 +91,13 @@ describe("AutenticacaoService", () => {
       .resolves.toEqual({ id: "usuario-1" });
 
     // Verifica a criação da identidade pelo Better Auth
-    expect(api.signUpEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          name: dados.nome,
-          email: dados.email,
-          password: dados.senha
-        })
-      })
-    );
+    expect(api.signUpEmail).toHaveBeenCalledWith({
+      body: {
+        name: dados.nome,
+        email: dados.email,
+        password: dados.senha,
+      },
+    });
 
     // Verifica a atualização dos dados cadastrais
     expect(usuarioRepository.atualizar).toHaveBeenCalledWith("usuario-1", expect.objectContaining({
@@ -114,6 +112,7 @@ describe("AutenticacaoService", () => {
 
     expect(api.signUpEmail).toHaveBeenCalledTimes(1);
     expect(usuarioRepository.atualizar).toHaveBeenCalledTimes(1);
+    expect(usuarioRepository.removerCadastroIncompleto).not.toHaveBeenCalled();
   });
 
   test("converte conflito de cadastro do Better Auth para resposta 409", async () => {
@@ -126,6 +125,126 @@ describe("AutenticacaoService", () => {
       customMessage: "E-mail já cadastrado. Faça login ou recupere sua senha.",
     });
     expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
+    expect(usuarioRepository.removerCadastroIncompleto).not.toHaveBeenCalled();
+  });
+
+  describe("Compensação de cadastro incompleto", () => {
+    const dadosCadastro = {
+      nome: "Maria Silva",
+      email: "maria@example.test",
+      senha: "Senha@123",
+      cpf: "12345678909",
+      telefone: "69999990000",
+      cidade: "Vilhena",
+      uf: "RO",
+      bio: ""
+    };
+
+    beforeEach(() => {
+      api.signUpEmail.mockResolvedValue({ user: { id: "usuario-recem-criado" } });
+    });
+
+    test("deve compensar o cadastro quando a atualização do CPF falhar", async () => {
+      const erro = Object.assign(new Error("CPF duplicado"), {
+        code: 11000,
+        keyValue: { cpf: "duplicado" }
+      }
+      );
+
+      usuarioRepository.atualizar.mockRejectedValue(erro);
+
+      usuarioRepository.removerCadastroIncompleto.mockResolvedValue(true);
+
+      await expect(service.cadastrar(dadosCadastro)).rejects.toBe(erro);
+
+      expect(api.signUpEmail).toHaveBeenCalledTimes(1);
+
+      expect(usuarioRepository.atualizar).toHaveBeenCalledTimes(1);
+
+      expect(usuarioRepository.removerCadastroIncompleto).toHaveBeenCalledTimes(1);
+
+      expect(usuarioRepository.removerCadastroIncompleto).toHaveBeenCalledWith("usuario-recem-criado");
+    });
+
+    test("deve compensar quando a atualização retornar null", async () => {
+      usuarioRepository.atualizar.mockResolvedValue(null);
+
+      usuarioRepository.removerCadastroIncompleto.mockResolvedValue(true);
+
+      await expect(service.cadastrar(dadosCadastro)
+      ).rejects.toMatchObject({
+        statusCode: 500,
+        customMessage: "Não foi possível concluir o cadastro do usuário.",
+      });
+
+      expect(usuarioRepository.removerCadastroIncompleto)
+        .toHaveBeenCalledWith("usuario-recem-criado");
+    });
+
+    test("deve preservar o erro original quando a conta não puder ser removida", async () => {
+      const erroOriginal = new Error("Falha na atualização do cadastro");
+
+      const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => { });
+
+      try {
+        usuarioRepository.atualizar.mockRejectedValue(erroOriginal);
+
+        usuarioRepository.removerCadastroIncompleto.mockResolvedValue(false);
+
+        await expect(service.cadastrar(dadosCadastro)).rejects.toBe(erroOriginal);
+
+        expect(usuarioRepository.removerCadastroIncompleto)
+          .toHaveBeenCalledWith("usuario-recem-criado");
+
+        expect(consoleSpy).toHaveBeenCalledWith("[AutenticacaoService] Não foi possível compensar o cadastro incompleto.", {
+          usuarioId: "usuario-recem-criado"
+        }
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    test("deve preservar o erro original mesmo quando a compensação falhar", async () => {
+      const erroOriginal = new Error("Falha na atualização do cadastro");
+
+      const erroCompensacao = Object.assign(new Error("Banco indisponível"), {
+        code: "P1001"
+      }
+      );
+
+      const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => { });
+
+      try {
+        usuarioRepository.atualizar.mockRejectedValue(erroOriginal);
+
+        usuarioRepository.removerCadastroIncompleto.mockRejectedValue(erroCompensacao);
+
+        await expect(service.cadastrar(dadosCadastro)).rejects.toBe(erroOriginal);
+
+        expect(usuarioRepository.removerCadastroIncompleto).toHaveBeenCalledTimes(1);
+
+        expect(consoleSpy).toHaveBeenCalledWith("[AutenticacaoService] Falha na compensação do cadastro.", {
+          usuarioId: "usuario-recem-criado",
+          codigo: "P1001"
+        }
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    test("não deve executar compensação quando o Better Auth falhar antes de criar a conta", async () => {
+      const erro = new Error("Falha na criação da identidade");
+
+      api.signUpEmail.mockRejectedValue(erro);
+
+      await expect(service.cadastrar(dadosCadastro)).rejects.toBe(erro);
+
+      expect(usuarioRepository.atualizar).not.toHaveBeenCalled();
+
+      expect(usuarioRepository.removerCadastroIncompleto).not.toHaveBeenCalled();
+    });
   });
 
   test("faz login e retorna token de sessao para usuario ativo", async () => {

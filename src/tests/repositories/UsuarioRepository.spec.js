@@ -206,3 +206,111 @@ describe("UsuarioRepository - completarCadastro", () => {
     expect(findUnique).not.toHaveBeenCalled();
   });
 });
+describe("UsuarioRepository - removerCadastroIncompleto", () => {
+  const usuarioId = "fb55a3c6-dc66-4d46-aeb0-7fca9b3beab7";
+
+  const criarRepository = () => {
+    const deleteMany = jest.fn();
+    const repository = new UsuarioRepository();
+
+    Object.defineProperty(repository, "client", {
+      value: {
+        usuario: {
+          deleteMany,
+        },
+      },
+    });
+
+    return { repository, deleteMany };
+  };
+
+  test("deve remover uma conta incompleta elegível para compensação", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    const resultado =
+      await repository.removerCadastroIncompleto(usuarioId);
+
+    expect(resultado).toBe(true);
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  test("deve aplicar todos os filtros de segurança na exclusão", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    await repository.removerCadastroIncompleto(usuarioId);
+
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: usuarioId,
+        cadastro_completo: false,
+        cpf: null,
+        perfil: "USUARIO",
+        situacao: "ATIVO",
+        sessions: {
+          none: {},
+        },
+        accounts: {
+          some: {
+            providerId: "credential",
+          },
+          every: {
+            providerId: "credential",
+          },
+        },
+      },
+    });
+  });
+
+  test("deve retornar false quando nenhuma conta atende aos filtros", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    deleteMany.mockResolvedValue({ count: 0 });
+
+    const resultado =
+      await repository.removerCadastroIncompleto(usuarioId);
+
+    expect(resultado).toBe(false);
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  test("deve normalizar o identificador para string", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    deleteMany.mockResolvedValue({ count: 0 });
+
+    await repository.removerCadastroIncompleto(123);
+
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "123",
+      }),
+    });
+  });
+
+  test("deve propagar falhas inesperadas do banco", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    const erro = new Error("Falha de conexão com o banco");
+
+    deleteMany.mockRejectedValue(erro);
+
+    await expect(
+      repository.removerCadastroIncompleto(usuarioId)
+    ).rejects.toBe(erro);
+  });
+
+  test("deve retornar false caso a quantidade removida seja inesperada", async () => {
+    const { repository, deleteMany } = criarRepository();
+
+    deleteMany.mockResolvedValue({ count: 2 });
+
+    const resultado =
+      await repository.removerCadastroIncompleto(usuarioId);
+
+    expect(resultado).toBe(false);
+  });
+});
