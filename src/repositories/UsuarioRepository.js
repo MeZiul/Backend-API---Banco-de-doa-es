@@ -95,7 +95,7 @@ class UsuarioRepository extends BaseRepository {
     }
   }
   async completarCadastro(id, dados) {
-    return this.atualizarSeSituacao(id,"ATIVO",
+    return this.atualizarSeSituacao(id, "ATIVO",
       {
         cpf: normalizarCPF(dados.cpf),
         telefone: dados.telefone,
@@ -110,6 +110,29 @@ class UsuarioRepository extends BaseRepository {
       }
     );
   }
+  async removerCadastroIncompleto(id) {
+    try {
+      const resultado = await this.delegate.deleteMany({
+        where: {
+          id: String(id),
+          cadastro_completo: false,
+          cpf: null,
+          perfil: "USUARIO",
+          situacao: "ATIVO",
+          sessions: { none: {} },
+          accounts: {
+            some: { providerId: "credential" },
+            every: { providerId: "credential" }
+          }
+        }
+      });
+
+      return resultado.count === 1;
+    } catch (error) {
+      throw mapPrismaErrorToLegacy(error);
+    }
+  }
+
   listar({ filtros = {}, page = 1, limit = 15 }) {
     const builder = new UsuarioFilterBuilder()
       .comNome(filtros.nome)

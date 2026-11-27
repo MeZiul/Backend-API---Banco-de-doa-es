@@ -44,7 +44,16 @@ class InteresseRepository extends BaseRepository {
             cidade: true,
             uf: true,
             total_interesses: true,
-          },
+            fotos: {
+              select: {
+                id: true,
+                url: true,
+                ordem: true
+              },
+              orderBy: { ordem: "asc" },
+              take: 1
+            }
+          }
         },
         usuario_interessado: {
           select: {
@@ -211,11 +220,37 @@ class InteresseRepository extends BaseRepository {
       page,
       limit,
       sort: { data_interesse: -1 },
+      include: {
+        item: {
+          select: {
+            id: true,
+            titulo: true,
+            status: true,
+            cidade: true,
+            uf: true,
+            total_interesses: true,
+            fotos: {
+              select: {
+                id: true,
+                url: true,
+                ordem: true
+              },
+              orderBy: { ordem: "asc" },
+              take: 1
+            }
+          }
+        }
+      },
       populate: [
-        { path: "item_id", select: "titulo status cidade uf total_interesses" },
-        { path: "usuario_interessado_id", select: "nome email cidade uf" },
-        { path: "usuario_doador_id", select: "nome email cidade uf" },
-      ],
+        {
+          path: "usuario_interessado_id",
+          select: "nome email cidade uf"
+        },
+        {
+          path: "usuario_doador_id",
+          select: "nome email cidade uf"
+        }
+      ]
     });
   }
 }
